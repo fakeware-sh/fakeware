@@ -14,7 +14,7 @@
     },
     "apps/cli": {
       "name": "@fakeware/cli",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "bin": {
         "fakeware": "./dist/index.mjs",
       },
@@ -32,7 +32,7 @@
     },
     "packages/core": {
       "name": "@fakeware/core",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@shopware/api-client": "1.5.0",
         "zod": "4.4.3",
