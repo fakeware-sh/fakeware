@@ -1,0 +1,64 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      core_released: ${{ steps.release.outputs['packages/core--release_created'] }}
+      cli_released: ${{ steps.release.outputs['apps/cli--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest && npm --version
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Publish @fakeware/core
+        if: ${{ needs.release-please.outputs.core_released == 'true' }}
+        working-directory: packages/core
+        run: |
+          TARBALL=$(bun pm pack --quiet | grep -v '^$' | tail -n1)
+          npm publish "$TARBALL"
+
+      - name: Publish @fakeware/cli
+        if: ${{ needs.release-please.outputs.cli_released == 'true' }}
+        working-directory: apps/cli
+        run: |
+          TARBALL=$(bun pm pack --quiet | grep -v '^$' | tail -n1)
+          npm publish "$TARBALL"

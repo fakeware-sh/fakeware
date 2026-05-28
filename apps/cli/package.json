@@ -1,0 +1,40 @@
+{
+  "name": "@fakeware/cli",
+  "version": "0.0.0",
+  "description": "The Fakeware cli",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiomayo/fakeware.git",
+    "directory": "apps/cli"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "fakeware": "./dist/index.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "predev": "tsdown && bun link",
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.4.0",
+    "commander": "14.0.3",
+    "picocolors": "1.1.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14",
+    "@types/node": "22.19.19"
+  }
+}

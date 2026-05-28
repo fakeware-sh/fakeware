@@ -1,0 +1,29 @@
+{
+  "name": "fakeware",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiomayo/fakeware.git"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "check": "biome check .",
+    "fix": "biome check . --write",
+    "typecheck": "bun run --filter '*' typecheck",
+    "clean": "rm -rf node_modules apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@types/bun": "1.3.14",
+    "tsdown": "^0.22.0",
+    "typescript": "^6.0.3"
+  }
+}

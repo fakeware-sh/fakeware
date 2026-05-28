@@ -1,0 +1,32 @@
+{
+  "name": "@fakeware/core",
+  "version": "0.0.0",
+  "description": "Fakeware core library. Currently exposes the typed configuration surface (@fakeware/core/config); the engine and plugin SDK arrive in later releases.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiomayo/fakeware.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./config": {
+      "types": "./dist/config/index.d.mts",
+      "import": "./dist/config/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}
