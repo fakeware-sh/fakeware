@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.4](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.3...cli-v0.0.4) (2026-05-28)
+
+
+### Features
+
+* **core:** add shopware api client ([f8b5c2f](https://github.com/fakeware-sh/fakeware/commit/f8b5c2f408c0e001c5fbc89178f2add4dc2c06cd))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.4
+
 ## [0.0.3](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.2...cli-v0.0.3) (2026-05-28)
 
 
