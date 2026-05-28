@@ -49,12 +49,12 @@ jobs:
 
       - run: bun run build
 
-      - name: Publish @fakeware-sh/core
+      - name: Publish @fakeware/core
         if: ${{ needs.release-please.outputs.core_released == 'true' }}
         working-directory: packages/core
         run: npm publish
 
-      - name: Publish @fakeware-sh/cli
+      - name: Publish @fakeware/cli
         if: ${{ needs.release-please.outputs.cli_released == 'true' }}
         working-directory: apps/cli
         run: npm publish

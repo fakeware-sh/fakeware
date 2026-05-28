@@ -1,5 +1,5 @@
 {
-  "name": "@fakeware-sh/cli",
+  "name": "@fakeware/cli",
   "version": "0.0.0",
   "description": "The Fakeware cli",
   "type": "module",
