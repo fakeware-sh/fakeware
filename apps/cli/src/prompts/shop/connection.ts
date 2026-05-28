@@ -1,16 +1,16 @@
 import * as p from '@clack/prompts'
-import type { ShopConnection } from '../../lib/shop'
+import type { ShopwareConnection } from '@fakeware/core/shopware'
 import { getProtocol, normalizeShopUrl, type UrlProtocol } from '../../lib/utils'
 
 function required(value: string | undefined): string | undefined {
   return !value || value.trim().length === 0 ? 'Required' : undefined
 }
 
-export type ShopConnectionPrefill = Partial<ShopConnection> & { protocol?: UrlProtocol }
+export type ShopConnectionPrefill = Partial<ShopwareConnection> & { protocol?: UrlProtocol }
 
 export async function promptShopConnection(
   prefill: ShopConnectionPrefill = {},
-): Promise<ShopConnection> {
+): Promise<ShopwareConnection> {
   const answers = await p.group(
     {
       url: () =>

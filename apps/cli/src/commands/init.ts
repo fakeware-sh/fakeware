@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
 import * as p from '@clack/prompts'
+import { fetchShopInfo, validateConnection } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { detectPackageManager, type PackageManager, runInstall } from '../lib/package-manager'
@@ -11,7 +12,6 @@ import {
   type SecretsDest,
   scaffoldProject,
 } from '../lib/scaffolding'
-import { fetchShopInfo, validateShopConnection } from '../lib/shop'
 import { assertOneOf, normalizeShopUrl, resolveTargetDir, toValidPackageName } from '../lib/utils'
 import {
   introBanner,
@@ -19,6 +19,7 @@ import {
   promptProjectLocation,
   promptShopConnection,
   promptShopLocale,
+  withSpinner,
 } from '../prompts'
 
 const FORMATS: readonly ConfigFormat[] = ['ts', 'js', 'yaml', 'json']
@@ -109,12 +110,15 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
     clientSecret: flags.clientSecret,
   })
 
-  await validateShopConnection(connection)
-  p.log.info(
-    `Saved credentials for ${pc.cyan(connection.url)} (not yet verified against the shop).`,
+  await withSpinner(
+    `Connecting to ${pc.cyan(connection.url)}`,
+    `Connected to ${pc.cyan(connection.url)}`,
+    () => validateConnection(connection),
   )
 
-  const info = await fetchShopInfo(connection)
+  const info = await withSpinner('Reading shop languages', 'Read shop languages', () =>
+    fetchShopInfo(connection),
+  )
   const locale = await promptShopLocale(info, flags.locale)
 
   const packageManager =
