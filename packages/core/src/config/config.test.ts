@@ -42,6 +42,22 @@ describe('fakewareConfigSchema', () => {
     expect(parsed.scenario).toBe('fashion')
     expect(parsed.scenarios.fashion).toEqual({ productCount: 1000 })
   })
+
+  test('accepts plugin refs as id strings or [id, options] tuples', () => {
+    const parsed = fakewareConfigSchema.parse({
+      ...validConfig,
+      plugins: ['@fakeware/fashion', ['@fakeware/media', { provider: 'unsplash' }]],
+    })
+    expect(parsed.plugins).toHaveLength(2)
+  })
+
+  test('rejects a plugin ref that is neither a string nor an [id, options] tuple', () => {
+    const result = fakewareConfigSchema.safeParse({
+      ...validConfig,
+      plugins: [42],
+    })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('defineConfig', () => {

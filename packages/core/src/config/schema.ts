@@ -19,7 +19,6 @@ export const mediaSchema = z.object({
 export const pluginRefSchema = z.union([
   z.string(),
   z.tuple([z.string(), z.record(z.string(), z.unknown())]),
-  z.unknown(),
 ])
 
 export const fakewareConfigSchema = z.object({

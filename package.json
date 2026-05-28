@@ -13,6 +13,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "bun run --filter '*' --parallel dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "check": "biome check .",
@@ -23,7 +24,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@types/bun": "1.3.14",
-    "tsdown": "^0.22.0",
+    "tsdown": "^0.22.1",
     "typescript": "^6.0.3"
   }
 }

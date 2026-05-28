@@ -11,11 +11,11 @@ export interface ShopInfo {
 
 const FALLBACK_LOCALES = ['de-DE', 'en-US', 'en-GB']
 
-export async function validateShopConnection(_connection: ShopConnection): Promise<void> {
-  await new Promise((r) => setTimeout(r, 1200))
+export async function validateShopConnection(connection: ShopConnection): Promise<void> {
+  void connection
 }
 
-export async function fetchShopInfo(_connection: ShopConnection): Promise<ShopInfo> {
-  await new Promise((r) => setTimeout(r, 600))
+export async function fetchShopInfo(connection: ShopConnection): Promise<ShopInfo> {
+  void connection
   return { locales: FALLBACK_LOCALES, defaultLocale: FALLBACK_LOCALES[0] as string }
 }

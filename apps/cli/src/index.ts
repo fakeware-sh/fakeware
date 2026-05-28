@@ -5,7 +5,6 @@ if (process.argv.includes('--no-color')) {
 
 import { Command, Option } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
-import { output } from './utils/context'
 
 export async function buildProgram(): Promise<Command> {
   const { initCommand } = await import('./commands/init')
@@ -15,15 +14,7 @@ export async function buildProgram(): Promise<Command> {
     .version(pkg.version, '-V, --version', 'Show version')
     .showHelpAfterError('(add --help for usage)')
     .configureHelp({ showGlobalOptions: true })
-    .addOption(new Option('--verbose', 'Debug logging'))
-    .addOption(new Option('--quiet', 'Errors only'))
-    .addOption(new Option('--json', 'JSON output (for CI/scripting)'))
     .addOption(new Option('--no-color', 'Disable ANSI colors'))
-    .hook('preAction', (thisCommand) => {
-      const opts = thisCommand.opts<{ verbose?: boolean; quiet?: boolean; json?: boolean }>()
-      output.verbosity = opts.verbose ? 'verbose' : opts.quiet ? 'quiet' : 'normal'
-      output.json = opts.json ?? false
-    })
     .addCommand(initCommand())
 }
 
