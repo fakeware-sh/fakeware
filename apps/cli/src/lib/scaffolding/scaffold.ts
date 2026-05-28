@@ -2,17 +2,16 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { fileExists } from '../utils'
 import {
-  type ConfigFormat,
-  configFileName,
+  CONFIG_FILE_NAME,
   configTemplate,
   envTemplate,
+  hasShopConnection,
   packageJsonTemplate,
   type ScaffoldValues,
 } from './templates'
 
 export interface ScaffoldOptions {
   dir: string
-  format: ConfigFormat
   force: boolean
   values: ScaffoldValues
 }
@@ -57,7 +56,7 @@ async function ensureGitignore(dir: string, created: WrittenFile[]): Promise<voi
 }
 
 export async function scaffoldProject(options: ScaffoldOptions): Promise<WrittenFile[]> {
-  const { dir, format, force, values } = options
+  const { dir, force, values } = options
   const created: WrittenFile[] = []
 
   await writeFresh(
@@ -69,14 +68,14 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<Written
   )
 
   await writeFresh(
-    join(dir, configFileName(format)),
-    configTemplate(values, format),
+    join(dir, CONFIG_FILE_NAME),
+    configTemplate(values),
     force,
     'typed via @fakeware/core/config',
     created,
   )
 
-  if (values.secrets === 'env') {
+  if (values.secrets === 'env' && hasShopConnection(values)) {
     await writeFresh(join(dir, '.env'), envTemplate(values), force, 'credentials', created)
     await ensureGitignore(dir, created)
   }

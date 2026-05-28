@@ -19,9 +19,9 @@ const values: ScaffoldValues = {
 }
 
 describe('scaffoldProject', () => {
-  test('writes package.json, config, .env and .gitignore for ts + env secrets', async () => {
+  test('writes package.json, config, .env and .gitignore with env secrets', async () => {
     const dir = tmp()
-    const created = await scaffoldProject({ dir, format: 'ts', force: false, values })
+    const created = await scaffoldProject({ dir, force: false, values })
 
     const names = created.map((f) => f.path.split('/').pop())
     expect(names).toContain('package.json')
@@ -51,7 +51,6 @@ describe('scaffoldProject', () => {
     const dir = tmp()
     const created = await scaffoldProject({
       dir,
-      format: 'ts',
       force: false,
       values: { ...values, secrets: 'inline' },
     })
@@ -61,18 +60,37 @@ describe('scaffoldProject', () => {
     expect(config).not.toContain('$SHOPWARE_URL')
   })
 
+  test('omits shopware block and .env when no connection is provided', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({
+      dir,
+      force: false,
+      values: { projectName: 'my-plugin', locale: 'de-DE', secrets: 'env' },
+    })
+    const names = created.map((f) => f.path.split('/').pop())
+    expect(names).toContain('package.json')
+    expect(names).toContain('fakeware.config.ts')
+    expect(names).not.toContain('.env')
+    expect(names).not.toContain('.gitignore')
+
+    const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
+    expect(config).toContain("from '@fakeware/core/config'")
+    expect(config).not.toContain('shopware:')
+    expect(config).toContain('locale: "de-DE"')
+  })
+
   test('refuses to overwrite without force', async () => {
     const dir = tmp()
     writeFileSync(join(dir, 'package.json'), '{}')
-    await expect(
-      scaffoldProject({ dir, format: 'ts', force: false, values }),
-    ).rejects.toBeInstanceOf(ScaffoldError)
+    await expect(scaffoldProject({ dir, force: false, values })).rejects.toBeInstanceOf(
+      ScaffoldError,
+    )
   })
 
   test('overwrites with force', async () => {
     const dir = tmp()
     writeFileSync(join(dir, 'package.json'), '{"old":true}')
-    await scaffoldProject({ dir, format: 'ts', force: true, values })
+    await scaffoldProject({ dir, force: true, values })
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
     expect(pkg.old).toBeUndefined()
     expect(pkg.name).toBe('my-shop-seed')
@@ -81,17 +99,9 @@ describe('scaffoldProject', () => {
   test('does not duplicate .env in an existing .gitignore', async () => {
     const dir = tmp()
     writeFileSync(join(dir, '.gitignore'), 'node_modules/\n.env\n')
-    await scaffoldProject({ dir, format: 'ts', force: false, values })
+    await scaffoldProject({ dir, force: false, values })
     const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8')
     const occurrences = gitignore.split('\n').filter((l: string) => l.trim() === '.env').length
     expect(occurrences).toBe(1)
-  })
-
-  test('json format emits a parseable config without imports', async () => {
-    const dir = tmp()
-    await scaffoldProject({ dir, format: 'json', force: false, values })
-    const config = JSON.parse(readFileSync(join(dir, 'fakeware.config.json'), 'utf8'))
-    expect(config.shopware.url).toBe('$SHOPWARE_URL')
-    expect(config.locale).toBe('de-DE')
   })
 })

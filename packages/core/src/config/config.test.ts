@@ -14,7 +14,7 @@ const validConfig: FakewareUserConfig = {
 describe('fakewareConfigSchema', () => {
   test('parses a minimal valid config and fills defaults', () => {
     const parsed = fakewareConfigSchema.parse(validConfig)
-    expect(parsed.shopware.url).toBe('https://my-shop.test')
+    expect(parsed.shopware?.url).toBe('https://my-shop.test')
     expect(parsed.batchSize).toBe(100)
     expect(parsed.generators).toEqual({})
     expect(parsed.scenarios).toEqual({})
@@ -28,9 +28,9 @@ describe('fakewareConfigSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  test('rejects a config without shopware', () => {
+  test('accepts a config without shopware', () => {
     const result = fakewareConfigSchema.safeParse({ locale: 'de-DE' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
   })
 
   test('accepts a scenario and per-scenario overrides', () => {
@@ -74,6 +74,6 @@ describe('defineConfig', () => {
       },
     }))
     const produced = factory({ env: { SHOPWARE_URL: 'https://x.test' }, mode: 'test' })
-    expect(produced.shopware.url).toBe('https://x.test')
+    expect(produced.shopware?.url).toBe('https://x.test')
   })
 })
