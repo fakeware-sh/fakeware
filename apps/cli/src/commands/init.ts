@@ -6,8 +6,7 @@ import { Command } from 'commander'
 import pc from 'picocolors'
 import { detectPackageManager, type PackageManager, runInstall } from '../lib/package-manager'
 import {
-  type ConfigFormat,
-  configFileName,
+  CONFIG_FILE_NAME,
   ScaffoldError,
   type SecretsDest,
   scaffoldProject,
@@ -15,6 +14,7 @@ import {
 import { assertOneOf, normalizeShopUrl, resolveTargetDir, toValidPackageName } from '../lib/utils'
 import {
   introBanner,
+  promptConnectNow,
   promptPackageManager,
   promptProjectLocation,
   promptShopConnection,
@@ -22,7 +22,6 @@ import {
   withSpinner,
 } from '../prompts'
 
-const FORMATS: readonly ConfigFormat[] = ['ts', 'js', 'yaml', 'json']
 const SECRETS: readonly SecretsDest[] = ['env', 'inline', 'keychain']
 const PACKAGE_MANAGERS: readonly PackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
 
@@ -32,7 +31,6 @@ interface InitFlags {
   clientSecret?: string
   scenario?: string
   locale?: string
-  format: ConfigFormat
   output?: string
   secrets: SecretsDest
   packageManager?: PackageManager
@@ -43,9 +41,9 @@ interface InitFlags {
 
 interface InitInputs {
   location: string
-  url: string
-  clientId: string
-  clientSecret: string
+  url?: string
+  clientId?: string
+  clientSecret?: string
   locale?: string
   packageManager: PackageManager
 }
@@ -58,7 +56,6 @@ export function initCommand(): Command {
     .option('--client-secret <secret>', 'OAuth2 client secret')
     .option('--scenario <name>', 'Starting scenario (recorded into config)')
     .option('--locale <locale>', 'Default locale')
-    .option('--format <fmt>', 'ts | js | yaml | json', 'ts')
     .option('--output <path>', 'Directory to scaffold into (default: cwd)')
     .option('--secrets <dest>', 'env | inline | keychain', 'env')
     .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
@@ -72,7 +69,6 @@ export function initCommand(): Command {
         clientSecret: opts.clientSecret,
         scenario: opts.scenario,
         locale: opts.locale,
-        format: assertOneOf(opts.format, FORMATS, '--format'),
         output: opts.output,
         secrets: assertOneOf(opts.secrets, SECRETS, '--secrets'),
         packageManager: opts.packageManager
@@ -86,14 +82,15 @@ export function initCommand(): Command {
 }
 
 async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
-  const complete = Boolean(flags.url && flags.clientId && flags.clientSecret)
-  if (flags.yes || complete) {
+  const hasCreds = Boolean(flags.url && flags.clientId && flags.clientSecret)
+
+  if (flags.yes || hasCreds) {
     const location = flags.output ?? '.'
     return {
       location,
-      url: flags.url ? normalizeShopUrl(flags.url) : '',
-      clientId: flags.clientId ?? '',
-      clientSecret: flags.clientSecret ?? '',
+      url: flags.url ? normalizeShopUrl(flags.url) : undefined,
+      clientId: flags.clientId,
+      clientSecret: flags.clientSecret,
       locale: flags.locale,
       packageManager:
         flags.packageManager ?? (await detectPackageManager(resolveTargetDir(location))),
@@ -103,6 +100,15 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   introBanner()
 
   const location = await promptProjectLocation(flags.output)
+
+  const packageManager =
+    flags.packageManager ??
+    (await promptPackageManager(await detectPackageManager(resolveTargetDir(location))))
+
+  const connectNow = await promptConnectNow()
+  if (!connectNow) {
+    return { location, locale: flags.locale, packageManager }
+  }
 
   const connection = await promptShopConnection({
     url: flags.url,
@@ -121,10 +127,6 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   )
   const locale = await promptShopLocale(info, flags.locale)
 
-  const packageManager =
-    flags.packageManager ??
-    (await promptPackageManager(await detectPackageManager(resolveTargetDir(location))))
-
   return { location, ...connection, locale, packageManager }
 }
 
@@ -136,11 +138,12 @@ async function runInit(flags: InitFlags): Promise<void> {
 
   await mkdir(dir, { recursive: true })
 
+  const connected = Boolean(inputs.url && inputs.clientId && inputs.clientSecret)
+
   let created: Awaited<ReturnType<typeof scaffoldProject>>
   try {
     created = await scaffoldProject({
       dir,
-      format: flags.format,
       force: flags.force,
       values: {
         projectName,
@@ -183,7 +186,10 @@ async function runInit(flags: InitFlags): Promise<void> {
     p.log.info(`Skipped install. Run ${pc.cyan(`${pm} install`)} when ready.`)
   }
 
+  const config = pc.cyan(CONFIG_FILE_NAME)
   p.outro(
-    `Next: edit ${pc.cyan(configFileName(flags.format))}, then run ${pc.cyan('fakeware seed')}.`,
+    connected
+      ? `Next: edit ${config}, then run ${pc.cyan('fakeware seed')}.`
+      : `Next: build out ${config}, then add a shopware block when ready to run ${pc.cyan('fakeware seed')}.`,
   )
 }

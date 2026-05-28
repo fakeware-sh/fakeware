@@ -23,7 +23,7 @@ export const pluginRefSchema = z.union([
 
 export const fakewareConfigSchema = z.object({
   extends: z.union([z.string(), z.array(z.string())]).optional(),
-  shopware: shopwareSchema,
+  shopware: shopwareSchema.optional(),
   locale: z.string().optional(),
   seed: z.string().optional(),
   batchSize: z.number().int().positive().default(100),

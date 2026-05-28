@@ -2,22 +2,22 @@ import pkg from '../../../package.json' with { type: 'json' }
 
 export const CORE_VERSION = `^${pkg.version}`
 
-export type ConfigFormat = 'ts' | 'js' | 'yaml' | 'json'
-
 export type SecretsDest = 'env' | 'inline' | 'keychain'
+
+export const CONFIG_FILE_NAME = 'fakeware.config.ts'
 
 export interface ScaffoldValues {
   projectName: string
-  url: string
-  clientId: string
-  clientSecret: string
+  url?: string
+  clientId?: string
+  clientSecret?: string
   locale?: string
   scenario?: string
   secrets: SecretsDest
 }
 
-export function configFileName(format: ConfigFormat): string {
-  return `fakeware.config.${format}`
+export function hasShopConnection(values: ScaffoldValues): boolean {
+  return Boolean(values.url && values.clientId && values.clientSecret)
 }
 
 export function packageJsonTemplate(values: ScaffoldValues): string {
@@ -45,65 +45,34 @@ function credentialValues(values: ScaffoldValues): {
     }
   }
   return {
-    url: values.url,
-    clientId: values.clientId,
-    clientSecret: values.clientSecret,
+    url: values.url ?? '',
+    clientId: values.clientId ?? '',
+    clientSecret: values.clientSecret ?? '',
   }
 }
 
-function tsLikeTemplate(values: ScaffoldValues, importLine: string): string {
-  const c = credentialValues(values)
+export function configTemplate(values: ScaffoldValues): string {
   const lines = [
-    importLine,
+    "import { defineConfig } from '@fakeware/core/config'",
     '',
     'export default defineConfig({',
-    '  shopware: {',
-    `    url: ${JSON.stringify(c.url)},`,
-    `    clientId: ${JSON.stringify(c.clientId)},`,
-    `    clientSecret: ${JSON.stringify(c.clientSecret)},`,
-    '  },',
   ]
+  if (hasShopConnection(values)) {
+    const c = credentialValues(values)
+    lines.push(
+      '  shopware: {',
+      `    url: ${JSON.stringify(c.url)},`,
+      `    clientId: ${JSON.stringify(c.clientId)},`,
+      `    clientSecret: ${JSON.stringify(c.clientSecret)},`,
+      '  },',
+    )
+  } else {
+    lines.push('  // Add a shopware block when ready to seed a live shop.')
+  }
   if (values.locale) lines.push(`  locale: ${JSON.stringify(values.locale)},`)
   if (values.scenario) lines.push(`  scenario: ${JSON.stringify(values.scenario)},`)
   lines.push('  generators: {},', '})', '')
   return lines.join('\n')
-}
-
-function yamlTemplate(values: ScaffoldValues): string {
-  const c = credentialValues(values)
-  const lines = [
-    'shopware:',
-    `  url: ${c.url}`,
-    `  clientId: ${c.clientId}`,
-    `  clientSecret: ${c.clientSecret}`,
-  ]
-  if (values.locale) lines.push(`locale: ${values.locale}`)
-  if (values.scenario) lines.push(`scenario: ${values.scenario}`)
-  lines.push('generators: {}', '')
-  return lines.join('\n')
-}
-
-function jsonTemplate(values: ScaffoldValues): string {
-  const c = credentialValues(values)
-  const config: Record<string, unknown> = {
-    shopware: { url: c.url, clientId: c.clientId, clientSecret: c.clientSecret },
-    generators: {},
-  }
-  if (values.locale) config.locale = values.locale
-  if (values.scenario) config.scenario = values.scenario
-  return `${JSON.stringify(config, null, 2)}\n`
-}
-
-export function configTemplate(values: ScaffoldValues, format: ConfigFormat): string {
-  switch (format) {
-    case 'ts':
-    case 'js':
-      return tsLikeTemplate(values, "import { defineConfig } from '@fakeware/core/config'")
-    case 'yaml':
-      return yamlTemplate(values)
-    case 'json':
-      return jsonTemplate(values)
-  }
 }
 
 export function envTemplate(values: ScaffoldValues): string {
