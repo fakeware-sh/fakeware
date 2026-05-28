@@ -1,5 +1,5 @@
-import { access } from 'node:fs/promises'
 import { join } from 'node:path'
+import { fileExists } from '../utils'
 
 export type PackageManager = 'bun' | 'npm' | 'pnpm' | 'yarn'
 
@@ -17,15 +17,6 @@ function fromUserAgent(userAgent: string | undefined): PackageManager | undefine
     return name
   }
   return undefined
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path)
-    return true
-  } catch {
-    return false
-  }
 }
 
 export async function detectPackageManager(

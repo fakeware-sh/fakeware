@@ -22,7 +22,6 @@
     "dist"
   ],
   "scripts": {
-    "predev": "tsdown && bun link",
     "dev": "tsdown --watch",
     "build": "tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",

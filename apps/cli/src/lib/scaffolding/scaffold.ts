@@ -1,5 +1,6 @@
-import { access, readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
+import { fileExists } from '../utils'
 import {
   type ConfigFormat,
   configFileName,
@@ -8,15 +9,6 @@ import {
   packageJsonTemplate,
   type ScaffoldValues,
 } from './templates'
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path)
-    return true
-  } catch {
-    return false
-  }
-}
 
 export interface ScaffoldOptions {
   dir: string
