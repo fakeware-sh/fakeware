@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.5](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.4...cli-v0.0.5) (2026-05-28)
+
+
+### Features
+
+* make shop connection optional and use ts config ([412b5bb](https://github.com/fakeware-sh/fakeware/commit/412b5bbcd3282fb7f02f461751747e88e478cd72))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.5
+
 ## [0.0.4](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.3...cli-v0.0.4) (2026-05-28)
 
 
