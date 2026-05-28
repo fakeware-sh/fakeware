@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts'
-import type { ShopInfo } from '../../lib/shop'
+import type { ShopInfo } from '@fakeware/core/shopware'
 import { cancelable } from '../cancel'
 
 export async function promptShopLocale(info: ShopInfo, prefill?: string): Promise<string> {
