@@ -16,8 +16,7 @@
     "fakeware": "./dist/index.mjs"
   },
   "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "files": [
     "dist"
