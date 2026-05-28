@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Fakeware core library that is the base for @fakeware/cli",
   "type": "module",
   "license": "MIT",
