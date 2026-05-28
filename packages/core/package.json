@@ -1,6 +1,6 @@
 {
   "name": "@fakeware-sh/core",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Fakeware core library. Currently exposes the typed configuration surface (@fakeware-sh/core/config); the engine and plugin SDK arrive in later releases.",
   "type": "module",
   "license": "MIT",
