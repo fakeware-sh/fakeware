@@ -2,11 +2,16 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { parseModule } from 'magicast'
 import { ScaffoldError, scaffoldProject } from './scaffold'
-import type { ScaffoldValues } from './templates'
+import type { ScaffoldValues } from './values'
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), 'fw-scaffold-'))
+}
+
+function configObject(source: string): Record<string, unknown> {
+  return parseModule(source).exports.default.$args[0] as Record<string, unknown>
 }
 
 const values: ScaffoldValues = {
@@ -36,8 +41,10 @@ describe('scaffoldProject', () => {
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
     expect(config).toContain("from '@fakeware/core/config'")
-    expect(config).toContain('$SHOPWARE_URL')
-    expect(config).toContain('locale: "de-DE"')
+    expect(config).toContain('defineConfig(')
+    const cfg = configObject(config)
+    expect((cfg.shopware as Record<string, unknown>).url).toBe('$SHOPWARE_URL')
+    expect(cfg.locale).toBe('de-DE')
 
     const env = readFileSync(join(dir, '.env'), 'utf8')
     expect(env).toContain('SHOPWARE_URL=https://my-shop.test')
@@ -55,9 +62,8 @@ describe('scaffoldProject', () => {
       values: { ...values, secrets: 'inline' },
     })
     expect(created.map((f) => f.path.split('/').pop())).not.toContain('.env')
-    const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
-    expect(config).toContain('https://my-shop.test')
-    expect(config).not.toContain('$SHOPWARE_URL')
+    const cfg = configObject(readFileSync(join(dir, 'fakeware.config.ts'), 'utf8'))
+    expect((cfg.shopware as Record<string, unknown>).url).toBe('https://my-shop.test')
   })
 
   test('omits shopware block and .env when no connection is provided', async () => {
@@ -75,8 +81,9 @@ describe('scaffoldProject', () => {
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
     expect(config).toContain("from '@fakeware/core/config'")
-    expect(config).not.toContain('shopware:')
-    expect(config).toContain('locale: "de-DE"')
+    const cfg = configObject(config)
+    expect(cfg.shopware).toBeUndefined()
+    expect(cfg.locale).toBe('de-DE')
   })
 
   test('refuses to overwrite without force', async () => {
@@ -103,5 +110,13 @@ describe('scaffoldProject', () => {
     const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8')
     const occurrences = gitignore.split('\n').filter((l: string) => l.trim() === '.env').length
     expect(occurrences).toBe(1)
+  })
+
+  test('dry run reports files without writing them', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({ dir, force: false, values, dryRun: true })
+    expect(created.map((f) => f.path.split('/').pop())).toContain('fakeware.config.ts')
+    expect(() => readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')).toThrow()
+    expect(() => readFileSync(join(dir, 'package.json'), 'utf8')).toThrow()
   })
 })
