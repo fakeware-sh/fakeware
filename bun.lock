@@ -14,7 +14,7 @@
     },
     "apps/cli": {
       "name": "@fakeware/cli",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "bin": {
         "fakeware": "./dist/index.mjs",
       },
@@ -31,7 +31,7 @@
     },
     "packages/core": {
       "name": "@fakeware/core",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "dependencies": {
         "@shopware/api-client": "1.5.0",
         "zod": "4.4.3",
@@ -238,7 +238,5 @@
     "@shopware/api-client/defu": ["defu@6.1.4", "", {}, "sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg=="],
 
     "@shopware/api-client/hookable": ["hookable@5.5.3", "", {}, "sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ=="],
-
-    "ast-kit/@babel/parser": ["@babel/parser@8.0.0-rc.6", "", { "dependencies": { "@babel/types": "^8.0.0-rc.6" }, "bin": "./bin/babel-parser.js" }, "sha512-rOS8IpdO7mQELkTPlCsTgPejO0bFuZdEDCGQJouYbYf9e1FLTym7Fei2pEjq8q7MWbX0ravcd7QQYKs1TxOuog=="],
   }
 }
