@@ -1,19 +1,14 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { join } from 'node:path'
 import { fileExists } from '../utils'
-import {
-  CONFIG_FILE_NAME,
-  configTemplate,
-  envTemplate,
-  hasShopConnection,
-  packageJsonTemplate,
-  type ScaffoldValues,
-} from './templates'
+import { FILE_SPECS } from './files'
+import type { ScaffoldValues } from './values'
 
 export interface ScaffoldOptions {
   dir: string
   force: boolean
   values: ScaffoldValues
+  dryRun?: boolean
 }
 
 export interface WrittenFile {
@@ -23,61 +18,28 @@ export interface WrittenFile {
 
 export class ScaffoldError extends Error {}
 
-async function writeFresh(
-  path: string,
-  contents: string,
-  force: boolean,
-  note: string,
-  created: WrittenFile[],
-): Promise<void> {
-  if (!force && (await fileExists(path))) {
-    throw new ScaffoldError(`${basename(path)} already exists. Re-run with --force to overwrite.`)
-  }
-  await writeFile(path, contents)
-  created.push({ path, note })
-}
-
-async function ensureGitignore(dir: string, created: WrittenFile[]): Promise<void> {
-  const path = join(dir, '.gitignore')
-  if (!(await fileExists(path))) {
-    await writeFile(path, '.env\nnode_modules/\n')
-    created.push({ path, note: 'created (.env ignored)' })
-    return
-  }
-  const current = await readFile(path, 'utf8')
-  const hasEnv = current
-    .split('\n')
-    .some((line) => line.trim() === '.env' || line.trim() === '/.env')
-  if (!hasEnv) {
-    const sep = current.endsWith('\n') || current.length === 0 ? '' : '\n'
-    await writeFile(path, `${current}${sep}.env\n`)
-    created.push({ path, note: 'updated (.env ignored)' })
-  }
-}
-
 export async function scaffoldProject(options: ScaffoldOptions): Promise<WrittenFile[]> {
-  const { dir, force, values } = options
+  const { dir, force, values, dryRun = false } = options
   const created: WrittenFile[] = []
 
-  await writeFresh(
-    join(dir, 'package.json'),
-    packageJsonTemplate(values),
-    force,
-    'devDependency: @fakeware/core',
-    created,
-  )
+  for (const spec of FILE_SPECS) {
+    if (!spec.include(values)) continue
+    const path = join(dir, spec.name)
 
-  await writeFresh(
-    join(dir, CONFIG_FILE_NAME),
-    configTemplate(values),
-    force,
-    'typed via @fakeware/core/config',
-    created,
-  )
-
-  if (values.secrets === 'env' && hasShopConnection(values)) {
-    await writeFresh(join(dir, '.env'), envTemplate(values), force, 'credentials', created)
-    await ensureGitignore(dir, created)
+    if (spec.strategy === 'fresh') {
+      if (!force && !dryRun && (await fileExists(path))) {
+        throw new ScaffoldError(`${spec.name} already exists. Re-run with --force to overwrite.`)
+      }
+      const contents = spec.build?.(values) ?? ''
+      if (!dryRun) await writeFile(path, contents)
+      created.push({ path, note: spec.note?.(values) ?? '' })
+    } else {
+      const existing = (await fileExists(path)) ? await readFile(path, 'utf8') : undefined
+      const result = spec.merge?.(existing, values)
+      if (!result) continue
+      if (!dryRun) await writeFile(path, result.contents)
+      created.push({ path, note: result.note })
+    }
   }
 
   return created
