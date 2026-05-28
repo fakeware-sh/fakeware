@@ -11,7 +11,7 @@ export async function buildProgram(): Promise<Command> {
   const { initCommand } = await import('./commands/init')
 
   return new Command('fakeware')
-    .description('Fill your Shopware shop with everything but customers.')
+    .description('Fill your Shopware shop with demo data.')
     .version(pkg.version, '-V, --version', 'Show version')
     .showHelpAfterError('(add --help for usage)')
     .configureHelp({ showGlobalOptions: true })
