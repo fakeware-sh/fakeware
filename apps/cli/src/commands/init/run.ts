@@ -95,7 +95,7 @@ export async function runInit(flags: InitFlags): Promise<void> {
       s.stop('Install failed')
       const tail = result.output.trim().split('\n').slice(-5).join('\n')
       p.log.warn(
-        `${tail}\n\nYour files are written — run ${pc.cyan(`${pm} install`)} once @fakeware/core is available.`,
+        `${tail}\n\nYour files are written — run ${pc.cyan(`${pm} install`)} once @fakeware-sh/core is available.`,
       )
     }
   } else {

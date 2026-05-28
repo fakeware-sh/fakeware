@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -43,22 +43,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest && npm --version
+          registry-url: https://npm.pkg.github.com
+          scope: '@fakeware-sh'
       - run: bun install --frozen-lockfile
 
       - run: bun run build
 
-      - name: Publish @fakeware/core
+      - name: Publish @fakeware-sh/core
         if: ${{ needs.release-please.outputs.core_released == 'true' }}
         working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TARBALL=$(bun pm pack --quiet | grep -v '^$' | tail -n1)
           npm publish "$TARBALL"
 
-      - name: Publish @fakeware/cli
+      - name: Publish @fakeware-sh/cli
         if: ${{ needs.release-please.outputs.cli_released == 'true' }}
         working-directory: apps/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TARBALL=$(bun pm pack --quiet | grep -v '^$' | tail -n1)
           npm publish "$TARBALL"

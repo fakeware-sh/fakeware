@@ -12,7 +12,7 @@
       },
     },
     "apps/cli": {
-      "name": "@fakeware/cli",
+      "name": "@fakeware-sh/cli",
       "version": "0.0.0",
       "bin": {
         "fakeware": "./dist/index.mjs",
@@ -28,7 +28,7 @@
       },
     },
     "packages/core": {
-      "name": "@fakeware/core",
+      "name": "@fakeware-sh/core",
       "version": "0.0.0",
       "dependencies": {
         "zod": "4.4.3",
@@ -80,9 +80,9 @@
 
     "@emnapi/wasi-threads": ["@emnapi/wasi-threads@1.2.1", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w=="],
 
-    "@fakeware/cli": ["@fakeware/cli@workspace:apps/cli"],
+    "@fakeware-sh/cli": ["@fakeware-sh/cli@workspace:apps/cli"],
 
-    "@fakeware/core": ["@fakeware/core@workspace:packages/core"],
+    "@fakeware-sh/core": ["@fakeware-sh/core@workspace:packages/core"],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

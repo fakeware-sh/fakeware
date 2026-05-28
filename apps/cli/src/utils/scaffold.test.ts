@@ -32,10 +32,10 @@ describe('scaffoldProject', () => {
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
     expect(pkg.name).toBe('my-shop-seed')
     expect(pkg.private).toBe(true)
-    expect(pkg.devDependencies['@fakeware/core']).toBeString()
+    expect(pkg.devDependencies['@fakeware-sh/core']).toBeString()
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
-    expect(config).toContain("from '@fakeware/core/config'")
+    expect(config).toContain("from '@fakeware-sh/core/config'")
     expect(config).toContain('$SHOPWARE_URL')
     expect(config).toContain('locale: "de-DE"')
 

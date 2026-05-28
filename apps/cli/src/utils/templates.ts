@@ -26,7 +26,7 @@ export function packageJsonTemplate(values: ScaffoldValues): string {
     private: true,
     type: 'module',
     devDependencies: {
-      '@fakeware/core': CORE_VERSION,
+      '@fakeware-sh/core': CORE_VERSION,
     },
   }
   return `${JSON.stringify(pkg, null, 2)}\n`
@@ -98,7 +98,7 @@ export function configTemplate(values: ScaffoldValues, format: ConfigFormat): st
   switch (format) {
     case 'ts':
     case 'js':
-      return tsLikeTemplate(values, "import { defineConfig } from '@fakeware/core/config'")
+      return tsLikeTemplate(values, "import { defineConfig } from '@fakeware-sh/core/config'")
     case 'yaml':
       return yamlTemplate(values)
     case 'json':

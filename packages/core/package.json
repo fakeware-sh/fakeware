@@ -1,16 +1,17 @@
 {
-  "name": "@fakeware/core",
+  "name": "@fakeware-sh/core",
   "version": "0.0.0",
-  "description": "Fakeware core library. Currently exposes the typed configuration surface (@fakeware/core/config); the engine and plugin SDK arrive in later releases.",
+  "description": "Fakeware core library. Currently exposes the typed configuration surface (@fakeware-sh/core/config); the engine and plugin SDK arrive in later releases.",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aiomayo/fakeware.git",
+    "url": "git+https://github.com/fakeware-sh/fakeware.git",
     "directory": "packages/core"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
   },
   "files": [
     "dist"

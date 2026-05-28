@@ -1,12 +1,12 @@
 {
-  "name": "@fakeware/cli",
+  "name": "@fakeware-sh/cli",
   "version": "0.0.0",
   "description": "The Fakeware cli",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aiomayo/fakeware.git",
+    "url": "git+https://github.com/fakeware-sh/fakeware.git",
     "directory": "apps/cli"
   },
   "engines": {
@@ -16,7 +16,8 @@
     "fakeware": "./dist/index.mjs"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
   },
   "files": [
     "dist"

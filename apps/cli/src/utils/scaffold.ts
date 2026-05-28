@@ -72,7 +72,7 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<Written
     join(dir, 'package.json'),
     packageJsonTemplate(values),
     force,
-    'devDependency: @fakeware/core',
+    'devDependency: @fakeware-sh/core',
     created,
   )
 
@@ -80,7 +80,7 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<Written
     join(dir, configFileName(format)),
     configTemplate(values, format),
     force,
-    'typed via @fakeware/core/config',
+    'typed via @fakeware-sh/core/config',
     created,
   )
 
