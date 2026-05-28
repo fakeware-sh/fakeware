@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.1...core-v0.0.2) (2026-05-28)
+
+
+### Code Refactoring
+
+* rename fakeware-sh to fakeware ([e6c0459](https://github.com/fakeware-sh/fakeware/commit/e6c04598f005b812091221faf2c73c88f73707ba))
+
 ## 0.0.1 (2026-05-28)
 
 
