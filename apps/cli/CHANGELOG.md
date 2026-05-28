@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.2...cli-v0.0.3) (2026-05-28)
+
+
+### Code Refactoring
+
+* update descriptions ([29a6120](https://github.com/fakeware-sh/fakeware/commit/29a6120c0ce036bd2e413df4e75c090683005738))
+
 ## [0.0.2](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.1...cli-v0.0.2) (2026-05-28)
 
 
