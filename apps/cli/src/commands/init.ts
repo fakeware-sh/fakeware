@@ -22,7 +22,7 @@ import {
   withSpinner,
 } from '../prompts'
 
-const SECRETS: readonly SecretsDest[] = ['env', 'inline', 'keychain']
+const SECRETS: readonly SecretsDest[] = ['env', 'inline']
 const PACKAGE_MANAGERS: readonly PackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
 
 interface InitFlags {
@@ -57,7 +57,7 @@ export function initCommand(): Command {
     .option('--scenario <name>', 'Starting scenario (recorded into config)')
     .option('--locale <locale>', 'Default locale')
     .option('--output <path>', 'Directory to scaffold into (default: cwd)')
-    .option('--secrets <dest>', 'env | inline | keychain', 'env')
+    .option('--secrets <dest>', 'env | inline', 'env')
     .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
     .option('--no-install', 'Write files but skip dependency install')
     .option('--force', 'Overwrite existing files', false)
