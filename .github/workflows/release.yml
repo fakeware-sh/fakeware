@@ -40,8 +40,6 @@ jobs:
           ref: ${{ steps.pr.outputs.branch }}
       - uses: oven-sh/setup-bun@v2
         if: ${{ steps.release.outputs.pr }}
-        with:
-          bun-version: 1.3.14
       - name: Sync bun.lock with bumped versions
         if: ${{ steps.release.outputs.pr }}
         run: |
@@ -65,13 +63,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest
       - run: bun install --frozen-lockfile
 
       - run: bun run build
@@ -79,9 +74,9 @@ jobs:
       - name: Publish @fakeware/core
         if: ${{ needs.release-please.outputs.core_released == 'true' }}
         working-directory: packages/core
-        run: npm publish
+        run: npm publish --provenance
 
       - name: Publish @fakeware/cli
         if: ${{ needs.release-please.outputs.cli_released == 'true' }}
         working-directory: apps/cli
-        run: npm publish
+        run: npm publish --provenance
