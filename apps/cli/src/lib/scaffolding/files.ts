@@ -69,16 +69,16 @@ export const FILE_SPECS: FileSpec[] = [
     note: () => 'typed via @fakeware/core/config',
   },
   {
+    name: '.gitignore',
+    include: needsEnv,
+    strategy: 'merge',
+    merge: mergeGitignore,
+  },
+  {
     name: '.env',
     include: needsEnv,
     strategy: 'fresh',
     build: envTemplate,
     note: () => 'credentials',
-  },
-  {
-    name: '.gitignore',
-    include: needsEnv,
-    strategy: 'merge',
-    merge: mergeGitignore,
   },
 ]
