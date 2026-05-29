@@ -1,5 +1,5 @@
 import { ApiClientError, type ApiError } from '@shopware/api-client'
-import { createShopwareClient } from './client'
+import { createShopwareClient, REQUEST_TIMEOUT_MS } from './client'
 import { ShopwareConnectionError } from './errors'
 import { parseLanguageRows, toShopInfo } from './locale'
 import type { ShopInfo, ShopwareConnection } from './types'
@@ -10,6 +10,15 @@ function safeJsonParse<T>(input: string): T | null {
   } catch {
     return null
   }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  let current: unknown = error
+  while (current instanceof Error) {
+    if (current.name === 'TimeoutError') return true
+    current = current.cause
+  }
+  return false
 }
 
 function missingPrivileges(error: ApiClientError<{ errors: ApiError[] }>): string[] {
@@ -25,6 +34,11 @@ function toConnectionError(
   connection: ShopwareConnection,
   error: unknown,
 ): ShopwareConnectionError {
+  if (isTimeoutError(error)) {
+    return new ShopwareConnectionError(
+      `${connection.url} did not respond within ${REQUEST_TIMEOUT_MS / 1000}s, the shop may be slow or unreachable.`,
+    )
+  }
   if (error instanceof ApiClientError) {
     switch (error.status) {
       case 400:
