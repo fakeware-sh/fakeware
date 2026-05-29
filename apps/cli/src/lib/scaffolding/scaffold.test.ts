@@ -54,6 +54,13 @@ describe('scaffoldProject', () => {
     expect(gitignore.split('\n')).toContain('.env')
   })
 
+  test('writes .gitignore before .env so the secret is never unignored on disk', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({ dir, force: false, values })
+    const order = created.map((f) => f.path.split('/').pop())
+    expect(order.indexOf('.gitignore')).toBeLessThan(order.indexOf('.env'))
+  })
+
   test('inline secrets embed literal credentials and skip .env', async () => {
     const dir = tmp()
     const created = await scaffoldProject({
