@@ -4,6 +4,7 @@ import { installArgs, type PackageManager } from './detect'
 export interface InstallResult {
   ok: boolean
   output: string
+  notFound?: boolean
 }
 
 export function runInstall(pm: PackageManager, dir: string): Promise<InstallResult> {
@@ -16,7 +17,9 @@ export function runInstall(pm: PackageManager, dir: string): Promise<InstallResu
     child.stderr?.on('data', (chunk) => {
       buffer += chunk
     })
-    child.on('error', (error) => resolvePromise({ ok: false, output: error.message }))
+    child.on('error', (error: NodeJS.ErrnoException) => {
+      resolvePromise({ ok: false, output: error.message, notFound: error.code === 'ENOENT' })
+    })
     child.on('close', (code) => resolvePromise({ ok: code === 0, output: buffer }))
   })
 }

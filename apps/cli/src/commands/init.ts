@@ -175,6 +175,11 @@ async function runInit(flags: InitFlags): Promise<void> {
     const result = await runInstall(pm, dir)
     if (result.ok) {
       s.stop(`Installed dependencies with ${pm}`)
+    } else if (result.notFound) {
+      s.stop('Install failed')
+      p.log.warn(
+        `${pc.cyan(pm)} was not found on your PATH, install it or re-run with ${pc.cyan('--package-manager')}.\n\nYour files are written, run ${pc.cyan(`${pm} install`)} in ${dir} once it's available.`,
+      )
     } else {
       s.stop('Install failed')
       const tail = result.output.trim().split('\n').slice(-5).join('\n')
