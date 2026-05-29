@@ -18,6 +18,8 @@ updates:
     ignore:
       - dependency-name: "@types/bun"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       production:
         dependency-type: "production"
