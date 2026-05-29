@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { type LanguageRow, toShopInfo } from './locale'
+import { type LanguageRow, parseLanguageRows, toShopInfo } from './locale'
 
 const SYSTEM_LANGUAGE_ID = '2fbb5fe2e29a4d70aa5854ce7ce3e20b'
 
@@ -42,5 +42,28 @@ describe('toShopInfo', () => {
   test('throws when no usable locales are present', () => {
     expect(() => toShopInfo([])).toThrow('Shopware returned no usable locales.')
     expect(() => toShopInfo([{ id: 'a', locale: null }])).toThrow()
+  })
+})
+
+describe('parseLanguageRows', () => {
+  test('accepts well-formed rows', () => {
+    const rows = [
+      { id: 'a', locale: { code: 'de-DE' } },
+      { id: 'b', locale: null },
+    ]
+    expect(parseLanguageRows(rows)).toEqual(rows)
+  })
+
+  test('accepts an empty array', () => {
+    expect(parseLanguageRows([])).toEqual([])
+  })
+
+  test('rejects a malformed response shape', () => {
+    expect(() => parseLanguageRows({ not: 'an array' })).toThrow(
+      'Shopware returned an unexpected response shape for languages.',
+    )
+    expect(() => parseLanguageRows([{ id: 42 }])).toThrow(
+      'Shopware returned an unexpected response shape for languages.',
+    )
   })
 })
