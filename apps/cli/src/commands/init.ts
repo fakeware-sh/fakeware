@@ -4,12 +4,13 @@ import * as p from '@clack/prompts'
 import { fetchShopInfo, validateConnection } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
+import terminalLink from 'terminal-link'
 import { detectPackageManager, type PackageManager, runInstall } from '../lib/package-manager'
 import {
-  CONFIG_FILE_NAME,
   ScaffoldError,
   type SecretsDest,
   scaffoldProject,
+  type WrittenFile,
 } from '../lib/scaffolding'
 import {
   assertOneOf,
@@ -20,11 +21,13 @@ import {
 } from '../lib/utils'
 import {
   introBanner,
+  promptConfirmSummary,
   promptConnectNow,
   promptPackageManager,
   promptProjectLocation,
   promptShopConnection,
   promptShopLocale,
+  type SummaryRow,
   withSpinner,
 } from '../prompts'
 
@@ -96,10 +99,12 @@ async function assertTargetUsable(location: string, force: boolean): Promise<voi
   }
 }
 
-async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
-  const hasCreds = Boolean(flags.url && flags.clientId && flags.clientSecret)
+function isNonInteractive(flags: InitFlags): boolean {
+  return Boolean(flags.yes || (flags.url && flags.clientId && flags.clientSecret))
+}
 
-  if (flags.yes || hasCreds) {
+async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
+  if (isNonInteractive(flags)) {
     const location = flags.output ?? '.'
     await assertTargetUsable(location, flags.force)
     return {
@@ -147,31 +152,83 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   return { location, ...connection, locale, packageManager }
 }
 
+function buildSummaryRows(
+  flags: InitFlags,
+  inputs: InitInputs,
+  dir: string,
+  projectName: string,
+  connected: boolean,
+): SummaryRow[] {
+  const rows: SummaryRow[] = [
+    { label: 'Directory', value: dir },
+    { label: 'Project', value: projectName },
+    { label: 'Package manager', value: inputs.packageManager },
+    { label: 'Install', value: flags.install ? 'yes' : 'skip' },
+    { label: 'Shop', value: connected ? (inputs.url ?? '') : 'not configured' },
+    { label: 'Locale', value: inputs.locale ?? 'not set' },
+    { label: 'Secrets', value: flags.secrets },
+  ]
+  if (flags.scenario) rows.push({ label: 'Scenario', value: flags.scenario })
+  return rows
+}
+
 async function runInit(flags: InitFlags): Promise<void> {
   const inputs = await gatherInputs(flags)
 
   const dir = resolveTargetDir(inputs.location)
   const projectName = toValidPackageName(basename(dir))
-
-  await mkdir(dir, { recursive: true })
-
   const connected = Boolean(inputs.url && inputs.clientId && inputs.clientSecret)
+  const pm = inputs.packageManager
 
-  let created: Awaited<ReturnType<typeof scaffoldProject>>
+  if (!isNonInteractive(flags)) {
+    const proceed = await promptConfirmSummary(
+      buildSummaryRows(flags, inputs, dir, projectName, connected),
+    )
+    if (!proceed) {
+      p.cancel('Setup aborted.')
+      process.exit(0)
+    }
+  }
+
+  let created: WrittenFile[] = []
+  let installNote: string | undefined
+
   try {
-    created = await scaffoldProject({
-      dir,
-      force: flags.force,
-      values: {
-        projectName,
-        url: inputs.url,
-        clientId: inputs.clientId,
-        clientSecret: inputs.clientSecret,
-        locale: inputs.locale,
-        scenario: flags.scenario,
-        secrets: flags.secrets,
+    await p.tasks([
+      {
+        title: 'Creating project files',
+        task: async () => {
+          await mkdir(dir, { recursive: true })
+          created = await scaffoldProject({
+            dir,
+            force: flags.force,
+            values: {
+              projectName,
+              url: inputs.url,
+              clientId: inputs.clientId,
+              clientSecret: inputs.clientSecret,
+              locale: inputs.locale,
+              scenario: flags.scenario,
+              secrets: flags.secrets,
+            },
+          })
+          const names = created.map((f) => pc.cyan(basename(f.path))).join(', ')
+          return `Created ${names}`
+        },
       },
-    })
+      {
+        title: `Installing dependencies with ${pm}`,
+        enabled: flags.install,
+        task: async () => {
+          const result = await runInstall(pm, dir)
+          if (result.ok) return `Installed dependencies with ${pm}`
+          installNote = result.notFound
+            ? `${pc.cyan(pm)} was not found on your PATH. Files are written. Run ${pc.cyan(`${pm} install`)} in ${dir} once it's available.`
+            : `${result.output.trim().split('\n').slice(-5).join('\n')}\n\nFiles are written. Run ${pc.cyan(`${pm} install`)} in ${dir} to retry.`
+          return `Install skipped, see note below`
+        },
+      },
+    ])
   } catch (error) {
     if (error instanceof ScaffoldError) {
       p.cancel(error.message)
@@ -180,38 +237,11 @@ async function runInit(flags: InitFlags): Promise<void> {
     throw error
   }
 
-  for (const file of created) {
-    p.log.success(`Created ${pc.cyan(basename(file.path))}  ${pc.dim(`(${file.note})`)}`)
-  }
+  if (!flags.install) p.log.info(`Skipped install. Run ${pc.cyan(`${pm} install`)} when ready.`)
+  if (installNote) p.log.warn(installNote)
 
-  const pm = inputs.packageManager
-
-  if (flags.install) {
-    const s = p.spinner()
-    s.start(`Installing dependencies with ${pm}`)
-    const result = await runInstall(pm, dir)
-    if (result.ok) {
-      s.stop(`Installed dependencies with ${pm}`)
-    } else if (result.notFound) {
-      s.stop('Install failed')
-      p.log.warn(
-        `${pc.cyan(pm)} was not found on your PATH, install it or re-run with ${pc.cyan('--package-manager')}.\n\nYour files are written, run ${pc.cyan(`${pm} install`)} in ${dir} once it's available.`,
-      )
-    } else {
-      s.stop('Install failed')
-      const tail = result.output.trim().split('\n').slice(-5).join('\n')
-      p.log.warn(
-        `${tail}\n\nYour files are written — run ${pc.cyan(`${pm} install`)} in ${dir} to retry.`,
-      )
-    }
-  } else {
-    p.log.info(`Skipped install. Run ${pc.cyan(`${pm} install`)} when ready.`)
-  }
-
-  const config = pc.cyan(CONFIG_FILE_NAME)
-  p.outro(
-    connected
-      ? `Next: edit ${config}, then run ${pc.cyan('fakeware seed')}.`
-      : `Next: build out ${config}, then add a shopware block when ready to run ${pc.cyan('fakeware seed')}.`,
-  )
+  const docs = terminalLink(pc.cyan('docs.fakeware.sh'), 'https://docs.fakeware.sh', {
+    fallback: (text) => text,
+  })
+  p.outro(`You're all set. Get started at ${docs}.`)
 }
