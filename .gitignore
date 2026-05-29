@@ -10,3 +10,4 @@ dist/
 *.local
 /.idea
 apps/.test
+/.test
