@@ -1,0 +1,16 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
+      run: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      stage_fixed: true
+    - name: typecheck
+      glob: "*.{ts,tsx}"
+      run: npx tsc --build --noEmit
+      root: "."
+
+pre-push:
+  jobs:
+    - name: test
+      run: npm run test
