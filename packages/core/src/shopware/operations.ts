@@ -1,7 +1,7 @@
 import { ApiClientError, type ApiError } from '@shopware/api-client'
 import { createShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
-import { type LanguageRow, toShopInfo } from './locale'
+import { parseLanguageRows, toShopInfo } from './locale'
 import type { ShopInfo, ShopwareConnection } from './types'
 
 function safeJsonParse<T>(input: string): T | null {
@@ -78,7 +78,7 @@ export async function fetchShopInfo(connection: ShopwareConnection): Promise<Sho
     const { data } = await client.invoke('searchLanguage post /search/language', {
       body: { associations: { locale: {} }, limit: 500 },
     })
-    return toShopInfo((data.data ?? []) as LanguageRow[])
+    return toShopInfo(parseLanguageRows(data.data ?? []))
   } catch (error) {
     throw toConnectionError(connection, error)
   }
