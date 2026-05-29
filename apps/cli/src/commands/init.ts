@@ -11,7 +11,13 @@ import {
   type SecretsDest,
   scaffoldProject,
 } from '../lib/scaffolding'
-import { assertOneOf, normalizeShopUrl, resolveTargetDir, toValidPackageName } from '../lib/utils'
+import {
+  assertOneOf,
+  isEmptyDir,
+  normalizeShopUrl,
+  resolveTargetDir,
+  toValidPackageName,
+} from '../lib/utils'
 import {
   introBanner,
   promptConnectNow,
@@ -81,11 +87,21 @@ export function initCommand(): Command {
     })
 }
 
+async function assertTargetUsable(location: string, force: boolean): Promise<void> {
+  if (force) return
+  const dir = resolveTargetDir(location)
+  if (!(await isEmptyDir(dir))) {
+    p.cancel(`${dir} is not empty. Choose an empty directory or re-run with ${pc.cyan('--force')}.`)
+    process.exit(1)
+  }
+}
+
 async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   const hasCreds = Boolean(flags.url && flags.clientId && flags.clientSecret)
 
   if (flags.yes || hasCreds) {
     const location = flags.output ?? '.'
+    await assertTargetUsable(location, flags.force)
     return {
       location,
       url: flags.url ? normalizeShopUrl(flags.url) : undefined,
@@ -100,6 +116,7 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   introBanner()
 
   const location = await promptProjectLocation(flags.output)
+  await assertTargetUsable(location, flags.force)
 
   const packageManager =
     flags.packageManager ??
