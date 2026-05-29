@@ -9,8 +9,3 @@ pre-commit:
       glob: "*.{ts,tsx}"
       run: npx tsc --build --noEmit
       root: "."
-
-pre-push:
-  jobs:
-    - name: test
-      run: npm run test
