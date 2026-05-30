@@ -11,8 +11,6 @@ export interface ScaffoldValues {
   url?: string
   clientId?: string
   clientSecret?: string
-  locale?: string
-  scenario?: string
   secrets: SecretsDest
 }
 

@@ -19,7 +19,6 @@ const values: ScaffoldValues = {
   url: 'https://my-shop.test',
   clientId: 'id',
   clientSecret: 'secret',
-  locale: 'de-DE',
   secrets: 'env',
 }
 
@@ -44,7 +43,6 @@ describe('scaffoldProject', () => {
     expect(config).toContain('defineConfig(')
     const cfg = configObject(config)
     expect((cfg.shopware as Record<string, unknown>).url).toBe('$SHOPWARE_URL')
-    expect(cfg.locale).toBe('de-DE')
 
     const env = readFileSync(join(dir, '.env'), 'utf8')
     expect(env).toContain('SHOPWARE_URL=https://my-shop.test')
@@ -78,7 +76,7 @@ describe('scaffoldProject', () => {
     const created = await scaffoldProject({
       dir,
       force: false,
-      values: { projectName: 'my-plugin', locale: 'de-DE', secrets: 'env' },
+      values: { projectName: 'my-plugin', secrets: 'env' },
     })
     const names = created.map((f) => f.path.split('/').pop())
     expect(names).toContain('package.json')
@@ -90,7 +88,6 @@ describe('scaffoldProject', () => {
     expect(config).toContain("from '@fakeware/core/config'")
     const cfg = configObject(config)
     expect(cfg.shopware).toBeUndefined()
-    expect(cfg.locale).toBe('de-DE')
   })
 
   test('refuses to overwrite without force', async () => {

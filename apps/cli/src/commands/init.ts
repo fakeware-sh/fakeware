@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
 import * as p from '@clack/prompts'
-import { fetchShopInfo, validateConnection } from '@fakeware/core/shopware'
+import { validateConnection } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import terminalLink from 'terminal-link'
@@ -26,7 +26,6 @@ import {
   promptPackageManager,
   promptProjectLocation,
   promptShopConnection,
-  promptShopLocale,
   type SummaryRow,
   withSpinner,
 } from '../prompts'
@@ -38,8 +37,6 @@ interface InitFlags {
   url?: string
   clientId?: string
   clientSecret?: string
-  scenario?: string
-  locale?: string
   output?: string
   secrets: SecretsDest
   packageManager?: PackageManager
@@ -53,7 +50,6 @@ interface InitInputs {
   url?: string
   clientId?: string
   clientSecret?: string
-  locale?: string
   packageManager: PackageManager
 }
 
@@ -63,8 +59,6 @@ export function initCommand(): Command {
     .option('--url <url>', 'Shopware URL')
     .option('--client-id <id>', 'OAuth2 client ID')
     .option('--client-secret <secret>', 'OAuth2 client secret')
-    .option('--scenario <name>', 'Starting scenario (recorded into config)')
-    .option('--locale <locale>', 'Default locale')
     .option('--output <path>', 'Directory to scaffold into (default: cwd)')
     .option('--secrets <dest>', 'env | inline', 'env')
     .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
@@ -76,8 +70,6 @@ export function initCommand(): Command {
         url: opts.url,
         clientId: opts.clientId,
         clientSecret: opts.clientSecret,
-        scenario: opts.scenario,
-        locale: opts.locale,
         output: opts.output,
         secrets: assertOneOf(opts.secrets, SECRETS, '--secrets'),
         packageManager: opts.packageManager
@@ -112,7 +104,6 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
       url: flags.url ? normalizeShopUrl(flags.url) : undefined,
       clientId: flags.clientId,
       clientSecret: flags.clientSecret,
-      locale: flags.locale,
       packageManager:
         flags.packageManager ?? (await detectPackageManager(resolveTargetDir(location))),
     }
@@ -129,7 +120,7 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
 
   const connectNow = await promptConnectNow()
   if (!connectNow) {
-    return { location, locale: flags.locale, packageManager }
+    return { location, packageManager }
   }
 
   const connection = await promptShopConnection({
@@ -144,12 +135,7 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
     () => validateConnection(connection),
   )
 
-  const info = await withSpinner('Reading shop languages', 'Read shop languages', () =>
-    fetchShopInfo(connection),
-  )
-  const locale = await promptShopLocale(info, flags.locale)
-
-  return { location, ...connection, locale, packageManager }
+  return { location, ...connection, packageManager }
 }
 
 function buildSummaryRows(
@@ -165,10 +151,8 @@ function buildSummaryRows(
     { label: 'Package manager', value: inputs.packageManager },
     { label: 'Install', value: flags.install ? 'yes' : 'skip' },
     { label: 'Shop', value: connected ? (inputs.url ?? '') : 'not configured' },
-    { label: 'Locale', value: inputs.locale ?? 'not set' },
     { label: 'Secrets', value: flags.secrets },
   ]
-  if (flags.scenario) rows.push({ label: 'Scenario', value: flags.scenario })
   return rows
 }
 
@@ -207,8 +191,6 @@ async function runInit(flags: InitFlags): Promise<void> {
               url: inputs.url,
               clientId: inputs.clientId,
               clientSecret: inputs.clientSecret,
-              locale: inputs.locale,
-              scenario: flags.scenario,
               secrets: flags.secrets,
             },
           })
