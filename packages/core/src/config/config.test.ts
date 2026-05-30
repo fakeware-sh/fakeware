@@ -8,7 +8,6 @@ const validConfig: FakewareUserConfig = {
     clientId: 'id',
     clientSecret: 'secret',
   },
-  locale: 'de-DE',
 }
 
 describe('fakewareConfigSchema', () => {
@@ -17,7 +16,6 @@ describe('fakewareConfigSchema', () => {
     expect(parsed.shopware?.url).toBe('https://my-shop.test')
     expect(parsed.batchSize).toBe(100)
     expect(parsed.generators).toEqual({})
-    expect(parsed.scenarios).toEqual({})
     expect(parsed.plugins).toEqual([])
   })
 
@@ -29,18 +27,8 @@ describe('fakewareConfigSchema', () => {
   })
 
   test('accepts a config without shopware', () => {
-    const result = fakewareConfigSchema.safeParse({ locale: 'de-DE' })
+    const result = fakewareConfigSchema.safeParse({ seed: 'abc' })
     expect(result.success).toBe(true)
-  })
-
-  test('accepts a scenario and per-scenario overrides', () => {
-    const parsed = fakewareConfigSchema.parse({
-      ...validConfig,
-      scenario: 'fashion',
-      scenarios: { fashion: { productCount: 1000 } },
-    })
-    expect(parsed.scenario).toBe('fashion')
-    expect(parsed.scenarios.fashion).toEqual({ productCount: 1000 })
   })
 
   test('accepts plugin refs as id strings or [id, options] tuples', () => {

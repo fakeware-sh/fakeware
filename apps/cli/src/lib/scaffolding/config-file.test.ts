@@ -48,17 +48,16 @@ describe('buildConfigFile', () => {
   })
 
   test('omits shopware when no connection is provided', () => {
-    const cfg = configObject(buildConfigFile({ ...base, locale: 'de-DE' }))
+    const cfg = configObject(buildConfigFile({ ...base }))
     expect(cfg.shopware).toBeUndefined()
-    expect(cfg.locale).toBe('de-DE')
     expect(cfg.generators).toEqual({})
   })
 
   test('output re-parses to a stable shape (magicast drift guard)', () => {
     const cfg = configObject(
-      buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z', locale: 'de-DE' }),
+      buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }),
     )
-    expect(Object.keys(cfg)).toEqual(['shopware', 'locale', 'generators'])
+    expect(Object.keys(cfg)).toEqual(['shopware', 'generators'])
   })
 })
 
@@ -66,15 +65,15 @@ describe('addToConfigFile', () => {
   test('injects a key into an existing config without clobbering others', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fw-add-'))
     const path = join(dir, 'fakeware.config.ts')
-    writeFileSync(path, buildConfigFile({ ...base, locale: 'de-DE' }))
+    writeFileSync(path, buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }))
 
     await addToConfigFile(path, (cfg) => {
-      cfg.scenario = 'fashion'
+      cfg.seed = 'abc'
     })
 
     const cfg = configObject(readFileSync(path, 'utf8'))
-    expect(cfg.scenario).toBe('fashion')
-    expect(cfg.locale).toBe('de-DE')
+    expect(cfg.seed).toBe('abc')
+    expect((cfg.shopware as Record<string, unknown>).url).toBe('$SHOPWARE_URL')
     expect(cfg.generators).toEqual({})
   })
 })

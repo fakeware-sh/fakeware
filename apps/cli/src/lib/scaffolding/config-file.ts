@@ -22,8 +22,6 @@ export function applyConfig(cfg: ConfigObject, values: ScaffoldValues): void {
     const c = credentialValues(values)
     cfg.shopware = { url: c.url, clientId: c.clientId, clientSecret: c.clientSecret }
   }
-  if (values.locale) cfg.locale = values.locale
-  if (values.scenario) cfg.scenario = values.scenario
   cfg.generators ??= {}
 }
 
