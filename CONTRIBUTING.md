@@ -60,7 +60,7 @@ For a throwaway shop to develop against, run the official Shopware image from [d
 Boot a full Shopware 6 stack:
 
 ```bash
-docker run --rm -p 80:80 --name shopware dockware/dockware:latest
+docker run --rm -d -p 80:80 --name shopware dockware/shopware:latest
 ```
 
 - Storefront: <http://localhost>
