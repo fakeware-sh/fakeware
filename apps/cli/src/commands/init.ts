@@ -14,6 +14,7 @@ import {
 } from '../lib/scaffolding'
 import {
   assertOneOf,
+  emptyDir,
   isEmptyDir,
   normalizeShopUrl,
   resolveTargetDir,
@@ -22,12 +23,15 @@ import {
 import {
   introBanner,
   promptConfirmSummary,
+  promptConnectionFailure,
   promptConnectNow,
+  promptExistingDir,
   promptPackageManager,
   promptProjectLocation,
   promptShopConnection,
+  type ShopConnectionPrefill,
   type SummaryRow,
-  withSpinner,
+  validateWithSpinner,
 } from '../prompts'
 
 const SECRETS: readonly SecretsDest[] = ['env', 'inline']
@@ -43,6 +47,7 @@ interface InitFlags {
   install: boolean
   force: boolean
   yes?: boolean
+  dryRun: boolean
 }
 
 interface InitInputs {
@@ -51,6 +56,7 @@ interface InitInputs {
   clientId?: string
   clientSecret?: string
   packageManager: PackageManager
+  dirStrategy: 'remove' | 'ignore' | 'fresh'
 }
 
 export function initCommand(): Command {
@@ -64,6 +70,7 @@ export function initCommand(): Command {
     .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
     .option('--no-install', 'Write files but skip dependency install')
     .option('--force', 'Overwrite existing files', false)
+    .option('--dry-run', 'Preview the files that would be written without writing them', false)
     .option('--yes', 'Accept defaults; never prompt')
     .action(async (opts) => {
       await runInit({
@@ -77,28 +84,86 @@ export function initCommand(): Command {
           : undefined,
         install: opts.install,
         force: opts.force,
+        dryRun: opts.dryRun,
         yes: opts.yes,
       })
     })
 }
 
-async function assertTargetUsable(location: string, force: boolean): Promise<void> {
-  if (force) return
+export function isInteractive(isTTY: boolean | undefined = process.stdin.isTTY): boolean {
+  return Boolean(isTTY)
+}
+
+function isNonInteractive(flags: InitFlags): boolean {
+  if (!isInteractive()) return true
+  return Boolean(flags.yes || (flags.url && flags.clientId && flags.clientSecret))
+}
+
+async function assertTargetUsable(location: string, flags: InitFlags): Promise<void> {
+  if (flags.force || flags.dryRun) return
   const dir = resolveTargetDir(location)
   if (!(await isEmptyDir(dir))) {
-    p.cancel(`${dir} is not empty. Choose an empty directory or re-run with ${pc.cyan('--force')}.`)
+    p.cancel(
+      `${dir} is not empty. Re-run with ${pc.cyan('--force')} to write over it, or choose an empty directory.`,
+    )
     process.exit(1)
   }
 }
 
-function isNonInteractive(flags: InitFlags): boolean {
-  return Boolean(flags.yes || (flags.url && flags.clientId && flags.clientSecret))
+async function resolveDirStrategy(
+  location: string,
+  flags: InitFlags,
+): Promise<InitInputs['dirStrategy']> {
+  if (flags.force) return 'ignore'
+  const dir = resolveTargetDir(location)
+  if (await isEmptyDir(dir)) return 'fresh'
+
+  const choice = await promptExistingDir(dir)
+  if (choice === 'cancel') {
+    p.cancel('Setup aborted.')
+    process.exit(0)
+  }
+  return choice
+}
+
+async function gatherConnection(
+  flags: InitFlags,
+): Promise<Pick<InitInputs, 'url' | 'clientId' | 'clientSecret'>> {
+  const connectNow = await promptConnectNow()
+  if (!connectNow) return {}
+
+  let prefill: ShopConnectionPrefill = {
+    url: flags.url,
+    clientId: flags.clientId,
+    clientSecret: flags.clientSecret,
+  }
+  let connection = await promptShopConnection(prefill)
+
+  while (true) {
+    const error = await validateWithSpinner(
+      `Connecting to ${pc.cyan(connection.url)}`,
+      `Connected to ${pc.cyan(connection.url)}`,
+      () => validateConnection(connection),
+    )
+    if (!error) return connection
+
+    const choice = await promptConnectionFailure()
+    if (choice === 'cancel') {
+      p.cancel('Setup aborted.')
+      process.exit(1)
+    }
+    if (choice === 'skip') return {}
+    if (choice === 'edit') {
+      prefill = { ...connection }
+      connection = await promptShopConnection(prefill, { edit: true })
+    }
+  }
 }
 
 async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   if (isNonInteractive(flags)) {
     const location = flags.output ?? '.'
-    await assertTargetUsable(location, flags.force)
+    await assertTargetUsable(location, flags)
     return {
       location,
       url: flags.url ? normalizeShopUrl(flags.url) : undefined,
@@ -106,36 +171,22 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
       clientSecret: flags.clientSecret,
       packageManager:
         flags.packageManager ?? (await detectPackageManager(resolveTargetDir(location))),
+      dirStrategy: 'fresh',
     }
   }
 
   introBanner()
 
   const location = await promptProjectLocation(flags.output)
-  await assertTargetUsable(location, flags.force)
+  const dirStrategy = await resolveDirStrategy(location, flags)
 
   const packageManager =
     flags.packageManager ??
     (await promptPackageManager(await detectPackageManager(resolveTargetDir(location))))
 
-  const connectNow = await promptConnectNow()
-  if (!connectNow) {
-    return { location, packageManager }
-  }
+  const connection = await gatherConnection(flags)
 
-  const connection = await promptShopConnection({
-    url: flags.url,
-    clientId: flags.clientId,
-    clientSecret: flags.clientSecret,
-  })
-
-  await withSpinner(
-    `Connecting to ${pc.cyan(connection.url)}`,
-    `Connected to ${pc.cyan(connection.url)}`,
-    () => validateConnection(connection),
-  )
-
-  return { location, ...connection, packageManager }
+  return { location, ...connection, packageManager, dirStrategy }
 }
 
 function buildSummaryRows(
@@ -145,15 +196,14 @@ function buildSummaryRows(
   projectName: string,
   connected: boolean,
 ): SummaryRow[] {
-  const rows: SummaryRow[] = [
+  return [
     { label: 'Directory', value: dir },
     { label: 'Project', value: projectName },
     { label: 'Package manager', value: inputs.packageManager },
-    { label: 'Install', value: flags.install ? 'yes' : 'skip' },
+    { label: 'Install', value: flags.dryRun ? 'dry run' : flags.install ? 'yes' : 'skip' },
     { label: 'Shop', value: connected ? (inputs.url ?? '') : 'not configured' },
     { label: 'Secrets', value: flags.secrets },
   ]
-  return rows
 }
 
 async function runInit(flags: InitFlags): Promise<void> {
@@ -174,18 +224,23 @@ async function runInit(flags: InitFlags): Promise<void> {
     }
   }
 
+  const install = flags.install && !flags.dryRun
   let created: WrittenFile[] = []
   let installNote: string | undefined
 
   try {
     await p.tasks([
       {
-        title: 'Creating project files',
+        title: flags.dryRun ? 'Previewing project files' : 'Creating project files',
         task: async () => {
-          await mkdir(dir, { recursive: true })
+          if (!flags.dryRun) {
+            await mkdir(dir, { recursive: true })
+            if (inputs.dirStrategy === 'remove') await emptyDir(dir)
+          }
           created = await scaffoldProject({
             dir,
-            force: flags.force,
+            force: flags.force || inputs.dirStrategy !== 'fresh',
+            dryRun: flags.dryRun,
             values: {
               projectName,
               url: inputs.url,
@@ -195,12 +250,12 @@ async function runInit(flags: InitFlags): Promise<void> {
             },
           })
           const names = created.map((f) => pc.cyan(basename(f.path))).join(', ')
-          return `Created ${names}`
+          return flags.dryRun ? `Would create ${names}` : `Created ${names}`
         },
       },
       {
         title: `Installing dependencies with ${pm}`,
-        enabled: flags.install,
+        enabled: install,
         task: async () => {
           const result = await runInstall(pm, dir)
           if (result.ok) return `Installed dependencies with ${pm}`

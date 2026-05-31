@@ -8,26 +8,34 @@ function required(value: string | undefined): string | undefined {
 
 export type ShopConnectionPrefill = Partial<ShopwareConnection> & { protocol?: UrlProtocol }
 
+export interface ShopConnectionOptions {
+  edit?: boolean
+}
+
 export async function promptShopConnection(
   prefill: ShopConnectionPrefill = {},
+  options: ShopConnectionOptions = {},
 ): Promise<ShopwareConnection> {
+  const { edit = false } = options
+
   const answers = await p.group(
     {
       url: () =>
-        prefill.url
+        !edit && prefill.url
           ? Promise.resolve(prefill.url)
           : p.text({
               message: 'Where is your Shopware shop?',
               placeholder: 'my-shop.example',
+              initialValue: edit ? prefill.url : undefined,
               validate: required,
             }),
       protocol: ({ results }): Promise<UrlProtocol | symbol> => {
-        if (prefill.protocol) return Promise.resolve(prefill.protocol)
+        if (!edit && prefill.protocol) return Promise.resolve(prefill.protocol)
         const fromUrl = getProtocol(results.url ?? '')
         if (fromUrl) return Promise.resolve(fromUrl)
         return p.select<UrlProtocol>({
           message: 'Which protocol does it use?',
-          initialValue: 'https',
+          initialValue: prefill.protocol ?? 'https',
           options: [
             { value: 'https', label: 'https', hint: 'recommended — TLS encrypted' },
             { value: 'http', label: 'http', hint: 'local or dev shops only' },
@@ -35,11 +43,15 @@ export async function promptShopConnection(
         })
       },
       clientId: () =>
-        prefill.clientId
+        !edit && prefill.clientId
           ? Promise.resolve(prefill.clientId)
-          : p.text({ message: 'Integration client ID', validate: required }),
+          : p.text({
+              message: 'Integration client ID',
+              initialValue: edit ? prefill.clientId : undefined,
+              validate: required,
+            }),
       clientSecret: () =>
-        prefill.clientSecret
+        !edit && prefill.clientSecret
           ? Promise.resolve(prefill.clientSecret)
           : p.password({ message: 'Integration client secret', validate: required }),
     },

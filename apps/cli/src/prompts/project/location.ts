@@ -8,6 +8,8 @@ export async function promptProjectLocation(prefill?: string): Promise<string> {
     await p.text({
       message: 'Where should the project be created?',
       initialValue: './',
+      validate: (value) =>
+        !value || value.trim().length === 0 ? 'Enter a directory path' : undefined,
     }),
   )
 }

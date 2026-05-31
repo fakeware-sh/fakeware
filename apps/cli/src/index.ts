@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-if (process.argv.includes('--no-color')) {
+if (process.argv.includes('--no-color') || process.env.NO_COLOR) {
   process.env.NO_COLOR = '1'
 }
 
