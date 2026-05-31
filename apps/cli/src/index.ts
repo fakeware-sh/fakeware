@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-if (process.argv.includes('--no-color') || process.env.NO_COLOR) {
-  process.env.NO_COLOR = '1'
-}
-
 import { Command, Option } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
+import { applyNoColor } from './lib/no-color'
+
+applyNoColor()
 
 export async function buildProgram(): Promise<Command> {
   const { initCommand } = await import('./commands/init')
