@@ -34,7 +34,7 @@
     },
     "apps/create-fakeware": {
       "name": "create-fakeware",
-      "version": "0.0.5",
+      "version": "0.0.0",
       "bin": {
         "create-fakeware": "./dist/index.mjs",
       },
