@@ -20,6 +20,7 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       core_released: ${{ steps.release.outputs['packages/core--release_created'] }}
       cli_released: ${{ steps.release.outputs['apps/cli--release_created'] }}
+      create_fakeware_released: ${{ steps.release.outputs['apps/create-fakeware--release_created'] }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
@@ -63,10 +64,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
 
       - run: bun run build
@@ -74,9 +71,14 @@ jobs:
       - name: Publish @fakeware/core
         if: ${{ needs.release-please.outputs.core_released == 'true' }}
         working-directory: packages/core
-        run: npm publish --provenance
+        run: bun publish --tolerate-republish
 
       - name: Publish @fakeware/cli
         if: ${{ needs.release-please.outputs.cli_released == 'true' }}
         working-directory: apps/cli
-        run: npm publish --provenance
+        run: bun publish --tolerate-republish
+
+      - name: Publish create-fakeware
+        if: ${{ needs.release-please.outputs.create_fakeware_released == 'true' }}
+        working-directory: apps/create-fakeware
+        run: bun publish --tolerate-republish
