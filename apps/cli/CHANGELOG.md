@@ -1,30 +1,5 @@
 # Changelog
 
-## [0.0.6](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.5...cli-v0.0.6) (2026-05-31)
-
-
-### Features
-
-* add core as dev dependency in scaffold ([da7ec29](https://github.com/fakeware-sh/fakeware/commit/da7ec29fd069799c7c58aaf1082bde440875a1af))
-* add create-fakeware ([371e72e](https://github.com/fakeware-sh/fakeware/commit/371e72ef4f604ae9493884240c020074ce7f6bc4))
-* add init review step and consistent run phase progress ([0b59b24](https://github.com/fakeware-sh/fakeware/commit/0b59b242ac2439d2f0a39690a97688e7b84ab6d7))
-* **cli:** give a clear error when the package manager is missing ([6e0af8a](https://github.com/fakeware-sh/fakeware/commit/6e0af8a056afe1a00e2bbcd5b228810d2fc5c728))
-* fail fast when init target directory is not empty ([5ca2c44](https://github.com/fakeware-sh/fakeware/commit/5ca2c444b8d1dd5b35b91f9de4abc68515bca4e3))
-* up and down command and manifest system ([9139d63](https://github.com/fakeware-sh/fakeware/commit/9139d63bde59fca543e1dffaaffd618ead4fa403))
-
-
-### Bug Fixes
-
-* **cli:** remove unimplemented --secrets keychain option ([10ed70d](https://github.com/fakeware-sh/fakeware/commit/10ed70d4e74ba6913c6c513efd05f2b5cc9d19fc))
-* **cli:** write .gitignore before .env when scaffolding ([6637167](https://github.com/fakeware-sh/fakeware/commit/6637167ec6c8019dc950f18cb45b9f70584e45da))
-
-
-### Dependencies
-
-* The following workspace dependencies were updated
-  * dependencies
-    * @fakeware/core bumped to 0.0.6
-
 ## [0.0.5](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.4...cli-v0.0.5) (2026-05-28)
 
 

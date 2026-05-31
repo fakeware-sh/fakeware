@@ -1,15 +1,5 @@
 # Changelog
 
-## [0.0.6](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.5...core-v0.0.6) (2026-05-31)
-
-
-### Features
-
-* add core as dev dependency in scaffold ([da7ec29](https://github.com/fakeware-sh/fakeware/commit/da7ec29fd069799c7c58aaf1082bde440875a1af))
-* **core:** add a request timeout to Shopware api calls ([9933039](https://github.com/fakeware-sh/fakeware/commit/993303994c8da6beb40ef9762127b4b07b931394))
-* **core:** validate Shopware language response with zod ([384a4c6](https://github.com/fakeware-sh/fakeware/commit/384a4c69bbedb6609663c5c2a6846afb37c4664f))
-* up and down command and manifest system ([9139d63](https://github.com/fakeware-sh/fakeware/commit/9139d63bde59fca543e1dffaaffd618ead4fa403))
-
 ## [0.0.5](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.4...core-v0.0.5) (2026-05-28)
 
 
