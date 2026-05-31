@@ -37,6 +37,7 @@ describe('scaffoldProject', () => {
     expect(pkg.name).toBe('my-shop-seed')
     expect(pkg.private).toBe(true)
     expect(pkg.devDependencies['@fakeware/core']).toBeString()
+    expect(pkg.devDependencies['@fakeware/cli']).toBeString()
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
     expect(config).toContain("from '@fakeware/core/config'")

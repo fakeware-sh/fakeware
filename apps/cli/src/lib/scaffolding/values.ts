@@ -2,6 +2,8 @@ import pkg from '../../../package.json' with { type: 'json' }
 
 export const CORE_VERSION = `^${pkg.version}`
 
+export const CLI_VERSION = `^${pkg.version}`
+
 export const CONFIG_FILE_NAME = 'fakeware.config.ts'
 
 export type SecretsDest = 'env' | 'inline'

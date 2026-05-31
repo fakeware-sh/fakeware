@@ -5,19 +5,15 @@ import { createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import pkg from '../../package.json' with { type: 'json' }
-import { reportError } from '../prompts'
+import { counts, reportError, spinnerReporter } from '../prompts'
 
 interface UpFlags {
   config?: string
   dryRun?: boolean
 }
 
-function summarize(step: ReportStep): string {
-  const parts: string[] = []
-  if (step.created) parts.push(`${step.created} created`)
-  if (step.updated) parts.push(`${step.updated} updated`)
-  if (step.unchanged) parts.push(`${step.unchanged} unchanged`)
-  return `${pc.cyan(step.entity)} — ${parts.join(', ') || 'no records'}`
+function detail(step: ReportStep): string {
+  return counts(['+', step.created], ['~', step.updated], ['=', step.unchanged])
 }
 
 export function upCommand(): Command {
@@ -35,7 +31,7 @@ export function upCommand(): Command {
           sink,
           dryRun: opts.dryRun,
           fakewareVersion: pkg.version,
-          reporter: { onStep: (step) => p.log.step(summarize(step)) },
+          reporter: spinnerReporter({ active: 'Applying', done: 'Applied' }, detail),
         })
 
         if (opts.dryRun) {
@@ -43,10 +39,11 @@ export function upCommand(): Command {
           return
         }
         const total = result.steps.reduce((n, s) => n + s.created + s.updated, 0)
+        const label = total === 1 ? 'change' : 'changes'
         p.outro(
           total === 0
             ? 'Already up to date — nothing changed.'
-            : `Applied ${pc.green(String(total))} change(s) to ${pc.cyan(loaded.connection.url)}.`,
+            : `Applied ${pc.green(String(total))} ${label} to ${pc.cyan(loaded.connection.url)}`,
         )
       } catch (error) {
         reportError(error)

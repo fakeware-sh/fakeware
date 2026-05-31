@@ -14,6 +14,7 @@ import {
 } from './manifest'
 
 export interface Reporter {
+  onStart?(entity: string): void
   onStep?(step: ReportStep): void
 }
 
@@ -63,6 +64,7 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
   const manifestEntities: ManifestEntity[] = []
 
   for (const entity of plan.order) {
+    reporter?.onStart?.(entity)
     const records = plan.records.get(entity) ?? []
     const priorForEntity = prior.get(entity) ?? new Map<string, string>()
     const toWrite: SinkRecord[] = []
@@ -111,6 +113,7 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
 
   const steps: ReportStep[] = []
   for (const entity of [...manifest.entities].reverse()) {
+    reporter?.onStart?.(entity.entity)
     const ids = entity.records.map((r) => r.id)
     if (!dryRun && ids.length > 0) {
       await sink.delete(entity.entity, ids)

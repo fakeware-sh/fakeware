@@ -7,7 +7,7 @@ export interface SyncSinkOptions {
   client?: ShopwareClient
 }
 
-const SYNC_BATCH_SIZE = 100
+const SYNC_BATCH_SIZE = 50
 
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = []

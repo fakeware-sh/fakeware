@@ -4,7 +4,7 @@ import type { ShopwareConnection } from './types'
 
 export type ShopwareClient = ReturnType<typeof createAdminAPIClient<operations>>
 
-export const REQUEST_TIMEOUT_MS = 15_000
+export const REQUEST_TIMEOUT_MS = 120_000
 
 export function createShopwareClient(connection: ShopwareConnection): ShopwareClient {
   return createAdminAPIClient<operations>({
