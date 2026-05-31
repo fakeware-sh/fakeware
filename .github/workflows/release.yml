@@ -64,21 +64,33 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
 
       - run: bun run build
 
+      - run: npm install -g npm@latest
+
       - name: Publish @fakeware/core
         if: ${{ needs.release-please.outputs.core_released == 'true' }}
         working-directory: packages/core
-        run: bun publish --tolerate-republish
+        run: |
+          bun pm pack --destination .
+          npm publish ./*.tgz --access public
 
       - name: Publish @fakeware/cli
         if: ${{ needs.release-please.outputs.cli_released == 'true' }}
         working-directory: apps/cli
-        run: bun publish --tolerate-republish
+        run: |
+          bun pm pack --destination .
+          npm publish ./*.tgz --access public
 
       - name: Publish create-fakeware
         if: ${{ needs.release-please.outputs.create_fakeware_released == 'true' }}
         working-directory: apps/create-fakeware
-        run: bun publish --tolerate-republish
+        run: |
+          bun pm pack --destination .
+          npm publish ./*.tgz --access public
