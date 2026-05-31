@@ -4,7 +4,7 @@ import { loadConfig } from '@fakeware/core/config'
 import { createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
-import { promptConfirmDestroy, reportError } from '../prompts'
+import { counts, promptConfirmDestroy, reportError, spinnerReporter } from '../prompts'
 
 interface DownFlags {
   config?: string
@@ -40,14 +40,15 @@ export function downCommand(): Command {
         const result = await runDown({
           loaded,
           sink,
-          reporter: {
-            onStep: (step) => p.log.step(`${pc.cyan(step.entity)} — ${step.deleted} deleted`),
-          },
+          reporter: spinnerReporter({ active: 'Removing', done: 'Removed' }, (step) =>
+            counts(['-', step.deleted]),
+          ),
         })
 
         const deleted = result.steps.reduce((n, s) => n + s.deleted, 0)
+        const label = deleted === 1 ? 'record' : 'records'
         p.outro(
-          `Removed ${pc.green(String(deleted))} record(s) from ${pc.cyan(loaded.connection.url)}.`,
+          `Removed ${pc.green(String(deleted))} ${label} from ${pc.cyan(loaded.connection.url)}`,
         )
       } catch (error) {
         reportError(error)

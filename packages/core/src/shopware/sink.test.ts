@@ -58,15 +58,15 @@ describe('createSyncSink', () => {
     expect(firstOp(firstCall(calls)).payload).toHaveLength(1)
   })
 
-  test('batches large upserts into chunks of 100', async () => {
+  test('batches large upserts into chunks of 50', async () => {
     const { client, calls } = recordingClient()
     const sink = createSyncSink(connection, { client })
-    const records = Array.from({ length: 250 }, (_, i) => ({ id: `id${i}` }))
+    const records = Array.from({ length: 120 }, (_, i) => ({ id: `id${i}` }))
     await sink.upsert('product', records)
 
     expect(calls).toHaveLength(3)
     const sizes = calls.map((c) => firstOp(c).payload.length)
-    expect(sizes).toEqual([100, 100, 50])
+    expect(sizes).toEqual([50, 50, 20])
   })
 
   test('deletes by id with the delete action', async () => {
