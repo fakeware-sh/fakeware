@@ -1,3 +1,4 @@
+export { promptConfirmDestroy } from './confirm-destroy'
 export { introBanner } from './intro'
 export {
   type ExistingDirChoice,
@@ -5,6 +6,7 @@ export {
   promptPackageManager,
   promptProjectLocation,
 } from './project'
+export { reportError } from './report-error'
 export {
   type ConnectionFailureChoice,
   promptConnectionFailure,

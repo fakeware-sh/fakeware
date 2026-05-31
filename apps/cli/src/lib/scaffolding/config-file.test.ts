@@ -31,7 +31,6 @@ describe('buildConfigFile', () => {
     expect(shopware.url).toBe('$SHOPWARE_URL')
     expect(shopware.clientId).toBe('$SHOPWARE_CLIENT_ID')
     expect(shopware.clientSecret).toBe('$SHOPWARE_CLIENT_SECRET')
-    expect(cfg.generators).toEqual({})
   })
 
   test('embeds literal credentials in inline mode', () => {
@@ -50,14 +49,14 @@ describe('buildConfigFile', () => {
   test('omits shopware when no connection is provided', () => {
     const cfg = configObject(buildConfigFile({ ...base }))
     expect(cfg.shopware).toBeUndefined()
-    expect(cfg.generators).toEqual({})
+    expect(Object.keys(cfg)).toEqual([])
   })
 
   test('output re-parses to a stable shape (magicast drift guard)', () => {
     const cfg = configObject(
       buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }),
     )
-    expect(Object.keys(cfg)).toEqual(['shopware', 'generators'])
+    expect(Object.keys(cfg)).toEqual(['shopware'])
   })
 })
 
@@ -68,12 +67,11 @@ describe('addToConfigFile', () => {
     writeFileSync(path, buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }))
 
     await addToConfigFile(path, (cfg) => {
-      cfg.seed = 'abc'
+      cfg.injected = 'abc'
     })
 
     const cfg = configObject(readFileSync(path, 'utf8'))
-    expect(cfg.seed).toBe('abc')
+    expect(cfg.injected).toBe('abc')
     expect((cfg.shopware as Record<string, unknown>).url).toBe('$SHOPWARE_URL')
-    expect(cfg.generators).toEqual({})
   })
 })

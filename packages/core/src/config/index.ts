@@ -1,9 +1,8 @@
 export type { ConfigEnv, FakewareConfigFn } from './define'
 export { defineConfig } from './define'
+export { ConfigError } from './errors'
+export { interpolate } from './interpolate'
+export type { LoadConfigOptions, LoadedConfig } from './load'
+export { DEFAULT_CONFIG_FILENAME, loadConfig } from './load'
 export type { FakewareConfig, FakewareUserConfig } from './schema'
-export {
-  fakewareConfigSchema,
-  mediaSchema,
-  pluginRefSchema,
-  shopwareSchema,
-} from './schema'
+export { fakewareConfigSchema, shopwareSchema } from './schema'

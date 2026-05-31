@@ -30,7 +30,17 @@ function missingPrivileges(error: ApiClientError<{ errors: ApiError[] }>): strin
   return []
 }
 
-function toConnectionError(
+function validationMessages(error: ApiClientError<{ errors: ApiError[] }>): string[] {
+  return error.details.errors
+    .map((e) => {
+      const field = e.source?.pointer?.replace(/^\/\d+\/\d+\//, '')
+      const detail = e.detail ?? e.title ?? 'Invalid value.'
+      return field ? `${field}: ${detail}` : detail
+    })
+    .filter((message, index, all) => all.indexOf(message) === index)
+}
+
+export function toConnectionError(
   connection: ShopwareConnection,
   error: unknown,
 ): ShopwareConnectionError {
@@ -41,7 +51,14 @@ function toConnectionError(
   }
   if (error instanceof ApiClientError) {
     switch (error.status) {
-      case 400:
+      case 400: {
+        const messages = validationMessages(error)
+        return new ShopwareConnectionError(
+          messages.length
+            ? `Shopware rejected the data — ${messages.join(' ')}`
+            : `Shopware rejected the request (HTTP 400) from ${connection.url}.`,
+        )
+      }
       case 401:
         return new ShopwareConnectionError(
           'Authentication failed — check the client ID and client secret of your integration.',

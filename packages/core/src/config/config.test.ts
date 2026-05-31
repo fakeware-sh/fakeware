@@ -11,12 +11,9 @@ const validConfig: FakewareUserConfig = {
 }
 
 describe('fakewareConfigSchema', () => {
-  test('parses a minimal valid config and fills defaults', () => {
+  test('parses a minimal valid config', () => {
     const parsed = fakewareConfigSchema.parse(validConfig)
     expect(parsed.shopware?.url).toBe('https://my-shop.test')
-    expect(parsed.batchSize).toBe(100)
-    expect(parsed.generators).toEqual({})
-    expect(parsed.plugins).toEqual([])
   })
 
   test('rejects a config missing shopware credentials', () => {
@@ -27,24 +24,8 @@ describe('fakewareConfigSchema', () => {
   })
 
   test('accepts a config without shopware', () => {
-    const result = fakewareConfigSchema.safeParse({ seed: 'abc' })
+    const result = fakewareConfigSchema.safeParse({})
     expect(result.success).toBe(true)
-  })
-
-  test('accepts plugin refs as id strings or [id, options] tuples', () => {
-    const parsed = fakewareConfigSchema.parse({
-      ...validConfig,
-      plugins: ['@fakeware/fashion', ['@fakeware/media', { provider: 'unsplash' }]],
-    })
-    expect(parsed.plugins).toHaveLength(2)
-  })
-
-  test('rejects a plugin ref that is neither a string nor an [id, options] tuple', () => {
-    const result = fakewareConfigSchema.safeParse({
-      ...validConfig,
-      plugins: [42],
-    })
-    expect(result.success).toBe(false)
   })
 })
 
