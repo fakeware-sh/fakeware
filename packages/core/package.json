@@ -10,7 +10,7 @@
     "directory": "packages/core"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=22.6",
     "bun": ">=1.3.14"
   },
   "publishConfig": {
@@ -20,6 +20,10 @@
     "dist"
   ],
   "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
     "./config": {
       "types": "./dist/config/index.d.mts",
       "import": "./dist/config/index.mjs"
@@ -38,5 +42,9 @@
   "dependencies": {
     "@shopware/api-client": "1.5.0",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14",
+    "@types/node": "22.19.19"
   }
 }

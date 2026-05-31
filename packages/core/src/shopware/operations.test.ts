@@ -1,7 +1,26 @@
 import { describe, expect, test } from 'bun:test'
+import { ApiClientError, type ApiError } from '@shopware/api-client'
 import { type LanguageRow, parseLanguageRows, toShopInfo } from './locale'
+import { toConnectionError } from './operations'
+import type { ShopwareConnection } from './types'
 
 const SYSTEM_LANGUAGE_ID = '2fbb5fe2e29a4d70aa5854ce7ce3e20b'
+
+const connection: ShopwareConnection = {
+  url: 'https://shop.test',
+  clientId: 'i',
+  clientSecret: 's',
+}
+
+function apiError(status: number, errors: ApiError[] = []): ApiClientError<{ errors: ApiError[] }> {
+  return Object.assign(Object.create(ApiClientError.prototype), {
+    ok: false,
+    status,
+    url: connection.url,
+    headers: new Headers(),
+    details: { errors },
+  })
+}
 
 describe('toShopInfo', () => {
   test('maps language rows to unique locale codes', () => {
@@ -64,6 +83,49 @@ describe('parseLanguageRows', () => {
     )
     expect(() => parseLanguageRows([{ id: 42 }])).toThrow(
       'Shopware returned an unexpected response shape for languages.',
+    )
+  })
+})
+
+describe('toConnectionError', () => {
+  test('400 surfaces the validation detail, not an auth message', () => {
+    const error = apiError(400, [
+      { detail: 'This value should not be blank.', source: { pointer: '/0/0/price' } },
+    ])
+    const message = toConnectionError(connection, error).message
+    expect(message).toBe('Shopware rejected the data — price: This value should not be blank.')
+    expect(message).not.toContain('Authentication failed')
+  })
+
+  test('400 with no error detail falls back to a generic rejection', () => {
+    expect(toConnectionError(connection, apiError(400)).message).toBe(
+      `Shopware rejected the request (HTTP 400) from ${connection.url}.`,
+    )
+  })
+
+  test('401 maps to an authentication message', () => {
+    expect(toConnectionError(connection, apiError(401)).message).toBe(
+      'Authentication failed — check the client ID and client secret of your integration.',
+    )
+  })
+
+  test('403 lists the missing privileges', () => {
+    const error = apiError(403, [
+      {
+        code: 'FRAMEWORK__MISSING_PRIVILEGE_ERROR',
+        detail: JSON.stringify({ missingPrivileges: ['product:create'] }),
+      },
+    ])
+    expect(toConnectionError(connection, error).message).toContain('product:create')
+  })
+
+  test('404 points at the shop URL', () => {
+    expect(toConnectionError(connection, apiError(404)).message).toContain(connection.url)
+  })
+
+  test('non-API errors map to a reachability message', () => {
+    expect(toConnectionError(connection, new Error('boom')).message).toBe(
+      `Could not reach ${connection.url} — check the URL and your network connection.`,
     )
   })
 })

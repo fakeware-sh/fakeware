@@ -50,6 +50,7 @@ describe('scaffoldProject', () => {
 
     const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8')
     expect(gitignore.split('\n')).toContain('.env')
+    expect(gitignore.split('\n')).toContain('.fakeware/')
   })
 
   test('writes .gitignore before .env so the secret is never unignored on disk', async () => {
@@ -71,7 +72,7 @@ describe('scaffoldProject', () => {
     expect((cfg.shopware as Record<string, unknown>).url).toBe('https://my-shop.test')
   })
 
-  test('omits shopware block and .env when no connection is provided', async () => {
+  test('omits the shopware block and .env (but still ignores .fakeware) with no connection', async () => {
     const dir = tmp()
     const created = await scaffoldProject({
       dir,
@@ -82,7 +83,10 @@ describe('scaffoldProject', () => {
     expect(names).toContain('package.json')
     expect(names).toContain('fakeware.config.ts')
     expect(names).not.toContain('.env')
-    expect(names).not.toContain('.gitignore')
+
+    const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8').split('\n')
+    expect(gitignore).toContain('.fakeware/')
+    expect(gitignore).not.toContain('.env')
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
     expect(config).toContain("from '@fakeware/core/config'")

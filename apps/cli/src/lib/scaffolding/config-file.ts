@@ -22,7 +22,6 @@ export function applyConfig(cfg: ConfigObject, values: ScaffoldValues): void {
     const c = credentialValues(values)
     cfg.shopware = { url: c.url, clientId: c.clientId, clientSecret: c.clientSecret }
   }
-  cfg.generators ??= {}
 }
 
 export function buildConfigFile(values: ScaffoldValues): string {

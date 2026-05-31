@@ -41,16 +41,21 @@ function envTemplate(values: ScaffoldValues): string {
   ].join('\n')
 }
 
-function mergeGitignore(existing: string | undefined): MergeResult | null {
+function mergeGitignore(existing: string | undefined, values: ScaffoldValues): MergeResult | null {
+  const wanted = ['node_modules/', '.fakeware/']
+  if (needsEnv(values)) wanted.unshift('.env')
+
   if (existing === undefined) {
-    return { contents: '.env\nnode_modules/\n', note: 'created (.env ignored)' }
+    return { contents: `${wanted.join('\n')}\n`, note: `created (${wanted.join(', ')} ignored)` }
   }
-  const hasEnv = existing
-    .split('\n')
-    .some((line) => line.trim() === '.env' || line.trim() === '/.env')
-  if (hasEnv) return null
+  const lines = existing.split('\n').map((line) => line.trim())
+  const missing = wanted.filter((entry) => !lines.includes(entry) && !lines.includes(`/${entry}`))
+  if (missing.length === 0) return null
   const sep = existing.endsWith('\n') || existing.length === 0 ? '' : '\n'
-  return { contents: `${existing}${sep}.env\n`, note: 'updated (.env ignored)' }
+  return {
+    contents: `${existing}${sep}${missing.map((entry) => `${entry}\n`).join('')}`,
+    note: `updated (${missing.join(', ')} ignored)`,
+  }
 }
 
 export const FILE_SPECS: FileSpec[] = [
@@ -70,7 +75,7 @@ export const FILE_SPECS: FileSpec[] = [
   },
   {
     name: '.gitignore',
-    include: needsEnv,
+    include: () => true,
     strategy: 'merge',
     merge: mergeGitignore,
   },
