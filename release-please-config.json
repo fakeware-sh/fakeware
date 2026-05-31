@@ -8,6 +8,7 @@
   "plugins": ["node-workspace"],
   "packages": {
     "packages/core": {},
-    "apps/cli": {}
+    "apps/cli": {},
+    "apps/create-fakeware": {}
   }
 }
