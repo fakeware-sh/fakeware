@@ -1,0 +1,37 @@
+{
+  "name": "create-fakeware",
+  "version": "0.0.5",
+  "description": "Scaffold a Fakeware project",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fakeware-sh/fakeware.git",
+    "directory": "apps/create-fakeware"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.3.14"
+  },
+  "bin": {
+    "create-fakeware": "./dist/index.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@fakeware/cli": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19"
+  }
+}
