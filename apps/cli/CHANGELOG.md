@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.6...cli-v0.0.7) (2026-06-01)
+
+
+### Features
+
+* add tsconfig to scaffold ([9ed3e62](https://github.com/fakeware-sh/fakeware/commit/9ed3e625eb2ce472ec0894c7256e72089c1f0d9b))
+
 ## [0.0.6](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.5...cli-v0.0.6) (2026-05-31)
 
 
