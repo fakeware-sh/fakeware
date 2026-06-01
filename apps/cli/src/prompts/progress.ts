@@ -16,9 +16,35 @@ export function spinnerReporter(
   detail: (step: ReportStep) => string,
 ): Reporter {
   const s = p.spinner()
+  let atomic = false
   return {
-    onStart: (entity) => s.start(`${verb.active} ${pc.cyan(entity)}`),
-    onStep: (step) => s.stop(`${verb.done} ${pc.cyan(step.entity)}${detail(step)}`),
+    onTransactionStart: (info) => {
+      atomic = info.mode === 'atomic'
+    },
+    onStart: (entity) => {
+      if (atomic) return
+      s.start(`${verb.active} ${pc.cyan(entity)}`)
+    },
+    onStep: (step) => {
+      if (atomic) return
+      s.stop(`${verb.done} ${pc.cyan(step.entity)}${detail(step)}`)
+    },
+    onCommit: (info) => {
+      if (!atomic) return
+      const label = info.committed === 1 ? 'change' : 'changes'
+      s.start(`Committing ${info.committed} ${label} atomically`)
+      s.stop(`Committed ${pc.green(String(info.committed))} ${label} atomically`)
+    },
+    onCompensate: (entity, count) => {
+      s.start(`${pc.red('Rolling back')} ${pc.cyan(entity)}`)
+      s.stop(`${pc.red('Rolled back')} ${pc.cyan(entity)} ${pc.red(`-${count}`)}`)
+    },
+    onSkip: (info) => {
+      s.stop(`${pc.yellow('Skipped')} ${pc.cyan(info.entity)}`)
+    },
+    onStop: (info) => {
+      s.stop(`${pc.red('Failed at')} ${pc.cyan(info.failedEntity)}`)
+    },
   }
 }
 

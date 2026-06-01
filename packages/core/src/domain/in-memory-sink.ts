@@ -1,15 +1,22 @@
-import type { ShopwareSink, SinkRecord } from './sink'
+import type { ShopwareSink, SinkRecord, SyncOperation } from './sink'
 
 export type SinkCall =
   | { op: 'upsert'; entity: string; ids: string[] }
   | { op: 'delete'; entity: string; ids: string[] }
+  | { op: 'applyAtomic'; operations: SyncOperation[] }
+
+export interface InMemorySinkOptions {
+  failApplyAtomic?: boolean
+  failUpsertOn?: string
+  failDeleteOn?: string
+}
 
 export interface InMemorySink extends ShopwareSink {
   snapshot(): Map<string, Map<string, SinkRecord>>
   readonly calls: SinkCall[]
 }
 
-export function createInMemorySink(): InMemorySink {
+export function createInMemorySink(options: InMemorySinkOptions = {}): InMemorySink {
   const store = new Map<string, Map<string, SinkRecord>>()
   const calls: SinkCall[] = []
 
@@ -25,14 +32,31 @@ export function createInMemorySink(): InMemorySink {
   return {
     calls,
     async upsert(entity, records) {
+      if (options.failUpsertOn === entity) {
+        throw new Error(`Simulated upsert failure for ${entity}`)
+      }
       const b = bucket(entity)
       for (const record of records) b.set(record.id, record)
       calls.push({ op: 'upsert', entity, ids: records.map((r) => r.id) })
     },
     async delete(entity, ids) {
+      if (options.failDeleteOn === entity) {
+        throw new Error(`Simulated delete failure for ${entity}`)
+      }
       const b = bucket(entity)
       for (const id of ids) b.delete(id)
       calls.push({ op: 'delete', entity, ids: [...ids] })
+    },
+    async applyAtomic(operations) {
+      if (options.failApplyAtomic) {
+        throw new Error('Simulated atomic sync failure')
+      }
+      for (const op of operations) {
+        const b = bucket(op.entity)
+        if (op.action === 'upsert') for (const record of op.records) b.set(record.id, record)
+        else for (const id of op.ids) b.delete(id)
+      }
+      calls.push({ op: 'applyAtomic', operations: operations.map((op) => ({ ...op })) })
     },
     snapshot() {
       return store

@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@shopware/api-client": "1.5.0",
+    "jiti": "2.7.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

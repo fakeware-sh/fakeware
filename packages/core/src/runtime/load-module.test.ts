@@ -25,6 +25,15 @@ describe('loadModule', () => {
     expect(mod.default.ok).toBe(true)
   })
 
+  test('resolves an extensionless relative import', async () => {
+    await writeFile(join(dir, 'shared.ts'), 'export const SHARED = 7\n')
+    const file = join(dir, 'uses-shared.ts')
+    await writeFile(file, "import { SHARED } from './shared'\nexport default SHARED * 2\n")
+
+    const mod = await loadModule<{ default: number }>(file)
+    expect(mod.default).toBe(14)
+  })
+
   test('throws LoadModuleError for a missing file', async () => {
     await expect(loadModule(join(dir, 'does-not-exist.ts'))).rejects.toBeInstanceOf(LoadModuleError)
   })
