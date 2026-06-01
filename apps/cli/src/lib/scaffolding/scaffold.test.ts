@@ -29,9 +29,15 @@ describe('scaffoldProject', () => {
 
     const names = created.map((f) => f.path.split('/').pop())
     expect(names).toContain('package.json')
+    expect(names).toContain('tsconfig.json')
     expect(names).toContain('fakeware.config.ts')
     expect(names).toContain('.env')
     expect(names).toContain('.gitignore')
+
+    const tsconfig = JSON.parse(readFileSync(join(dir, 'tsconfig.json'), 'utf8'))
+    expect(tsconfig.compilerOptions.moduleResolution).toBe('bundler')
+    expect(tsconfig.compilerOptions.allowImportingTsExtensions).toBe(true)
+    expect(tsconfig.compilerOptions.noEmit).toBe(true)
 
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
     expect(pkg.name).toBe('my-shop-seed')
@@ -82,6 +88,7 @@ describe('scaffoldProject', () => {
     })
     const names = created.map((f) => f.path.split('/').pop())
     expect(names).toContain('package.json')
+    expect(names).toContain('tsconfig.json')
     expect(names).toContain('fakeware.config.ts')
     expect(names).not.toContain('.env')
 
