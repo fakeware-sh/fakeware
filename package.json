@@ -21,6 +21,7 @@
     "dev": "bun run --filter '*' --parallel dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
+    "test:coverage": "bun test --coverage",
     "check": "biome check . && bun run typecheck",
     "fix": "biome check . --write && bun run typecheck",
     "typecheck": "bun run --filter '*' typecheck",

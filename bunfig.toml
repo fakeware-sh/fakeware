@@ -3,3 +3,8 @@ linker = "hoisted"
 
 [test]
 root = "."
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "**/*.fixture.ts",
+  "**/tmp/**",
+]
