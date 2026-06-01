@@ -22,6 +22,10 @@ describe('interpolate', () => {
     expect(interpolate('prefix-$SHOPWARE_URL', env)).toBe('prefix-$SHOPWARE_URL')
   })
 
+  test('leaves non-string scalars untouched', () => {
+    expect(interpolate({ n: 1, b: true, z: null }, env)).toEqual({ n: 1, b: true, z: null })
+  })
+
   test('throws on an undefined variable', () => {
     expect(() => interpolate('$MISSING', env)).toThrow(ConfigError)
   })

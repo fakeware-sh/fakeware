@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { mkdtempSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileExists, isEmptyDir } from './fs'
+import { emptyDir, fileExists, isEmptyDir } from './fs'
 
 function tmp(): string {
   return mkdtempSync(join(tmpdir(), 'fw-fs-'))
@@ -35,5 +36,22 @@ describe('isEmptyDir', () => {
     const dir = tmp()
     await Bun.write(join(dir, 'something.txt'), '')
     expect(await isEmptyDir(dir)).toBe(false)
+  })
+})
+
+describe('emptyDir', () => {
+  test('removes all entries, including nested directories', async () => {
+    const dir = tmp()
+    await Bun.write(join(dir, 'file.txt'), 'x')
+    await mkdir(join(dir, 'nested'), { recursive: true })
+    await Bun.write(join(dir, 'nested', 'inner.txt'), 'y')
+
+    await emptyDir(dir)
+
+    expect(await isEmptyDir(dir)).toBe(true)
+  })
+
+  test('is a no-op for a non-existent path', async () => {
+    await expect(emptyDir(join(tmp(), 'nope'))).resolves.toBeUndefined()
   })
 })
