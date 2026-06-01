@@ -39,6 +39,30 @@ function packageJsonTemplate(values: ScaffoldValues): string {
   return `${JSON.stringify(pkg, null, 2)}\n`
 }
 
+const TSCONFIG = {
+  $schema: 'https://json.schemastore.org/tsconfig',
+  compilerOptions: {
+    target: 'esnext',
+    module: 'preserve',
+    moduleResolution: 'bundler',
+    allowImportingTsExtensions: true,
+    lib: ['esnext'],
+    types: ['node'],
+    strict: true,
+    noUncheckedIndexedAccess: true,
+    verbatimModuleSyntax: true,
+    isolatedModules: true,
+    noEmit: true,
+    skipLibCheck: true,
+    resolveJsonModule: true,
+  },
+  include: ['**/*.ts'],
+}
+
+function tsconfigTemplate(): string {
+  return `${JSON.stringify(TSCONFIG, null, 2)}\n`
+}
+
 function envTemplate(values: ScaffoldValues): string {
   return [
     `SHOPWARE_URL=${values.url}`,
@@ -72,6 +96,13 @@ export const FILE_SPECS: FileSpec[] = [
     strategy: 'fresh',
     build: packageJsonTemplate,
     note: () => 'devDependency: @fakeware/core',
+  },
+  {
+    name: 'tsconfig.json',
+    include: () => true,
+    strategy: 'fresh',
+    build: tsconfigTemplate,
+    note: () => 'editor IntelliSense + type checking',
   },
   {
     name: CONFIG_FILE_NAME,
