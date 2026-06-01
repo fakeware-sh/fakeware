@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
+import type { SyncOperation } from '../domain'
 import type { ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
-import { createSyncSink } from './sink'
+import { createSyncSink, estimateSyncBytes } from './sink'
 
 const connection = { url: 'https://shop.test', clientId: 'i', clientSecret: 's' }
 
@@ -93,5 +94,53 @@ describe('createSyncSink', () => {
     })
     const sink = createSyncSink(connection, { client })
     await expect(sink.upsert('tax', [{ id: 'a' }])).rejects.toBeInstanceOf(ShopwareConnectionError)
+  })
+
+  test('applyAtomic sends one request holding every operation in order', async () => {
+    const { client, calls } = recordingClient()
+    const sink = createSyncSink(connection, { client })
+    await sink.applyAtomic([
+      { entity: 'tax', action: 'upsert', records: [{ id: 'a' }] },
+      { entity: 'product', action: 'upsert', records: [{ id: 'p1' }, { id: 'p2' }] },
+    ])
+
+    expect(calls).toHaveLength(1)
+    const call = firstCall(calls)
+    expect(call.action).toBe('sync post /_action/sync')
+    expect(argsOf(call).headers['indexing-behavior']).toBe('use-queue-indexing')
+    expect('single-operation' in argsOf(call).headers).toBe(false)
+    expect(argsOf(call).body.map((op) => op.entity)).toEqual(['tax', 'product'])
+    expect(argsOf(call).body[1]?.payload).toHaveLength(2)
+  })
+
+  test('applyAtomic drops empty-payload operations and sends nothing when all are empty', async () => {
+    const { client, calls } = recordingClient()
+    const sink = createSyncSink(connection, { client })
+    await sink.applyAtomic([{ entity: 'tax', action: 'upsert', records: [] }])
+    expect(calls).toHaveLength(0)
+  })
+
+  test('applyAtomic maps a failed request to ShopwareConnectionError', async () => {
+    const { client } = recordingClient(() => {
+      throw new Error('boom')
+    })
+    const sink = createSyncSink(connection, { client })
+    await expect(
+      sink.applyAtomic([{ entity: 'tax', action: 'upsert', records: [{ id: 'a' }] }]),
+    ).rejects.toBeInstanceOf(ShopwareConnectionError)
+  })
+})
+
+describe('estimateSyncBytes', () => {
+  test('grows with the payload', () => {
+    const small: SyncOperation[] = [{ entity: 'tax', action: 'upsert', records: [{ id: 'a' }] }]
+    const large: SyncOperation[] = [
+      {
+        entity: 'product',
+        action: 'upsert',
+        records: Array.from({ length: 100 }, (_, i) => ({ id: `id${i}`, name: 'x'.repeat(50) })),
+      },
+    ]
+    expect(estimateSyncBytes(large)).toBeGreaterThan(estimateSyncBytes(small))
   })
 })

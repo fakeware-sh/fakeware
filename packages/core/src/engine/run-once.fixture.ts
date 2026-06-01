@@ -4,7 +4,10 @@ import { runUp } from './run'
 const projectRoot = process.argv[2]
 if (!projectRoot) throw new Error('run-once.fixture: missing projectRoot argv')
 const loaded = {
-  config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
+  config: {
+    shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
+    transaction: { onError: 'rollback' as const, atomic: false },
+  },
   connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
   configPath: `${projectRoot}/fakeware.config.ts`,
   projectRoot,

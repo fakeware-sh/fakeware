@@ -27,6 +27,27 @@ describe('fakewareConfigSchema', () => {
     const result = fakewareConfigSchema.safeParse({})
     expect(result.success).toBe(true)
   })
+
+  test('transaction defaults to rollback + atomic when omitted', () => {
+    const parsed = fakewareConfigSchema.parse(validConfig)
+    expect(parsed.transaction).toEqual({ onError: 'rollback', atomic: true })
+  })
+
+  test('transaction accepts an explicit policy', () => {
+    const parsed = fakewareConfigSchema.parse({
+      ...validConfig,
+      transaction: { onError: 'stop', atomic: false },
+    })
+    expect(parsed.transaction).toEqual({ onError: 'stop', atomic: false })
+  })
+
+  test('transaction rejects an unknown onError value', () => {
+    const result = fakewareConfigSchema.safeParse({
+      ...validConfig,
+      transaction: { onError: 'explode' },
+    })
+    expect(result.success).toBe(false)
+  })
 })
 
 describe('defineConfig', () => {

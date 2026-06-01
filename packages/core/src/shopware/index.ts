@@ -1,5 +1,5 @@
 export { createShopwareClient, type ShopwareClient } from './client'
 export { ShopwareConnectionError } from './errors'
 export { fetchShopInfo, toConnectionError, validateConnection } from './operations'
-export { createSyncSink } from './sink'
+export { ATOMIC_REQUEST_BYTE_LIMIT, createSyncSink, estimateSyncBytes } from './sink'
 export type { ShopInfo, ShopwareConnection } from './types'

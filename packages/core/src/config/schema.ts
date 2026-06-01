@@ -6,9 +6,17 @@ export const shopwareSchema = z.object({
   clientSecret: z.string().min(1, 'shopware.clientSecret is required'),
 })
 
+export const transactionSchema = z.object({
+  onError: z.enum(['rollback', 'continue', 'stop']).default('rollback'),
+  atomic: z.boolean().default(true),
+})
+
 export const fakewareConfigSchema = z.object({
   shopware: shopwareSchema.optional(),
+  transaction: transactionSchema.prefault({}),
 })
+
+export type TransactionConfig = z.output<typeof transactionSchema>
 
 export type FakewareConfig = z.output<typeof fakewareConfigSchema>
 
