@@ -65,11 +65,7 @@ export function upCommand(): Command {
         }
         const label = result.committed === 1 ? 'change' : 'changes'
         const where = pc.cyan(loaded.connection.url)
-        p.outro(
-          result.mode === 'atomic'
-            ? `Atomically committed ${pc.green(String(result.committed))} ${label} to ${where}`
-            : `Committed ${pc.green(String(result.committed))} ${label} to ${where}`,
-        )
+        p.outro(`Committed ${pc.green(String(result.committed))} ${label} to ${where}`)
       } catch (error) {
         reportError(error)
       }

@@ -1,4 +1,4 @@
-import type { ShopwareSink, SinkRecord, SyncOperation } from '../domain'
+import type { OnBatch, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
 import { createShopwareClient, type ShopwareClient } from './client'
 import { toConnectionError } from './operations'
 import type { ShopwareConnection } from './types'
@@ -45,8 +45,11 @@ export function createSyncSink(
     entity: string,
     action: 'upsert' | 'delete',
     payload: Record<string, unknown>[],
+    onBatch?: OnBatch,
   ): Promise<void> {
-    for (const batch of chunk(payload, SYNC_BATCH_SIZE)) {
+    const batches = chunk(payload, SYNC_BATCH_SIZE)
+    let records = 0
+    for (const [i, batch] of batches.entries()) {
       try {
         await client.invoke('sync post /_action/sync', {
           headers: { 'indexing-behavior': 'use-queue-indexing' },
@@ -55,19 +58,27 @@ export function createSyncSink(
       } catch (error) {
         throw toConnectionError(connection, error)
       }
+      records += batch.length
+      onBatch?.({
+        records,
+        recordsTotal: payload.length,
+        batches: i + 1,
+        batchesTotal: batches.length,
+      })
     }
   }
 
   return {
-    async upsert(entity: string, records: SinkRecord[]): Promise<void> {
-      if (records.length > 0) await sync(entity, 'upsert', records)
+    async upsert(entity: string, records: SinkRecord[], onBatch?: OnBatch): Promise<void> {
+      if (records.length > 0) await sync(entity, 'upsert', records, onBatch)
     },
-    async delete(entity: string, ids: string[]): Promise<void> {
+    async delete(entity: string, ids: string[], onBatch?: OnBatch): Promise<void> {
       if (ids.length > 0)
         await sync(
           entity,
           'delete',
           ids.map((id) => ({ id })),
+          onBatch,
         )
     },
     async applyAtomic(operations: SyncOperation[]): Promise<void> {

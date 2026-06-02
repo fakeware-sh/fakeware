@@ -9,6 +9,7 @@ export interface InMemorySinkOptions {
   failApplyAtomic?: boolean
   failUpsertOn?: string
   failDeleteOn?: string
+  failUpsertAfter?: { entity: string; records: number }
 }
 
 export interface InMemorySink extends ShopwareSink {
@@ -31,21 +32,53 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
 
   return {
     calls,
-    async upsert(entity, records) {
+    async upsert(entity, records, onBatch) {
       if (options.failUpsertOn === entity) {
         throw new Error(`Simulated upsert failure for ${entity}`)
+      }
+      const partial = options.failUpsertAfter
+      if (partial?.entity === entity) {
+        const committed = records.slice(0, partial.records)
+        const b = bucket(entity)
+        for (const record of committed) b.set(record.id, record)
+        calls.push({ op: 'upsert', entity, ids: committed.map((r) => r.id) })
+        if (committed.length > 0) {
+          onBatch?.({
+            records: committed.length,
+            recordsTotal: records.length,
+            batches: 1,
+            batchesTotal: 2,
+          })
+        }
+        throw new Error(`Simulated partial upsert failure for ${entity}`)
       }
       const b = bucket(entity)
       for (const record of records) b.set(record.id, record)
       calls.push({ op: 'upsert', entity, ids: records.map((r) => r.id) })
+      if (records.length > 0) {
+        onBatch?.({
+          records: records.length,
+          recordsTotal: records.length,
+          batches: 1,
+          batchesTotal: 1,
+        })
+      }
     },
-    async delete(entity, ids) {
+    async delete(entity, ids, onBatch) {
       if (options.failDeleteOn === entity) {
         throw new Error(`Simulated delete failure for ${entity}`)
       }
       const b = bucket(entity)
       for (const id of ids) b.delete(id)
       calls.push({ op: 'delete', entity, ids: [...ids] })
+      if (ids.length > 0) {
+        onBatch?.({
+          records: ids.length,
+          recordsTotal: ids.length,
+          batches: 1,
+          batchesTotal: 1,
+        })
+      }
     },
     async applyAtomic(operations) {
       if (options.failApplyAtomic) {

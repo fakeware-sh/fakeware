@@ -1,6 +1,6 @@
 export type { Ctx, DefineRecord, EntityName } from './define'
 export { define, many, RefError, ref, refs } from './define'
-export type { ShopwareSink, SinkRecord, SyncOperation } from './domain'
+export type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from './domain'
 export type {
   DownResult,
   Manifest,

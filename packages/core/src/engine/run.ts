@@ -1,6 +1,6 @@
 import type { LoadedConfig } from '../config'
 import { recordHash } from '../define'
-import type { ShopwareSink, SinkRecord, SyncOperation } from '../domain'
+import type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
 import { ATOMIC_REQUEST_BYTE_LIMIT, estimateSyncBytes } from '../shopware'
 import { buildWritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
@@ -17,13 +17,15 @@ import {
 } from './manifest'
 
 export interface Reporter {
-  onStart?(entity: string): void
+  onStart?(entity: string, records?: number): void
+  onBatch?(progress: BatchProgress): void
   onStep?(step: ReportStep): void
-  onTransactionStart?(info: { mode: 'atomic' | 'saga'; operations: number }): void
+  onTransactionStart?(info: { mode: 'atomic' | 'saga' }): void
   onCommit?(info: { committed: number }): void
   onCompensate?(entity: string, count: number): void
+  onCompensateFail?(entity: string): void
   onSkip?(info: { entity: string; error: unknown }): void
-  onStop?(info: { failedEntity: string }): void
+  onStop?(info: { failedEntity: string; error: unknown; message: string }): void
 }
 
 export interface ReportStep {
@@ -117,6 +119,22 @@ function diffEntity(
   }
 }
 
+function partialWrite(w: EntityWrite, committed: number): EntityWrite | null {
+  if (committed <= 0) return null
+  const createdSet = new Set(w.createdIds)
+  const prefix = w.toWrite.slice(0, committed)
+  const createdIds = prefix.map((r) => r.id).filter((id) => createdSet.has(id))
+  const updated = prefix.length - createdIds.length
+  if (createdIds.length === 0 && updated === 0) return null
+  return {
+    entity: w.entity,
+    toWrite: [],
+    createdIds,
+    manifestRecords: [],
+    step: { entity: w.entity, created: 0, updated, unchanged: 0, deleted: 0 },
+  }
+}
+
 export async function runUp(opts: RunOptions): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
   const tx = resolveTransaction(opts)
@@ -174,59 +192,68 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
   }))
 
   if (tx.atomic && estimateSyncBytes(operations) <= ATOMIC_REQUEST_BYTE_LIMIT) {
-    reporter?.onTransactionStart?.({ mode: 'atomic', operations: operations.length })
-    for (const w of writes) reporter?.onStart?.(w.entity)
-    await sink.applyAtomic(operations)
-    for (const w of writes) reporter?.onStep?.(w.step)
+    reporter?.onTransactionStart?.({ mode: 'atomic' })
+    try {
+      await sink.applyAtomic(operations)
+    } catch (error) {
+      const message = 'Apply failed — Shopware rolled back all changes.'
+      reporter?.onStop?.({ failedEntity: '', error, message })
+      throw new TransactionError(message, {
+        cause: error,
+        rolledBack: [],
+        failedEntity: '',
+      })
+    }
     await writeManifestNow(manifestEntities)
     reporter?.onCommit?.({ committed })
     return { steps, manifestWritten: true, mode: 'atomic', committed, rolledBack: 0 }
   }
 
-  reporter?.onTransactionStart?.({ mode: 'saga', operations: operations.length })
+  reporter?.onTransactionStart?.({ mode: 'saga' })
   const written: EntityWrite[] = []
   const skipped: { entity: string; error: unknown }[] = []
 
   for (const w of pending) {
-    reporter?.onStart?.(w.entity)
+    reporter?.onStart?.(w.entity, w.toWrite.length)
+    let committedRecords = 0
     try {
-      await sink.upsert(w.entity, w.toWrite)
+      await sink.upsert(w.entity, w.toWrite, (progress) => {
+        committedRecords = progress.records
+        reporter?.onBatch?.(progress)
+      })
       written.push(w)
       reporter?.onStep?.(w.step)
     } catch (error) {
       if (tx.onError === 'stop') {
-        reporter?.onStop?.({ failedEntity: w.entity })
-        throw error
+        const message = `Writing ${w.entity} failed — stopped.`
+        reporter?.onStop?.({ failedEntity: w.entity, error, message })
+        throw new TransactionError(message, {
+          cause: error,
+          rolledBack: [],
+          failedEntity: w.entity,
+        })
       }
       if (tx.onError === 'continue') {
         skipped.push({ entity: w.entity, error })
         reporter?.onSkip?.({ entity: w.entity, error })
         continue
       }
+      const message = `Could not apply ${w.entity}.`
+      reporter?.onStop?.({ failedEntity: w.entity, error, message })
+      const partial = partialWrite(w, committedRecords)
+      const toCompensate = partial ? [...written, partial] : written
       const { rolledBack, unrevertableUpdates, compensationErrors } = await compensate(
         sink,
-        written,
+        toCompensate,
         reporter,
       )
-      const back = rolledBack.reduce((n, s) => n + s.deleted, 0)
-      const suffix =
-        compensationErrors.length > 0
-          ? `; rollback incomplete (${compensationErrors.length} cleanup error${
-              compensationErrors.length === 1 ? '' : 's'
-            })`
-          : ''
-      throw new TransactionError(
-        `Transaction failed at ${w.entity}; rolled back ${back} change${
-          back === 1 ? '' : 's'
-        }${suffix}.`,
-        {
-          cause: error,
-          rolledBack,
-          failedEntity: w.entity,
-          unrevertableUpdates,
-          compensationErrors,
-        },
-      )
+      throw new TransactionError(message, {
+        cause: error,
+        rolledBack,
+        failedEntity: w.entity,
+        unrevertableUpdates,
+        compensationErrors,
+      })
     }
   }
 
@@ -265,7 +292,6 @@ async function compensate(
   const compensationErrors: unknown[] = []
   for (const w of [...written].reverse()) {
     if (w.createdIds.length === 0) continue
-    reporter?.onCompensate?.(w.entity, w.createdIds.length)
     try {
       await sink.delete(w.entity, w.createdIds)
       rolledBack.push({
@@ -275,8 +301,10 @@ async function compensate(
         unchanged: 0,
         deleted: w.createdIds.length,
       })
+      reporter?.onCompensate?.(w.entity, w.createdIds.length)
     } catch (error) {
       compensationErrors.push(error)
+      reporter?.onCompensateFail?.(w.entity)
     }
   }
   const unrevertableUpdates = written.some((w) => w.step.updated > 0)
@@ -317,12 +345,14 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
   const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
   if (!manifest) return { steps: [], reverted: false }
 
+  reporter?.onTransactionStart?.({ mode: 'saga' })
+
   const steps: ReportStep[] = []
   for (const entity of [...manifest.entities].reverse()) {
-    reporter?.onStart?.(entity.entity)
     const ids = entity.records.map((r) => r.id)
+    reporter?.onStart?.(entity.entity, ids.length)
     if (!dryRun && ids.length > 0) {
-      await sink.delete(entity.entity, ids)
+      await sink.delete(entity.entity, ids, (progress) => reporter?.onBatch?.(progress))
     }
     const step: ReportStep = {
       entity: entity.entity,

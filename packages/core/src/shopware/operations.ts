@@ -30,10 +30,16 @@ function missingPrivileges(error: ApiClientError<{ errors: ApiError[] }>): strin
   return []
 }
 
+function fieldName(pointer: string | undefined): string | null {
+  if (!pointer) return null
+  const segments = pointer.split('/').filter((s) => s !== '' && !/^\d+$/.test(s))
+  return segments.length ? (segments[segments.length - 1] ?? null) : null
+}
+
 function validationMessages(error: ApiClientError<{ errors: ApiError[] }>): string[] {
   return error.details.errors
     .map((e) => {
-      const field = e.source?.pointer?.replace(/^\/\d+\/\d+\//, '')
+      const field = fieldName(e.source?.pointer)
       const detail = e.detail ?? e.title ?? 'Invalid value.'
       return field ? `${field}: ${detail}` : detail
     })
@@ -53,11 +59,16 @@ export function toConnectionError(
     switch (error.status) {
       case 400: {
         const messages = validationMessages(error)
-        return new ShopwareConnectionError(
-          messages.length
-            ? `Shopware rejected the data — ${messages.join(' ')}`
-            : `Shopware rejected the request (HTTP 400) from ${connection.url}.`,
-        )
+        if (!messages.length) {
+          return new ShopwareConnectionError(
+            `Shopware rejected the request (HTTP 400) from ${connection.url}.`,
+          )
+        }
+        const shown = messages.slice(0, 5)
+        const more = messages.length - shown.length
+        const list = shown.map((m) => `  - ${m}`).join('\n')
+        const tail = more > 0 ? `\n  - …and ${more} more` : ''
+        return new ShopwareConnectionError(`Shopware rejected the data:\n${list}${tail}`)
       }
       case 401:
         return new ShopwareConnectionError(
