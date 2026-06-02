@@ -229,6 +229,32 @@ describe('runUp transactions', () => {
     expect(await readManifest(dir, 'https://shop.test')).toBeNull()
   })
 
+  test('saga rollback deletes the failing entity records committed before a mid-batch failure', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const sink = createInMemorySink({ failUpsertAfter: { entity: 'product', records: 1 } })
+
+    let caught: unknown
+    try {
+      await runUp({
+        loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
+        sink,
+        now: 'T',
+        fakewareVersion: '1',
+      })
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(TransactionError)
+    expect((caught as TransactionError).failedEntity).toBe('product')
+    const deletes = sink.calls.filter((c) => c.op === 'delete')
+    expect(deletes.map((c) => c.entity)).toEqual(['product', 'tax'])
+    expect(deletes[0]?.ids).toHaveLength(1)
+    expect(sink.snapshot().get('product')?.size ?? 0).toBe(0)
+    expect(sink.snapshot().get('tax')?.size ?? 0).toBe(0)
+    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
+  })
+
   test('saga rollback only deletes records this run created, not pre-existing updates', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const firstSink = createInMemorySink()

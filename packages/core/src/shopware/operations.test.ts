@@ -104,8 +104,33 @@ describe('toConnectionError', () => {
       { detail: 'This value should not be blank.', source: { pointer: '/0/0/price' } },
     ])
     const message = toConnectionError(connection, error).message
-    expect(message).toBe('Shopware rejected the data — price: This value should not be blank.')
+    expect(message).toBe('Shopware rejected the data:\n  - price: This value should not be blank.')
     expect(message).not.toContain('Authentication failed')
+  })
+
+  test('400 bullets distinct validation errors and shortens nested field pointers', () => {
+    const error = apiError(400, [
+      { detail: 'This value should not be blank.', source: { pointer: '/0/stateId' } },
+      { detail: 'This value should not be blank.', source: { pointer: '/0/deliveries/0/stateId' } },
+      {
+        detail: 'This value should not be blank.',
+        source: { pointer: '/0/transactions/0/stateId' },
+      },
+    ])
+    expect(toConnectionError(connection, error).message).toBe(
+      'Shopware rejected the data:\n  - stateId: This value should not be blank.',
+    )
+  })
+
+  test('400 caps the bullet list and notes how many more', () => {
+    const errors: ApiError[] = Array.from({ length: 8 }, (_, i) => ({
+      detail: 'Invalid.',
+      source: { pointer: `/0/field${i}` },
+    }))
+    const message = toConnectionError(connection, apiError(400, errors)).message
+    expect(message).toContain('  - field0: Invalid.')
+    expect(message).toContain('…and 3 more')
+    expect(message).not.toContain('field5')
   })
 
   test('400 with no error detail falls back to a generic rejection', () => {

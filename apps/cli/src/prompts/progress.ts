@@ -15,35 +15,72 @@ export function spinnerReporter(
   verb: { active: string; done: string },
   detail: (step: ReportStep) => string,
 ): Reporter {
-  const s = p.spinner()
+  let active: p.SpinnerResult | null = null
+  let bar: p.ProgressResult | null = null
+  let head = ''
+  let advanced = 0
   let atomic = false
   return {
     onTransactionStart: (info) => {
       atomic = info.mode === 'atomic'
+      if (atomic) {
+        active = p.spinner()
+        active.start(verb.active)
+      }
     },
-    onStart: (entity) => {
+    onStart: (entity, records) => {
       if (atomic) return
-      s.start(`${verb.active} ${pc.cyan(entity)}`)
+      head = `${verb.active} ${pc.cyan(entity)}`
+      advanced = 0
+      if (records && records > 1) {
+        bar = p.progress({ style: 'block', max: records, size: 20 })
+        bar.start(`${head}  ${pc.dim(`0/${records}`)}`)
+        active = bar
+      } else {
+        bar = null
+        active = p.spinner()
+        active.start(head)
+      }
+    },
+    onBatch: (progress) => {
+      if (!bar) return
+      bar.advance(
+        progress.records - advanced,
+        `${head}  ${pc.dim(`${progress.records}/${progress.recordsTotal}`)}`,
+      )
+      advanced = progress.records
     },
     onStep: (step) => {
       if (atomic) return
-      s.stop(`${verb.done} ${pc.cyan(step.entity)}${detail(step)}`)
+      active?.stop(`${verb.done} ${pc.cyan(step.entity)}${detail(step)}`)
+      active = bar = null
     },
     onCommit: (info) => {
       if (!atomic) return
       const label = info.committed === 1 ? 'change' : 'changes'
-      s.start(`Committing ${info.committed} ${label} atomically`)
-      s.stop(`Committed ${pc.green(String(info.committed))} ${label} atomically`)
+      active?.stop(`${verb.done} ${pc.green(String(info.committed))} ${label}`)
+      active = null
     },
     onCompensate: (entity, count) => {
-      s.start(`${pc.red('Rolling back')} ${pc.cyan(entity)}`)
-      s.stop(`${pc.red('Rolled back')} ${pc.cyan(entity)} ${pc.red(`-${count}`)}`)
+      p.log.message(`Reverted ${pc.cyan(entity)}${counts(['-', count])}`, {
+        symbol: pc.yellow('↺'),
+      })
+    },
+    onCompensateFail: (entity) => {
+      p.log.warn(`Could not revert ${pc.cyan(entity)}`)
     },
     onSkip: (info) => {
-      s.stop(`${pc.yellow('Skipped')} ${pc.cyan(info.entity)}`)
+      active?.error(`${verb.active} ${pc.cyan(info.entity)}`)
+      active = bar = null
+      p.log.warn(`Skipped ${pc.cyan(info.entity)}`)
+      if (info.error instanceof Error) p.log.message(pc.dim(info.error.message))
     },
     onStop: (info) => {
-      s.stop(`${pc.red('Failed at')} ${pc.cyan(info.failedEntity)}`)
+      const label = info.failedEntity
+        ? info.message.replace(info.failedEntity, pc.cyan(info.failedEntity))
+        : info.message
+      active?.error(label)
+      active = bar = null
     },
   }
 }
