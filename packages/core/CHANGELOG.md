@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.7](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.6...core-v0.0.7) (2026-06-08)
+
+
+### Features
+
+* make up transactional and load user files via jiti ([0ce23cd](https://github.com/fakeware-sh/fakeware/commit/0ce23cd03dfcb6057ed03c4bc112bc2b0a9e32f5))
+* report batch progress and format Shopware errors ([3994caa](https://github.com/fakeware-sh/fakeware/commit/3994caa3111bf023930eeb3a06950859e65d4aa2))
+
+
+### Bug Fixes
+
+* core and cli version on scaffold ([78b6a21](https://github.com/fakeware-sh/fakeware/commit/78b6a212a509f4aeb35b48bc096250563ab39f99))
+
 ## [0.0.6](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.5...core-v0.0.6) (2026-05-31)
 
 
