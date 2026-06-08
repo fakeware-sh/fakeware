@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.9](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.8...cli-v0.0.9) (2026-06-08)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.8
+
 ## [0.0.8](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.7...cli-v0.0.8) (2026-06-08)
 
 
