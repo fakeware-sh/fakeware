@@ -3,6 +3,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseModule } from 'magicast'
+import corePkg from '../../../../../packages/core/package.json' with { type: 'json' }
+import cliPkg from '../../../package.json' with { type: 'json' }
 import { ScaffoldError, scaffoldProject } from './scaffold'
 import type { ScaffoldValues } from './values'
 
@@ -42,8 +44,8 @@ describe('scaffoldProject', () => {
     const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
     expect(pkg.name).toBe('my-shop-seed')
     expect(pkg.private).toBe(true)
-    expect(pkg.devDependencies['@fakeware/core']).toBeString()
-    expect(pkg.devDependencies['@fakeware/cli']).toBeString()
+    expect(pkg.devDependencies['@fakeware/core']).toBe(`^${corePkg.version}`)
+    expect(pkg.devDependencies['@fakeware/cli']).toBe(`^${cliPkg.version}`)
 
     const config = readFileSync(join(dir, 'fakeware.config.ts'), 'utf8')
     expect(config).toContain("from '@fakeware/core/config'")
