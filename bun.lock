@@ -15,7 +15,7 @@
     },
     "apps/cli": {
       "name": "@fakeware/cli",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "bin": {
         "fakeware": "./dist/index.mjs",
       },
@@ -34,7 +34,7 @@
     },
     "apps/create-fakeware": {
       "name": "create-fakeware",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "bin": {
         "create-fakeware": "./dist/index.mjs",
       },
@@ -47,7 +47,7 @@
     },
     "packages/core": {
       "name": "@fakeware/core",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "dependencies": {
         "@shopware/api-client": "1.5.0",
         "jiti": "2.7.0",

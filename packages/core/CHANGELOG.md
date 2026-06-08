@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.8](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.7...core-v0.0.8) (2026-06-08)
+
+
+### Bug Fixes
+
+* jiti virtual module for core ([2f96d85](https://github.com/fakeware-sh/fakeware/commit/2f96d85265699e8c06af012c93b7c69980b3b714))
+
 ## [0.0.7](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.6...core-v0.0.7) (2026-06-08)
 
 
