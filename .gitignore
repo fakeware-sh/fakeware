@@ -11,3 +11,4 @@ dist/
 /.idea
 apps/.test
 /.test
+/test

@@ -1,11 +1,6 @@
 import { buildConfigFile } from './config-file'
-import {
-  CLI_VERSION,
-  CONFIG_FILE_NAME,
-  CORE_VERSION,
-  hasShopConnection,
-  type ScaffoldValues,
-} from './values'
+import { CONFIG_FILE_NAME, hasShopConnection, type ScaffoldValues } from './values'
+import { SCAFFOLD_DEPENDENCIES } from './versions'
 
 export type WriteStrategy = 'fresh' | 'merge'
 
@@ -31,10 +26,7 @@ function packageJsonTemplate(values: ScaffoldValues): string {
     name: values.projectName,
     private: true,
     type: 'module',
-    devDependencies: {
-      '@fakeware/cli': CLI_VERSION,
-      '@fakeware/core': CORE_VERSION,
-    },
+    devDependencies: { ...SCAFFOLD_DEPENDENCIES },
   }
   return `${JSON.stringify(pkg, null, 2)}\n`
 }
