@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { drain, resetRegistry } from '../define'
 import { LoadModuleError, loadModule } from './load-module'
 
 describe('loadModule', () => {
@@ -36,5 +37,22 @@ describe('loadModule', () => {
 
   test('throws LoadModuleError for a missing file', async () => {
     await expect(loadModule(join(dir, 'does-not-exist.ts'))).rejects.toBeInstanceOf(LoadModuleError)
+  })
+
+  test("define() from '@fakeware/core' lands in this process's registry", async () => {
+    resetRegistry()
+    const file = join(dir, 'seed.ts')
+    await writeFile(
+      file,
+      "import { define } from '@fakeware/core'\ndefine('tax', [{ $key: 'standard', taxRate: 19 }])\n",
+    )
+
+    await loadModule(file)
+
+    const drained = drain()
+    expect(drained).toHaveLength(1)
+    expect(drained[0]?.entity).toBe('tax')
+    expect(drained[0]?.entries).toHaveLength(1)
+    resetRegistry()
   })
 })
