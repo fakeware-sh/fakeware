@@ -1,8 +1,11 @@
 import { createJiti } from 'jiti'
+import * as core from '../define'
 
 export class LoadModuleError extends Error {}
 
-const jiti = createJiti(import.meta.url)
+const jiti = createJiti(import.meta.url, {
+  virtualModules: { '@fakeware/core': core },
+})
 
 export async function loadModule<T = unknown>(absPath: string): Promise<T> {
   try {
