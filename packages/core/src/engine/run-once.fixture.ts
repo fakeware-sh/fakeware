@@ -1,4 +1,5 @@
 import { createInMemorySink } from '../domain'
+import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { runUp } from './run'
 
 const projectRoot = process.argv[2]
@@ -14,6 +15,6 @@ const loaded = {
 }
 
 const sink = createInMemorySink()
-await runUp({ loaded, sink, now: 'T', fakewareVersion: '1' })
+await runUp({ loaded, sink, now: 'T', fakewareVersion: '1', shopContext: fakeShopContext() })
 const upserts = sink.calls.filter((c) => c.op === 'upsert')
 process.stdout.write(JSON.stringify(upserts))

@@ -2,7 +2,6 @@ import { describe, expect, mock, test } from 'bun:test'
 import { ApiClientError, type ApiError } from '@shopware/api-client'
 import type { ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
-import { type LanguageRow, parseLanguageRows, toShopInfo } from './locale'
 import type { ShopwareConnection } from './types'
 
 let nextInvoke: (action: string, args?: unknown) => Promise<unknown> = async () => ({ data: {} })
@@ -13,9 +12,7 @@ mock.module('./client', () => ({
     ({ invoke: (action: string, args?: unknown) => nextInvoke(action, args) }) as ShopwareClient,
 }))
 
-const { toConnectionError, validateConnection, fetchShopInfo } = await import('./operations')
-
-const SYSTEM_LANGUAGE_ID = '2fbb5fe2e29a4d70aa5854ce7ce3e20b'
+const { toConnectionError, validateConnection } = await import('./operations')
 
 const connection: ShopwareConnection = {
   url: 'https://shop.test',
@@ -32,71 +29,6 @@ function apiError(status: number, errors: ApiError[] = []): ApiClientError<{ err
     details: { errors },
   })
 }
-
-describe('toShopInfo', () => {
-  test('maps language rows to unique locale codes', () => {
-    const rows: LanguageRow[] = [
-      { id: 'a', locale: { code: 'de-DE' } },
-      { id: 'b', locale: { code: 'en-GB' } },
-    ]
-    expect(toShopInfo(rows)).toEqual({
-      locales: ['de-DE', 'en-GB'],
-      defaultLocale: 'de-DE',
-    })
-  })
-
-  test('uses the system language as the default locale', () => {
-    const rows: LanguageRow[] = [
-      { id: 'a', locale: { code: 'de-DE' } },
-      { id: SYSTEM_LANGUAGE_ID, locale: { code: 'en-GB' } },
-    ]
-    expect(toShopInfo(rows).defaultLocale).toBe('en-GB')
-  })
-
-  test('deduplicates repeated locale codes', () => {
-    const rows: LanguageRow[] = [
-      { id: 'a', locale: { code: 'en-GB' } },
-      { id: 'b', locale: { code: 'en-GB' } },
-    ]
-    expect(toShopInfo(rows).locales).toEqual(['en-GB'])
-  })
-
-  test('skips rows without a locale code', () => {
-    const rows: LanguageRow[] = [
-      { id: 'a', locale: null },
-      { id: 'b', locale: { code: 'fr-FR' } },
-    ]
-    expect(toShopInfo(rows).locales).toEqual(['fr-FR'])
-  })
-
-  test('throws when no usable locales are present', () => {
-    expect(() => toShopInfo([])).toThrow('Shopware returned no usable locales.')
-    expect(() => toShopInfo([{ id: 'a', locale: null }])).toThrow()
-  })
-})
-
-describe('parseLanguageRows', () => {
-  test('accepts well-formed rows', () => {
-    const rows = [
-      { id: 'a', locale: { code: 'de-DE' } },
-      { id: 'b', locale: null },
-    ]
-    expect(parseLanguageRows(rows)).toEqual(rows)
-  })
-
-  test('accepts an empty array', () => {
-    expect(parseLanguageRows([])).toEqual([])
-  })
-
-  test('rejects a malformed response shape', () => {
-    expect(() => parseLanguageRows({ not: 'an array' })).toThrow(
-      'Shopware returned an unexpected response shape for languages.',
-    )
-    expect(() => parseLanguageRows([{ id: 42 }])).toThrow(
-      'Shopware returned an unexpected response shape for languages.',
-    )
-  })
-})
 
 describe('toConnectionError', () => {
   test('400 surfaces the validation detail, not an auth message', () => {
@@ -209,25 +141,5 @@ describe('validateConnection', () => {
       throw apiError(401)
     }
     await expect(validateConnection(connection)).rejects.toBeInstanceOf(ShopwareConnectionError)
-  })
-})
-
-describe('fetchShopInfo', () => {
-  test('parses the language search into shop info', async () => {
-    nextInvoke = async (action) => {
-      expect(action).toContain('/search/language')
-      return { data: { data: [{ id: 'a', locale: { code: 'de-DE' } }] } }
-    }
-    expect(await fetchShopInfo(connection)).toEqual({
-      locales: ['de-DE'],
-      defaultLocale: 'de-DE',
-    })
-  })
-
-  test('maps a failed request to ShopwareConnectionError', async () => {
-    nextInvoke = async () => {
-      throw apiError(403)
-    }
-    await expect(fetchShopInfo(connection)).rejects.toBeInstanceOf(ShopwareConnectionError)
   })
 })
