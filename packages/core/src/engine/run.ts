@@ -1,4 +1,4 @@
-import type { LoadedConfig } from '../config'
+import { ConfigError, type LoadedConfig } from '../config'
 import { recordHash } from '../define'
 import type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
 import {
@@ -6,6 +6,7 @@ import {
   estimateSyncBytes,
   fetchShopContext,
   type ShopContext,
+  type ShopContextFetcher,
 } from '../shopware'
 import { buildWritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
@@ -144,8 +145,17 @@ function partialWrite(w: EntityWrite, committed: number): EntityWrite | null {
 export async function runUp(opts: RunOptions): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
   const tx = resolveTransaction(opts)
+  const plugins = loaded.plugins
   const files = await discoverDataFiles(loaded.projectRoot)
-  const shopContext = opts.shopContext ?? (await fetchShopContext(loaded.connection))
+  const extraFetchers: ShopContextFetcher[] = plugins.flatMap((plugin) => plugin.fetchers ?? [])
+  const shopContext = opts.shopContext ?? (await fetchShopContext(loaded.connection, extraFetchers))
+  for (const plugin of plugins) {
+    try {
+      await plugin.setup?.({ shopContext })
+    } catch (error) {
+      throw new ConfigError(`Plugin "${plugin.name}" setup failed.`, { cause: error })
+    }
+  }
   const drained = await evaluateDataFiles(files)
   const plan = buildWritePlan(drained, shopContext)
 

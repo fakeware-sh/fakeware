@@ -72,3 +72,23 @@ type RecordShape<E extends EntityName> = { $key?: string } & {
 }
 
 export type DefineRecord<E extends EntityName> = RecordShape<E> | ((ctx: Ctx) => RecordShape<E>)
+
+export interface EntityRegistry {}
+
+export type RegistryEntityName = keyof EntityRegistry & string
+
+type AuthoredField<T> = T extends (ctx: Ctx) => infer R ? (ctx: Ctx) => R : T | ((ctx: Ctx) => T)
+
+type RegistryRecordShape<E extends RegistryEntityName> = { $key?: string } & {
+  [K in keyof EntityRegistry[E] as Exclude<K, '$key'>]: AuthoredField<EntityRegistry[E][K]>
+}
+
+type RegistryRecord<E extends RegistryEntityName> =
+  | RegistryRecordShape<E>
+  | ((ctx: Ctx) => RegistryRecordShape<E>)
+
+export type RecordFor<E extends EntityName | RegistryEntityName> = E extends EntityName
+  ? DefineRecord<E>
+  : E extends RegistryEntityName
+    ? RegistryRecord<E>
+    : never

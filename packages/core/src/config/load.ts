@@ -1,5 +1,6 @@
 import { access, readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
+import { type FakewarePlugin, loadPlugins } from '../plugin'
 import { loadModule } from '../runtime'
 import type { ShopwareConnection } from '../shopware'
 import type { ConfigEnv, FakewareConfigFn } from './define'
@@ -20,6 +21,7 @@ export interface LoadedConfig {
   connection: ShopwareConnection
   configPath: string
   projectRoot: string
+  plugins: FakewarePlugin[]
 }
 
 async function fileExists(path: string): Promise<boolean> {
@@ -106,5 +108,13 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
     )
   }
 
-  return { config: parsed.data, connection: shopware, configPath, projectRoot }
+  const plugins = loadPlugins(raw.plugins)
+
+  return {
+    config: parsed.data,
+    connection: shopware,
+    configPath,
+    projectRoot,
+    plugins,
+  }
 }

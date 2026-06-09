@@ -279,11 +279,14 @@ export async function fetchShopContext(
   const fetchers = [...BUILT_IN_FETCHERS, ...extraFetchers]
   const data = emptyData()
   const results = await Promise.all(
-    fetchers.map(async (f) => {
+    fetchers.map(async (f, i) => {
       try {
         return await f.fetch(client)
       } catch (error) {
-        throw toConnectionError(connection, error)
+        if (i < BUILT_IN_FETCHERS.length) throw toConnectionError(connection, error)
+        throw new ShopwareConnectionError(`Plugin fetcher for "${f.entity}" failed.`, {
+          cause: error,
+        })
       }
     }),
   )
