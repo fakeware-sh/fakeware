@@ -1,11 +1,11 @@
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
 import { defineRecords, type RecordValue, type RefIndex } from './registry'
-import type { DefineRecord, EntityName } from './schema'
+import type { EntityName, RecordFor, RegistryEntityName } from './schema'
 
-export function define<const E extends EntityName>(
+export function define<const E extends EntityName | RegistryEntityName>(
   entity: E,
-  records: DefineRecord<E> | readonly DefineRecord<E>[],
+  records: RecordFor<E> | readonly RecordFor<E>[],
 ): void {
   defineRecords(entity, records as RecordValue | RecordValue[])
 }

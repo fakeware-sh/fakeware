@@ -96,4 +96,32 @@ describe('loadConfig', () => {
   test('throws ConfigError when no config file is found', async () => {
     await expect(loadConfig({ cwd: dir })).rejects.toBeInstanceOf(ConfigError)
   })
+
+  test('carries plugins through with their functions intact', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `const plugin = {\n` +
+        `  name: 'demo',\n` +
+        `  fetchers: [{ entity: 'warehouses', fetch: async () => ({ data: [{ id: 'wh-1' }] }), merge: () => {} }],\n` +
+        `  setup: async () => {},\n` +
+        `}\n` +
+        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' }, plugins: [plugin] })\n`,
+    )
+    const loaded = await loadConfig({ cwd: dir })
+    expect(loaded.plugins).toHaveLength(1)
+    expect(loaded.plugins[0]?.name).toBe('demo')
+    expect(typeof loaded.plugins[0]?.setup).toBe('function')
+    const fetcher = loaded.plugins[0]?.fetchers?.[0]
+    expect(typeof fetcher?.fetch).toBe('function')
+    expect(await fetcher?.fetch({} as never)).toEqual({ data: [{ id: 'wh-1' }] })
+  })
+
+  test('defaults plugins to an empty array when none are configured', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+    )
+    const loaded = await loadConfig({ cwd: dir })
+    expect(loaded.plugins).toEqual([])
+  })
 })

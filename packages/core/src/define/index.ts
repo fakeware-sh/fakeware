@@ -6,4 +6,10 @@ export { isPlainObject } from './is-plain-object'
 export type { DrainedEntries, RawEntry, RecordValue, RefIndex } from './registry'
 export { buildRefIndex, drain, resetRegistry } from './registry'
 export { resolveValue } from './resolve'
-export type { DefineRecord, EntityName } from './schema'
+export type {
+  DefineRecord,
+  EntityName,
+  EntityRegistry,
+  RecordFor,
+  RegistryEntityName,
+} from './schema'

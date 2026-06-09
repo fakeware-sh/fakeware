@@ -12,6 +12,7 @@ const loaded = {
   connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
   configPath: `${projectRoot}/fakeware.config.ts`,
   projectRoot,
+  plugins: [],
 }
 
 const sink = createInMemorySink()

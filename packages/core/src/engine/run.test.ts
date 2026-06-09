@@ -31,6 +31,7 @@ function loadedFor(
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     configPath: join(dir, 'fakeware.config.ts'),
     projectRoot: dir,
+    plugins: [],
   }
 }
 

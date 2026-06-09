@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { FakewarePlugin } from '../plugin/define'
 
 export const shopwareSchema = z.object({
   url: z.string().min(1, 'shopware.url is required'),
@@ -20,4 +21,6 @@ export type TransactionConfig = z.output<typeof transactionSchema>
 
 export type FakewareConfig = z.output<typeof fakewareConfigSchema>
 
-export type FakewareUserConfig = z.input<typeof fakewareConfigSchema>
+export type FakewareUserConfig = z.input<typeof fakewareConfigSchema> & {
+  plugins?: FakewarePlugin[]
+}
