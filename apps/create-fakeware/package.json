@@ -1,6 +1,6 @@
 {
   "name": "create-fakeware",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Scaffold a Fakeware project",
   "type": "module",
   "license": "MIT",
