@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { define, drain, ref, resetRegistry, setActiveRefIndex } from '../define'
+import { currency, ShopContextError } from '../shopware/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { buildWritePlan } from './build-graph'
 import { GraphError } from './errors'
 
-const shopContext = fakeShopContext()
+const shopContext = fakeShopContext({
+  countries: [{ id: 'country-de', name: 'Germany', iso: 'DE', iso3: 'DEU' }],
+  salutations: [{ id: 'sal-mr', name: 'Mr.', salutationKey: 'mr', displayName: 'Mr.' }],
+})
 
 beforeEach(() => {
   resetRegistry()
@@ -38,5 +42,23 @@ describe('buildWritePlan', () => {
     define('product', { $key: 'x', cmsPageId: () => ref('category/y') })
     define('category', { $key: 'y', cmsPageId: () => ref('product/x') })
     expect(() => buildWritePlan(drain(), shopContext)).toThrow(GraphError)
+  })
+
+  test('resolves shop lookups inside record functions, via helper and ctx.shop', () => {
+    define('order', { $key: 'a', currencyId: () => currency('EUR').id })
+    define('order_address', {
+      $key: 'a',
+      countryId: (ctx) => ctx.shop.country('DE').id,
+      salutationId: (ctx) => ctx.shop.salutation('mr').id,
+    })
+    const plan = buildWritePlan(drain(), shopContext)
+    expect(plan.records.get('order')?.[0]?.currencyId).toBe('currency-eur')
+    expect(plan.records.get('order_address')?.[0]?.countryId).toBe('country-de')
+    expect(plan.records.get('order_address')?.[0]?.salutationId).toBe('sal-mr')
+  })
+
+  test('surfaces ShopContextError for an unknown lookup key', () => {
+    define('order', { $key: 'a', currencyId: () => currency('GBP').id })
+    expect(() => buildWritePlan(drain(), shopContext)).toThrow(ShopContextError)
   })
 })
