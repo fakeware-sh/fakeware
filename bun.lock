@@ -15,7 +15,7 @@
     },
     "apps/cli": {
       "name": "@fakeware/cli",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "bin": {
         "fakeware": "./dist/index.mjs",
       },
@@ -34,7 +34,7 @@
     },
     "apps/create-fakeware": {
       "name": "create-fakeware",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "bin": {
         "create-fakeware": "./dist/index.mjs",
       },
@@ -47,7 +47,7 @@
     },
     "packages/core": {
       "name": "@fakeware/core",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "dependencies": {
         "@shopware/api-client": "1.5.0",
         "jiti": "2.7.0",
@@ -262,7 +262,7 @@
 
     "sade": ["sade@1.8.1", "", { "dependencies": { "mri": "^1.1.0" } }, "sha512-xal3CZX1Xlo/k4ApwCFrHVACi9fBqJ7V+mwhBsuf/1IOKbBy098Fex+Wa/5QMubw09pSZ/u8EY8PWgevJsXp1A=="],
 
-    "semver": ["semver@7.8.2", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-c8jsqUZm3omBOI66G90z1Dyw5z622G8oLG+omfsHBJf3CWQTlOcwOjvOG6wtiNfW6anKm/eA39LMwMtMez2TiQ=="],
+    "semver": ["semver@7.8.3", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-wnilbGyMxzbY7dNOl7jpKbLSjcfeweJWU5j4+u5qW+6/wuGD9KzIGOyZnQVSBM9E7DtWaaH3CyHkppYrKYoxwg=="],
 
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.9](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.8...core-v0.0.9) (2026-06-09)
+
+
+### Features
+
+* add plugin system ([d878014](https://github.com/fakeware-sh/fakeware/commit/d8780149af6f40543a54e541fe9babbb37cff5ea))
+* **core:** add dynamic Shopware shop context for id-free lookups ([c6a5e97](https://github.com/fakeware-sh/fakeware/commit/c6a5e97a8431e35fcb0a51adccee518bc0c368f0))
+
 ## [0.0.8](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.7...core-v0.0.8) (2026-06-08)
 
 

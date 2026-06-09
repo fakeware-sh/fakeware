@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.0.10](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.9...cli-v0.0.10) (2026-06-09)
+
+
+### Features
+
+* **core:** add dynamic Shopware shop context for id-free lookups ([c6a5e97](https://github.com/fakeware-sh/fakeware/commit/c6a5e97a8431e35fcb0a51adccee518bc0c368f0))
+
+
+### Bug Fixes
+
+* node types in tsconfig scaffold ([2080273](https://github.com/fakeware-sh/fakeware/commit/2080273472827b51e338a37d83001ca2993eb608))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.9
+
 ## [0.0.9](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.8...cli-v0.0.9) (2026-06-08)
 
 
