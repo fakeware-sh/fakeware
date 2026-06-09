@@ -3,8 +3,3 @@ export interface ShopwareConnection {
   clientId: string
   clientSecret: string
 }
-
-export interface ShopInfo {
-  locales: string[]
-  defaultLocale: string
-}

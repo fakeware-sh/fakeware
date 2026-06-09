@@ -10,6 +10,7 @@ import {
   setActiveRefIndex,
 } from '../define'
 import type { SinkRecord } from '../domain'
+import { type ShopContext, setActiveShopContext, shopLookup } from '../shopware/shop-context'
 import { GraphError } from './errors'
 
 export interface WritePlan {
@@ -69,7 +70,7 @@ function topoSort(entities: string[], edges: Map<string, Set<string>>): string[]
   return ordered
 }
 
-export function buildWritePlan(drained: DrainedEntries): WritePlan {
+export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext): WritePlan {
   const { refIndex, ids } = buildRefIndex(drained)
   const ownerById = ownerByIdOf(refIndex)
   const entities = drained.map((d) => d.entity)
@@ -78,6 +79,7 @@ export function buildWritePlan(drained: DrainedEntries): WritePlan {
   const edges = new Map<string, Set<string>>(entities.map((e) => [e, new Set<string>()]))
 
   setActiveRefIndex(refIndex)
+  setActiveShopContext(shopContext)
   try {
     for (const { entity, entries } of drained) {
       const out: SinkRecord[] = []
@@ -87,6 +89,7 @@ export function buildWritePlan(drained: DrainedEntries): WritePlan {
           count: entries.length,
           ref: refById,
           refs: refsByEntity,
+          shop: shopLookup,
         }
         const payload = resolveValue(entry.value, ctx) as Record<string, unknown>
         const id = ids.get(entry) as string
@@ -103,6 +106,7 @@ export function buildWritePlan(drained: DrainedEntries): WritePlan {
     }
   } finally {
     setActiveRefIndex(undefined)
+    setActiveShopContext(undefined)
   }
 
   return { order: topoSort(entities, edges), records }

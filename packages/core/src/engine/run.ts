@@ -1,7 +1,12 @@
 import type { LoadedConfig } from '../config'
 import { recordHash } from '../define'
 import type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
-import { ATOMIC_REQUEST_BYTE_LIMIT, estimateSyncBytes } from '../shopware'
+import {
+  ATOMIC_REQUEST_BYTE_LIMIT,
+  estimateSyncBytes,
+  fetchShopContext,
+  type ShopContext,
+} from '../shopware'
 import { buildWritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
 import { TransactionError } from './errors'
@@ -51,6 +56,7 @@ export interface RunOptions {
   fakewareVersion?: string
   now?: string
   transaction?: TransactionOptions
+  shopContext?: ShopContext
 }
 
 export interface UpResult {
@@ -139,8 +145,9 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
   const tx = resolveTransaction(opts)
   const files = await discoverDataFiles(loaded.projectRoot)
+  const shopContext = opts.shopContext ?? (await fetchShopContext(loaded.connection))
   const drained = await evaluateDataFiles(files)
-  const plan = buildWritePlan(drained)
+  const plan = buildWritePlan(drained, shopContext)
 
   const prior = priorHashes(await readManifest(loaded.projectRoot, loaded.connection.url))
 

@@ -1,8 +1,7 @@
 import { ApiClientError, type ApiError } from '@shopware/api-client'
 import { createShopwareClient, REQUEST_TIMEOUT_MS } from './client'
 import { ShopwareConnectionError } from './errors'
-import { parseLanguageRows, toShopInfo } from './locale'
-import type { ShopInfo, ShopwareConnection } from './types'
+import type { ShopwareConnection } from './types'
 
 function safeJsonParse<T>(input: string): T | null {
   try {
@@ -109,18 +108,6 @@ export async function validateConnection(connection: ShopwareConnection): Promis
   const client = createShopwareClient(connection)
   try {
     await client.invoke('infoShopwareVersion get /_info/version')
-  } catch (error) {
-    throw toConnectionError(connection, error)
-  }
-}
-
-export async function fetchShopInfo(connection: ShopwareConnection): Promise<ShopInfo> {
-  const client = createShopwareClient(connection)
-  try {
-    const { data } = await client.invoke('searchLanguage post /search/language', {
-      body: { associations: { locale: {} }, limit: 500 },
-    })
-    return toShopInfo(parseLanguageRows(data.data ?? []))
   } catch (error) {
     throw toConnectionError(connection, error)
   }

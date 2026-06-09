@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
+import { shopLookup } from '../shopware/shop-context'
 import type { Ctx } from './ctx'
 import { define, many, ref, refs, setActiveRefIndex } from './define'
 import { RefError } from './errors'
@@ -45,7 +46,7 @@ describe('define + many', () => {
 })
 
 describe('resolveValue', () => {
-  const ctx: Ctx = { index: 3, count: 9, ref: () => 'r', refs: () => [] }
+  const ctx: Ctx = { index: 3, count: 9, ref: () => 'r', refs: () => [], shop: shopLookup }
 
   test('calls functions with ctx and recurses into the result', () => {
     expect(resolveValue((c: Ctx) => ({ i: c.index }), ctx)).toEqual({ i: 3 })

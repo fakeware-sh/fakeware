@@ -4,11 +4,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LoadedConfig } from '../config'
 import { createInMemorySink } from '../domain'
+import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { TransactionError } from './errors'
 import { buildManifest, readManifest, writeManifest } from './manifest'
-import { type OnError, runDown, runUp } from './run'
+import { type OnError, type RunOptions, runDown, runUp } from './run'
 
 const coreIndex = join(import.meta.dir, '..', 'index.ts')
+
+const shopContext = fakeShopContext()
+
+function up(opts: Omit<RunOptions, 'shopContext'>): ReturnType<typeof runUp> {
+  return runUp({ shopContext, ...opts })
+}
 
 let counter = 0
 
@@ -63,7 +70,7 @@ describe('runUp / runDown', () => {
   test('upserts every entity in dependency order and writes a manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const sink = createInMemorySink()
-    const result = await runUp({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+    const result = await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
 
     const upserts = sink.calls.filter((c) => c.op === 'upsert').map((c) => c.entity)
     expect(upserts.indexOf('tax')).toBeLessThan(upserts.indexOf('product'))
@@ -96,7 +103,7 @@ describe('runUp / runDown', () => {
     )
 
     const sink = createInMemorySink()
-    const result = await runUp({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+    const result = await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
 
     const upserts = sink.calls.filter((c) => c.op === 'upsert')
     expect(upserts).toHaveLength(1)
@@ -107,7 +114,7 @@ describe('runUp / runDown', () => {
   test('dry-run writes nothing and leaves no manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
     const sink = createInMemorySink()
-    const result = await runUp({ loaded: loadedFor(dir), sink, dryRun: true })
+    const result = await up({ loaded: loadedFor(dir), sink, dryRun: true })
     expect(sink.calls).toHaveLength(0)
     expect(result.manifestWritten).toBe(false)
   })
@@ -115,7 +122,7 @@ describe('runUp / runDown', () => {
   test('down deletes exactly the manifest records (reverse order) and removes the manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const loaded = loadedFor(dir)
-    await runUp({ loaded, sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
+    await up({ loaded, sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
 
     const sink = createInMemorySink()
     const result = await runDown({ loaded, sink })
@@ -152,7 +159,7 @@ describe('runUp transactions', () => {
   test('atomic path issues a single applyAtomic with every entity in dependency order', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const sink = createInMemorySink()
-    const result = await runUp({
+    const result = await up({
       loaded: loadedFor(dir, atomic),
       sink,
       now: 'T',
@@ -174,7 +181,7 @@ describe('runUp transactions', () => {
     const sink = createInMemorySink({ failApplyAtomic: true })
 
     await expect(
-      runUp({ loaded: loadedFor(dir, atomic), sink, now: 'T', fakewareVersion: '1' }),
+      up({ loaded: loadedFor(dir, atomic), sink, now: 'T', fakewareVersion: '1' }),
     ).rejects.toThrow()
 
     expect(sink.snapshot().size).toBe(0)
@@ -187,7 +194,7 @@ describe('runUp transactions', () => {
 
     let caught: unknown
     try {
-      await runUp({
+      await up({
         loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
         sink,
         now: 'T',
@@ -211,7 +218,7 @@ describe('runUp transactions', () => {
 
     let caught: unknown
     try {
-      await runUp({
+      await up({
         loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
         sink,
         now: 'T',
@@ -235,7 +242,7 @@ describe('runUp transactions', () => {
 
     let caught: unknown
     try {
-      await runUp({
+      await up({
         loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
         sink,
         now: 'T',
@@ -258,7 +265,7 @@ describe('runUp transactions', () => {
   test('saga rollback only deletes records this run created, not pre-existing updates', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const firstSink = createInMemorySink()
-    await runUp({
+    await up({
       loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
       sink: firstSink,
       now: 'T',
@@ -272,7 +279,7 @@ describe('runUp transactions', () => {
     )
 
     const sink = createInMemorySink({ failUpsertOn: 'product' })
-    await runUp({
+    await up({
       loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
       sink,
       now: 'T',
@@ -289,7 +296,7 @@ describe('runUp transactions', () => {
     const sink = createInMemorySink({ failUpsertOn: 'product' })
 
     await expect(
-      runUp({
+      up({
         loaded: loadedFor(dir, { onError: 'stop', atomic: false }),
         sink,
         now: 'T',
@@ -308,7 +315,7 @@ describe('runUp transactions', () => {
 
     let caught: unknown
     try {
-      await runUp({
+      await up({
         loaded: loadedFor(dir, { onError: 'continue', atomic: false }),
         sink,
         now: 'T',
@@ -333,7 +340,7 @@ define('product', many(10, (ctx) => ({ name: 'p' + ctx.index, blob: 'x'.repeat(1
     await writeFile(join(dir, 'data', 'product.ts'), big)
 
     const sink = createInMemorySink()
-    const result = await runUp({
+    const result = await up({
       loaded: loadedFor(dir, atomic),
       sink,
       now: 'T',
@@ -348,7 +355,7 @@ define('product', many(10, (ctx) => ({ name: 'p' + ctx.index, blob: 'x'.repeat(1
   test('atomic:false forces the saga path even for a small dataset', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
     const sink = createInMemorySink()
-    const result = await runUp({
+    const result = await up({
       loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
       sink,
       now: 'T',
@@ -361,10 +368,10 @@ define('product', many(10, (ctx) => ({ name: 'p' + ctx.index, blob: 'x'.repeat(1
 
   test('a no-op run touches neither path and writes no manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
-    await runUp({ loaded: loadedFor(dir, atomic), sink: createInMemorySink(), now: 'T' })
+    await up({ loaded: loadedFor(dir, atomic), sink: createInMemorySink(), now: 'T' })
 
     const sink = createInMemorySink()
-    const result = await runUp({ loaded: loadedFor(dir, atomic), sink, now: 'T' })
+    const result = await up({ loaded: loadedFor(dir, atomic), sink, now: 'T' })
     expect(result.mode).toBe('noop')
     expect(sink.calls).toHaveLength(0)
   })

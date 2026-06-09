@@ -1,7 +1,7 @@
 import * as p from '@clack/prompts'
 import { GraphError, LoadModuleError, RefError, TransactionError } from '@fakeware/core'
 import { ConfigError } from '@fakeware/core/config'
-import { ShopwareConnectionError } from '@fakeware/core/shopware'
+import { ShopContextError, ShopwareConnectionError } from '@fakeware/core/shopware'
 
 function transactionLines(error: TransactionError): string[] {
   const lines = [error.message]
@@ -27,6 +27,7 @@ export function reportError(error: unknown): never {
     error instanceof GraphError ||
     error instanceof LoadModuleError ||
     error instanceof RefError ||
+    error instanceof ShopContextError ||
     error instanceof ShopwareConnectionError
   ) {
     p.cancel(error.message)
