@@ -24,10 +24,11 @@ function parseRows<T>(entity: string, schema: z.ZodType<T>, rows: unknown): T[] 
 }
 
 function rowsOf(raw: unknown): unknown {
-  if (raw && typeof raw === 'object' && 'data' in raw) {
-    return (raw as { data?: unknown }).data ?? []
+  let value = raw
+  while (value && typeof value === 'object' && !Array.isArray(value) && 'data' in value) {
+    value = (value as { data?: unknown }).data
   }
-  return raw ?? []
+  return value ?? []
 }
 
 const currencyRow = z.object({
