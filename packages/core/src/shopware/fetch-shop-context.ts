@@ -279,6 +279,11 @@ export async function fetchShopContext(
   const client = createShopwareClient(connection)
   const fetchers = [...BUILT_IN_FETCHERS, ...extraFetchers]
   const data = emptyData()
+  try {
+    await client.invoke('infoShopwareVersion get /_info/version')
+  } catch (error) {
+    throw toConnectionError(connection, error)
+  }
   const results = await Promise.all(
     fetchers.map(async (f, i) => {
       try {
