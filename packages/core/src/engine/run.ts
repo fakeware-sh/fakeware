@@ -1,12 +1,19 @@
-import { ConfigError, type LoadedConfig } from '../config'
+import type { LoadedConfig } from '../config'
 import { recordHash } from '../define'
 import type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
+import type { ConfigContext, FakewarePlugin, PluginContext } from '../plugin'
+import {
+  collectFetchers,
+  createPluginLogger,
+  type LogSink,
+  runPluginHook,
+  runPluginResultHook,
+} from '../plugin'
 import {
   ATOMIC_REQUEST_BYTE_LIMIT,
   estimateSyncBytes,
   fetchShopContext,
   type ShopContext,
-  type ShopContextFetcher,
 } from '../shopware'
 import { buildWritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
@@ -58,6 +65,8 @@ export interface RunOptions {
   now?: string
   transaction?: TransactionOptions
   shopContext?: ShopContext
+  mode?: string
+  logSink?: LogSink
 }
 
 export interface UpResult {
@@ -91,6 +100,24 @@ function priorHashes(manifest: Manifest | null): Map<string, Map<string, string>
 
 function resolveTransaction(opts: RunOptions): TransactionOptions {
   return opts.transaction ?? opts.loaded.config.transaction
+}
+
+function configContextFor(opts: RunOptions, plugin: FakewarePlugin): ConfigContext {
+  return {
+    config: opts.loaded.config,
+    connection: opts.loaded.connection,
+    projectRoot: opts.loaded.projectRoot,
+    mode: opts.mode ?? 'development',
+    logger: createPluginLogger(plugin.name, opts.logSink),
+  }
+}
+
+function pluginContextFor(
+  opts: RunOptions,
+  plugin: FakewarePlugin,
+  shopContext: ShopContext,
+): PluginContext {
+  return { ...configContextFor(opts, plugin), shopContext }
 }
 
 function diffEntity(
@@ -143,19 +170,42 @@ function partialWrite(w: EntityWrite, committed: number): EntityWrite | null {
 }
 
 export async function runUp(opts: RunOptions): Promise<UpResult> {
+  const { loaded } = opts
+  const plugins = loaded.plugins
+  const dryRun = opts.dryRun ?? false
+
+  await runPluginHook(plugins, 'configResolved', 'configResolved', (plugin) =>
+    configContextFor(opts, plugin),
+  )
+
+  const shopContext =
+    opts.shopContext ?? (await fetchShopContext(loaded.connection, collectFetchers(plugins)))
+
+  await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
+    pluginContextFor(opts, plugin, shopContext),
+  )
+  await runPluginHook(plugins, 'beforeApply', 'beforeApply', (plugin) => ({
+    ...pluginContextFor(opts, plugin, shopContext),
+    dryRun,
+  }))
+
+  const result = await applyPlan(opts, shopContext)
+
+  await runPluginResultHook(
+    plugins,
+    'afterApply',
+    'afterApply',
+    (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
+    result,
+  )
+
+  return result
+}
+
+async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
   const tx = resolveTransaction(opts)
-  const plugins = loaded.plugins
   const files = await discoverDataFiles(loaded.projectRoot)
-  const extraFetchers: ShopContextFetcher[] = plugins.flatMap((plugin) => plugin.fetchers ?? [])
-  const shopContext = opts.shopContext ?? (await fetchShopContext(loaded.connection, extraFetchers))
-  for (const plugin of plugins) {
-    try {
-      await plugin.setup?.({ shopContext })
-    } catch (error) {
-      throw new ConfigError(`Plugin "${plugin.name}" setup failed.`, { cause: error })
-    }
-  }
   const drained = await evaluateDataFiles(files)
   const plan = buildWritePlan(drained, shopContext)
 
@@ -358,10 +408,52 @@ function restrictManifest(
 }
 
 export async function runDown(opts: RunOptions): Promise<DownResult> {
-  const { loaded, sink, dryRun, reporter } = opts
+  const { loaded } = opts
+  const plugins = loaded.plugins
+  const dryRun = opts.dryRun ?? false
+
+  await runPluginHook(plugins, 'configResolved', 'configResolved', (plugin) =>
+    configContextFor(opts, plugin),
+  )
+
   const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
   if (!manifest) return { steps: [], reverted: false }
 
+  const needsContext = plugins.some(
+    (plugin) =>
+      plugin.hooks?.contextReady || plugin.hooks?.beforeRevert || plugin.hooks?.afterRevert,
+  )
+  const shopContext = needsContext
+    ? (opts.shopContext ?? (await fetchShopContext(loaded.connection, collectFetchers(plugins))))
+    : opts.shopContext
+
+  if (shopContext) {
+    await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
+      pluginContextFor(opts, plugin, shopContext),
+    )
+    await runPluginHook(plugins, 'beforeRevert', 'beforeRevert', (plugin) => ({
+      ...pluginContextFor(opts, plugin, shopContext),
+      dryRun,
+    }))
+  }
+
+  const result = await revertManifest(opts, manifest)
+
+  if (shopContext) {
+    await runPluginResultHook(
+      plugins,
+      'afterRevert',
+      'afterRevert',
+      (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
+      result,
+    )
+  }
+
+  return result
+}
+
+async function revertManifest(opts: RunOptions, manifest: Manifest): Promise<DownResult> {
+  const { loaded, sink, dryRun, reporter } = opts
   reporter?.onTransactionStart?.({ mode: 'saga' })
 
   const steps: ReportStep[] = []

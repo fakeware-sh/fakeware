@@ -77,6 +77,7 @@ const RESPONSES: Record<string, unknown> = {
 }
 
 const defaultRespondTo = async (action: string): Promise<unknown> => {
+  if (action.includes('/_info/version')) return { version: '6.0.0' }
   const key = Object.keys(RESPONSES).find((k) => action.includes(k))
   if (!key) throw new Error(`unexpected action: ${action}`)
   return RESPONSES[key]
@@ -159,14 +160,34 @@ describe('fetchShopContext', () => {
   test('extra fetchers contribute to the extensions bag', async () => {
     const ctx = await fetchShopContext(connection, [
       {
-        entity: 'warehouses',
-        fetch: async () => ({ data: [{ id: 'wh-1' }] }),
-        merge: (data, raw) => {
-          data.extensions.warehouses = (raw as { data: unknown[] }).data
+        plugin: 'warehouses',
+        fetcher: {
+          entity: 'warehouses',
+          fetch: async () => ({ data: [{ id: 'wh-1' }] }),
+          merge: (data, raw) => {
+            data.extensions.warehouses = (raw as { data: unknown[] }).data
+          },
         },
       },
     ])
     expect(ctx.extensions.warehouses).toEqual([{ id: 'wh-1' }])
+  })
+
+  test('a failing plugin fetcher is attributed to its plugin and entity', async () => {
+    const run = fetchShopContext(connection, [
+      {
+        plugin: 'warehouses',
+        fetcher: {
+          entity: 'depots',
+          fetch: async () => {
+            throw new Error('boom')
+          },
+          merge: () => {},
+        },
+      },
+    ])
+    await expect(run).rejects.toBeInstanceOf(ShopwareConnectionError)
+    await expect(run).rejects.toThrow(/Plugin "warehouses" fetcher "depots" failed/)
   })
 })
 

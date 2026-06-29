@@ -62,6 +62,19 @@ describe('scaffoldProject', () => {
     expect(gitignore.split('\n')).toContain('.fakeware/')
   })
 
+  test('creates a git-ignored plugins folder for local plugin development', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({ dir, force: false, values })
+
+    const names = created.map((f) => f.path.split('/').slice(-2).join('/'))
+    expect(names).toContain('plugins/.keep')
+    expect(readFileSync(join(dir, 'plugins', '.keep'), 'utf8')).toBe('')
+
+    const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8').split('\n')
+    expect(gitignore).toContain('plugins/*')
+    expect(gitignore).toContain('!plugins/.keep')
+  })
+
   test('writes .gitignore before .env so the secret is never unignored on disk', async () => {
     const dir = tmp()
     const created = await scaffoldProject({ dir, force: false, values })

@@ -103,14 +103,14 @@ describe('loadConfig', () => {
         `const plugin = {\n` +
         `  name: 'demo',\n` +
         `  fetchers: [{ entity: 'warehouses', fetch: async () => ({ data: [{ id: 'wh-1' }] }), merge: () => {} }],\n` +
-        `  setup: async () => {},\n` +
+        `  hooks: { contextReady: async () => {} },\n` +
         `}\n` +
         `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' }, plugins: [plugin] })\n`,
     )
     const loaded = await loadConfig({ cwd: dir })
     expect(loaded.plugins).toHaveLength(1)
     expect(loaded.plugins[0]?.name).toBe('demo')
-    expect(typeof loaded.plugins[0]?.setup).toBe('function')
+    expect(typeof loaded.plugins[0]?.hooks?.contextReady).toBe('function')
     const fetcher = loaded.plugins[0]?.fetchers?.[0]
     expect(typeof fetcher?.fetch).toBe('function')
     expect(await fetcher?.fetch({} as never)).toEqual({ data: [{ id: 'wh-1' }] })

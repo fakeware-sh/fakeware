@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { FakewarePlugin } from '../plugin/define'
+import type { FakewarePlugin } from '../plugin'
 
 export const shopwareSchema = z.object({
   url: z.string().min(1, 'shopware.url is required'),

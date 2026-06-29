@@ -21,8 +21,22 @@ export type {
   UpResult,
 } from './engine'
 export { GraphError, readManifest, runDown, runUp, TransactionError } from './engine'
-export type { FakewarePlugin, PluginContext } from './plugin'
-export { definePlugin } from './plugin'
+export type {
+  ApplyContext,
+  ConfigContext,
+  ErrorContext,
+  FakewarePlugin,
+  LogEntry,
+  LogLevel,
+  LogSink,
+  MaybePromise,
+  PluginContext,
+  PluginHooks,
+  PluginLogger,
+  PluginPhase,
+  RevertContext,
+} from './plugin'
+export { consoleLogSink, definePlugin, PluginError, silentLogSink } from './plugin'
 export { LoadModuleError } from './runtime'
 export type { ShopContextFetcher } from './shopware/fetch-shop-context'
 export type {
@@ -30,6 +44,7 @@ export type {
   ShopContextCountry,
   ShopContextCurrency,
   ShopContextData,
+  ShopContextExtensions,
   ShopContextLanguage,
   ShopContextPaymentMethod,
   ShopContextRecord,

@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ConfigError, type LoadedConfig } from '../config'
+import type { LoadedConfig } from '../config'
 import { createInMemorySink } from '../domain'
 import type { FakewarePlugin } from '../plugin'
-import type { ShopwareClient } from '../shopware/client'
+import { PluginError } from '../plugin'
+import type { ShopwareClient } from '../shopware'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 
 const RESPONSES: Record<string, unknown> = {
@@ -34,6 +35,7 @@ const RESPONSES: Record<string, unknown> = {
 }
 
 const respondTo = async (action: string): Promise<unknown> => {
+  if (action.includes('/_info/version')) return { version: '6.0.0' }
   const key = Object.keys(RESPONSES).find((k) => action.includes(k))
   if (!key) throw new Error(`unexpected action: ${action}`)
   return RESPONSES[key]
@@ -45,7 +47,7 @@ mock.module('../shopware/client', () => ({
     ({ invoke: (action: string) => respondTo(action) }) as unknown as ShopwareClient,
 }))
 
-const { runUp } = await import('./run')
+const { runUp, runDown } = await import('./run')
 
 function loadedFor(dir: string, plugins: FakewarePlugin[]): LoadedConfig {
   return {
@@ -84,32 +86,54 @@ describe('runUp with plugins', () => {
           },
         },
       ],
-      setup: ({ shopContext }) => {
-        seen = shopContext.extensions.warehouses
+      hooks: {
+        contextReady: ({ shopContext }) => {
+          seen = shopContext.extensions.warehouses
+        },
       },
     }
     await runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
     expect(seen).toEqual([{ id: 'wh-1' }])
   })
 
-  test('runs setup hooks in array order after the context is built', async () => {
+  test('runs lifecycle hooks in order across the up run', async () => {
     const order: string[] = []
     const plugin = (name: string): FakewarePlugin => ({
       name,
-      setup: ({ shopContext }) => {
-        expect(shopContext.index.currencyDefault.isoCode).toBe('EUR')
-        order.push(name)
+      hooks: {
+        configResolved: () => {
+          order.push(`${name}:configResolved`)
+        },
+        contextReady: ({ shopContext }) => {
+          expect(shopContext.index.currencyDefault.isoCode).toBe('EUR')
+          order.push(`${name}:contextReady`)
+        },
+        beforeApply: ({ dryRun }) => {
+          order.push(`${name}:beforeApply:${dryRun}`)
+        },
+        afterApply: ({ result }) => {
+          order.push(`${name}:afterApply:${result.mode}`)
+        },
       },
     })
     await runUp({
-      loaded: loadedFor(dir, [plugin('a'), plugin('b'), plugin('c')]),
+      loaded: loadedFor(dir, [plugin('a'), plugin('b')]),
       sink: createInMemorySink(),
       shopContext: fakeShopContext(),
     })
-    expect(order).toEqual(['a', 'b', 'c'])
+    expect(order).toEqual([
+      'a:configResolved',
+      'b:configResolved',
+      'a:contextReady',
+      'b:contextReady',
+      'a:beforeApply:false',
+      'b:beforeApply:false',
+      'a:afterApply:noop',
+      'b:afterApply:noop',
+    ])
   })
 
-  test('a preset shopContext skips the fetch yet still runs setup', async () => {
+  test('a preset shopContext skips the fetch yet still runs hooks', async () => {
     let ran = false
     const plugin: FakewarePlugin = {
       name: 'boom',
@@ -122,8 +146,10 @@ describe('runUp with plugins', () => {
           merge: () => {},
         },
       ],
-      setup: () => {
-        ran = true
+      hooks: {
+        contextReady: () => {
+          ran = true
+        },
       },
     }
     await runUp({
@@ -134,11 +160,13 @@ describe('runUp with plugins', () => {
     expect(ran).toBe(true)
   })
 
-  test('a throwing setup aborts runUp with the plugin name', async () => {
+  test('a throwing hook aborts runUp with a PluginError naming the phase', async () => {
     const plugin: FakewarePlugin = {
       name: 'boom',
-      setup: () => {
-        throw new Error('kaboom')
+      hooks: {
+        contextReady: () => {
+          throw new Error('kaboom')
+        },
       },
     }
     const run = runUp({
@@ -146,7 +174,87 @@ describe('runUp with plugins', () => {
       sink: createInMemorySink(),
       shopContext: fakeShopContext(),
     })
-    await expect(run).rejects.toBeInstanceOf(ConfigError)
-    await expect(run).rejects.toThrow(/Plugin "boom" setup failed/)
+    await expect(run).rejects.toBeInstanceOf(PluginError)
+    await expect(run).rejects.toMatchObject({ plugin: 'boom', phase: 'contextReady' })
+  })
+
+  test('a throwing hook dispatches onError before rethrowing', async () => {
+    let errorPhase: string | undefined
+    const plugin: FakewarePlugin = {
+      name: 'boom',
+      hooks: {
+        beforeApply: () => {
+          throw new Error('kaboom')
+        },
+        onError: ({ phase, error }) => {
+          errorPhase = phase
+          expect((error as Error).message).toBe('kaboom')
+        },
+      },
+    }
+    const run = runUp({
+      loaded: loadedFor(dir, [plugin]),
+      sink: createInMemorySink(),
+      shopContext: fakeShopContext(),
+    })
+    await expect(run).rejects.toBeInstanceOf(PluginError)
+    expect(errorPhase).toBe('beforeApply')
+  })
+})
+
+describe('runDown with plugins', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'fakeware-plugins-down-'))
+    await mkdir(join(dir, 'data'), { recursive: true })
+  })
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  test('runs configResolved even when there is no manifest', async () => {
+    const order: string[] = []
+    const plugin: FakewarePlugin = {
+      name: 'a',
+      hooks: {
+        configResolved: () => {
+          order.push('configResolved')
+        },
+        beforeRevert: () => {
+          order.push('beforeRevert')
+        },
+      },
+    }
+    const result = await runDown({
+      loaded: loadedFor(dir, [plugin]),
+      sink: createInMemorySink(),
+      shopContext: fakeShopContext(),
+    })
+    expect(result.reverted).toBe(false)
+    expect(order).toEqual(['configResolved'])
+  })
+
+  test('runs the revert lifecycle when a manifest exists', async () => {
+    const order: string[] = []
+    const plugin: FakewarePlugin = {
+      name: 'a',
+      hooks: {
+        beforeRevert: ({ dryRun }) => {
+          order.push(`beforeRevert:${dryRun}`)
+        },
+        afterRevert: ({ result }) => {
+          order.push(`afterRevert:${result.reverted}`)
+        },
+      },
+    }
+    const sink = createInMemorySink()
+    const loaded = loadedFor(dir, [plugin])
+    const TAX = `import { define } from '${join(import.meta.dir, '..', 'index.ts')}'\ndefine('tax', [{ $key: 'standard', taxRate: 19 }])\n`
+    await Bun.write(join(dir, 'data', 'tax.ts'), TAX)
+    await runUp({ loaded, sink, shopContext: fakeShopContext() })
+
+    await runDown({ loaded, sink, shopContext: fakeShopContext() })
+    expect(order).toEqual(['beforeRevert:false', 'afterRevert:true'])
   })
 })
