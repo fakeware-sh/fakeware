@@ -1,5 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { fileExists } from '../utils'
 import { FILE_SPECS } from './files'
 import type { ScaffoldValues } from './values'
@@ -31,7 +31,10 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<Written
         throw new ScaffoldError(`${spec.name} already exists. Re-run with --force to overwrite.`)
       }
       const contents = spec.build?.(values) ?? ''
-      if (!dryRun) await writeFile(path, contents)
+      if (!dryRun) {
+        await mkdir(dirname(path), { recursive: true })
+        await writeFile(path, contents)
+      }
       created.push({ path, note: spec.note?.(values) ?? '' })
     } else {
       const existing = (await fileExists(path)) ? await readFile(path, 'utf8') : undefined

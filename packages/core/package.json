@@ -32,6 +32,10 @@
     "./shopware": {
       "types": "./dist/shopware/index.d.mts",
       "import": "./dist/shopware/index.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.mts",
+      "import": "./dist/testing/index.mjs"
     }
   },
   "scripts": {

@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'config/index': 'src/config/index.ts',
     'shopware/index': 'src/shopware/index.ts',
+    'testing/index': 'src/testing/index.ts',
   },
   format: ['esm'],
   dts: true,

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { OwnedFetcher } from '../plugin'
 import { createShopwareClient, type ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
 import { toConnectionError } from './operations'
@@ -274,10 +275,14 @@ export function toShopContext(data: ShopContextData): ShopContext {
 
 export async function fetchShopContext(
   connection: ShopwareConnection,
-  extraFetchers: ShopContextFetcher[] = [],
+  extraFetchers: OwnedFetcher[] = [],
 ): Promise<ShopContext> {
   const client = createShopwareClient(connection)
-  const fetchers = [...BUILT_IN_FETCHERS, ...extraFetchers]
+  const builtIn: OwnedFetcher[] = BUILT_IN_FETCHERS.map((fetcher) => ({
+    plugin: '',
+    fetcher,
+  }))
+  const fetchers = [...builtIn, ...extraFetchers]
   const data = emptyData()
   try {
     await client.invoke('infoShopwareVersion get /_info/version')
@@ -285,19 +290,20 @@ export async function fetchShopContext(
     throw toConnectionError(connection, error)
   }
   const results = await Promise.all(
-    fetchers.map(async (f, i) => {
+    fetchers.map(async ({ plugin, fetcher }) => {
       try {
-        return await f.fetch(client)
+        return await fetcher.fetch(client)
       } catch (error) {
-        if (i < BUILT_IN_FETCHERS.length) throw toConnectionError(connection, error)
-        throw new ShopwareConnectionError(`Plugin fetcher for "${f.entity}" failed.`, {
-          cause: error,
-        })
+        if (!plugin) throw toConnectionError(connection, error)
+        throw new ShopwareConnectionError(
+          `Plugin "${plugin}" fetcher "${fetcher.entity}" failed.`,
+          { cause: error },
+        )
       }
     }),
   )
-  for (const [i, f] of fetchers.entries()) {
-    f.merge(data, results[i])
+  for (const [i, { fetcher }] of fetchers.entries()) {
+    fetcher.merge(data, results[i])
   }
   return toShopContext(data)
 }

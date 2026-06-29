@@ -47,6 +47,10 @@ export interface ShopContextShippingMethod extends ShopContextRecord {
   technicalName: string
 }
 
+export interface ShopContextExtensions {
+  [key: string]: unknown
+}
+
 export interface ShopContextData {
   currencies: ShopContextCurrency[]
   languages: ShopContextLanguage[]
@@ -57,7 +61,7 @@ export interface ShopContextData {
   taxes: ShopContextTax[]
   paymentMethods: ShopContextPaymentMethod[]
   shippingMethods: ShopContextShippingMethod[]
-  extensions: Record<string, unknown>
+  extensions: ShopContextExtensions
 }
 
 export interface ShopContextIndex {

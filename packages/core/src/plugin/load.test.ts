@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { ConfigError } from '../config/errors'
+import { ConfigError } from '../config'
 import type { ShopContextFetcher } from '../shopware'
 import type { FakewarePlugin } from './define'
-import { loadPlugins } from './load'
+import { collectFetchers, loadPlugins } from './load'
 
 const fetcher = (entity: string): ShopContextFetcher => ({
   entity,
@@ -20,12 +20,12 @@ describe('loadPlugins', () => {
     expect(loadPlugins(plugins).map((p) => p.name)).toEqual(['a', 'b', 'c'])
   })
 
-  test('preserves fetcher and setup identity', () => {
+  test('preserves fetcher and hook identity', () => {
     const f = fetcher('warehouses')
-    const setup = async () => {}
-    const [plugin] = loadPlugins([{ name: 'a', fetchers: [f], setup }])
+    const contextReady = async () => {}
+    const [plugin] = loadPlugins([{ name: 'a', fetchers: [f], hooks: { contextReady } }])
     expect(plugin?.fetchers?.[0]).toBe(f)
-    expect(plugin?.setup).toBe(setup)
+    expect(plugin?.hooks?.contextReady).toBe(contextReady)
   })
 
   test('throws ConfigError when a plugin is missing a string name', () => {
@@ -43,13 +43,41 @@ describe('loadPlugins', () => {
     )
   })
 
-  test('throws ConfigError when setup is not a function', () => {
-    expect(() => loadPlugins([{ name: 'a', setup: 'go' } as unknown as FakewarePlugin])).toThrow(
-      /"setup" must be a function/,
+  test('throws ConfigError when hooks is not an object', () => {
+    expect(() => loadPlugins([{ name: 'a', hooks: 'go' } as unknown as FakewarePlugin])).toThrow(
+      /"hooks" must be an object/,
     )
+  })
+
+  test('throws ConfigError when a hook is not a function', () => {
+    expect(() =>
+      loadPlugins([{ name: 'a', hooks: { contextReady: 'go' } } as unknown as FakewarePlugin]),
+    ).toThrow(/hook "contextReady" must be a function/)
+  })
+
+  test('rejects the removed setup field with a migration hint', () => {
+    expect(() =>
+      loadPlugins([{ name: 'a', setup: () => {} } as unknown as FakewarePlugin]),
+    ).toThrow(/"setup" was removed\. Use "hooks\.contextReady"/)
   })
 
   test('throws ConfigError on a duplicate plugin name', () => {
     expect(() => loadPlugins([{ name: 'a' }, { name: 'a' }])).toThrow(/duplicate plugin name "a"/)
+  })
+})
+
+describe('collectFetchers', () => {
+  test('flattens fetchers tagged with their owning plugin name', () => {
+    const wh = fetcher('warehouses')
+    const inv = fetcher('inventory')
+    const owned = collectFetchers([
+      { name: 'a', fetchers: [wh] },
+      { name: 'b' },
+      { name: 'c', fetchers: [inv] },
+    ])
+    expect(owned).toEqual([
+      { plugin: 'a', fetcher: wh },
+      { plugin: 'c', fetcher: inv },
+    ])
   })
 })

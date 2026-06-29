@@ -5,7 +5,7 @@ import { createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import pkg from '../../package.json' with { type: 'json' }
-import { counts, reportError, spinnerReporter } from '../prompts'
+import { counts, pluginLogSink, reportError, spinnerReporter } from '../prompts'
 
 interface UpFlags {
   config?: string
@@ -52,6 +52,7 @@ export function upCommand(): Command {
           dryRun: opts.dryRun,
           fakewareVersion: pkg.version,
           transaction: { onError, atomic },
+          logSink: pluginLogSink(),
           reporter: spinnerReporter({ active: 'Applying', done: 'Applied' }, detail),
         })
 

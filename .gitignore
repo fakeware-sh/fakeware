@@ -12,3 +12,5 @@ dist/
 apps/.test
 /.test
 /test
+/plugins/*
+!/plugins/.keep

@@ -1,4 +1,4 @@
-import type { ShopLookup } from '../shopware/shop-context'
+import type { ShopLookup } from '../shopware'
 
 export interface Ctx {
   index: number

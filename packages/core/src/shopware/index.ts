@@ -13,6 +13,7 @@ export {
   type ShopContextCurrency,
   type ShopContextData,
   ShopContextError,
+  type ShopContextExtensions,
   type ShopContextIndex,
   type ShopContextLanguage,
   type ShopContextPaymentMethod,
