@@ -76,19 +76,21 @@ const RESPONSES: Record<string, unknown> = {
   },
 }
 
-const defaultRespondTo = async (action: string): Promise<unknown> => {
+const defaultRespondTo = async (action: string, _params?: unknown): Promise<unknown> => {
   if (action.includes('/_info/version')) return { version: '6.0.0' }
   const key = Object.keys(RESPONSES).find((k) => action.includes(k))
   if (!key) throw new Error(`unexpected action: ${action}`)
   return RESPONSES[key]
 }
 
-let respondTo: (action: string) => Promise<unknown> = defaultRespondTo
+let respondTo: (action: string, params?: unknown) => Promise<unknown> = defaultRespondTo
 
 mock.module('./client', () => ({
   REQUEST_TIMEOUT_MS: 120_000,
   createShopwareClient: (): ShopwareClient =>
-    ({ invoke: (action: string) => respondTo(action) }) as unknown as ShopwareClient,
+    ({
+      invoke: (action: string, params?: unknown) => respondTo(action, params),
+    }) as unknown as ShopwareClient,
 }))
 
 const { fetchShopContext } = await import('./fetch-shop-context')
@@ -139,6 +141,39 @@ describe('fetchShopContext', () => {
     const ctx = await fetchShopContext(connection)
     expect(ctx.languages.find((l) => l.id === 'lang-en')?.isSystem).toBe(true)
     expect(ctx.languages.find((l) => l.id === 'lang-de')?.isSystem).toBe(false)
+  })
+
+  test('accumulates state machine states across multiple pages', async () => {
+    const pages: Record<number, unknown[]> = {
+      1: [
+        {
+          id: 'os-open',
+          name: 'Open',
+          technicalName: 'open',
+          stateMachine: { technicalName: 'order.state' },
+        },
+      ],
+      2: [
+        {
+          id: 'ro-requested',
+          name: 'Requested',
+          technicalName: 'requested',
+          stateMachine: { technicalName: 'pickware_erp_return_order.state' },
+        },
+      ],
+    }
+    respondTo = (action, params) => {
+      if (action.includes('/search/state-machine-state')) {
+        const page = (params as { body?: { page?: number } } | undefined)?.body?.page ?? 1
+        return Promise.resolve({ data: pages[page] ?? [], total: 2 })
+      }
+      return defaultRespondTo(action)
+    }
+    const ctx = await fetchShopContext(connection)
+    expect(ctx.index.stateByMachineState.get('order.state::open')?.id).toBe('os-open')
+    expect(
+      ctx.index.stateByMachineState.get('pickware_erp_return_order.state::requested')?.id,
+    ).toBe('ro-requested')
   })
 
   test('an unexpected response shape throws ShopwareConnectionError', async () => {
