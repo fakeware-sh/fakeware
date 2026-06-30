@@ -1,6 +1,7 @@
 import { ApiClientError, type ApiError } from '@shopware/api-client'
+import type { SinkRecord } from '../domain'
 import { createShopwareClient, REQUEST_TIMEOUT_MS } from './client'
-import { ShopwareConnectionError } from './errors'
+import { type ParsedApiError, ShopwareApiError, ShopwareConnectionError } from './errors'
 import type { ShopwareConnection } from './types'
 
 function safeJsonParse<T>(input: string): T | null {
@@ -11,7 +12,7 @@ function safeJsonParse<T>(input: string): T | null {
   }
 }
 
-function isTimeoutError(error: unknown): boolean {
+export function isTimeoutError(error: unknown): boolean {
   let current: unknown = error
   while (current instanceof Error) {
     if (current.name === 'TimeoutError') return true
@@ -29,20 +30,78 @@ function missingPrivileges(error: ApiClientError<{ errors: ApiError[] }>): strin
   return []
 }
 
-function fieldName(pointer: string | undefined): string | null {
-  if (!pointer) return null
-  const segments = pointer.split('/').filter((s) => s !== '' && !/^\d+$/.test(s))
-  return segments.length ? (segments[segments.length - 1] ?? null) : null
+function pointerSegments(pointer: string | undefined): string[] {
+  if (!pointer) return []
+  return pointer.split('/').filter((s) => s !== '')
 }
 
-function validationMessages(error: ApiClientError<{ errors: ApiError[] }>): string[] {
-  return error.details.errors
-    .map((e) => {
-      const field = fieldName(e.source?.pointer)
-      const detail = e.detail ?? e.title ?? 'Invalid value.'
-      return field ? `${field}: ${detail}` : detail
+function fieldName(pointer: string | undefined): string | null {
+  const named = pointerSegments(pointer).filter((s) => !/^\d+$/.test(s))
+  return named.length ? (named[named.length - 1] ?? null) : null
+}
+
+function recordIdFromPointer(pointer: string | undefined, records: SinkRecord[]): string | null {
+  for (const segment of pointerSegments(pointer)) {
+    if (/^\d+$/.test(segment)) {
+      const index = Number.parseInt(segment, 10)
+      return records[index]?.id ?? null
+    }
+  }
+  return null
+}
+
+function parseErrors(
+  error: ApiClientError<{ errors: ApiError[] }>,
+  records: SinkRecord[],
+): ParsedApiError[] {
+  return error.details.errors.map((e) => ({
+    code: e.code ?? 'UNKNOWN',
+    detail: e.detail ?? e.title ?? 'Invalid value.',
+    field: fieldName(e.source?.pointer),
+    pointer: e.source?.pointer ?? null,
+    recordId: recordIdFromPointer(e.source?.pointer, records),
+  }))
+}
+
+export function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500
+}
+
+export function toApiError(
+  entity: string,
+  records: SinkRecord[],
+  error: unknown,
+): ShopwareApiError {
+  if (isTimeoutError(error)) {
+    return new ShopwareApiError(`Writing ${entity} timed out.`, {
+      status: null,
+      entity,
+      errors: [],
+      retryable: true,
+      cause: error,
     })
-    .filter((message, index, all) => all.indexOf(message) === index)
+  }
+  if (error instanceof ApiClientError) {
+    const parsed = parseErrors(error, records)
+    const summary =
+      parsed.length === 1
+        ? (parsed[0]?.detail ?? `Shopware rejected ${entity}.`)
+        : `Shopware rejected ${parsed.length} ${entity} record${parsed.length === 1 ? '' : 's'}.`
+    return new ShopwareApiError(summary, {
+      status: error.status,
+      entity,
+      errors: parsed,
+      retryable: isRetryableStatus(error.status),
+      cause: error,
+    })
+  }
+  return new ShopwareApiError(`Could not write ${entity}.`, {
+    status: null,
+    entity,
+    errors: [],
+    retryable: false,
+    cause: error,
+  })
 }
 
 export function toConnectionError(
@@ -51,13 +110,15 @@ export function toConnectionError(
 ): ShopwareConnectionError {
   if (isTimeoutError(error)) {
     return new ShopwareConnectionError(
-      `${connection.url} did not respond within ${REQUEST_TIMEOUT_MS / 1000}s, the shop may be slow or unreachable.`,
+      `${connection.url} did not respond within ${REQUEST_TIMEOUT_MS / 1000}s.`,
     )
   }
   if (error instanceof ApiClientError) {
     switch (error.status) {
       case 400: {
-        const messages = validationMessages(error)
+        const messages = parseErrors(error, [])
+          .map((e) => (e.field ? `${e.field}: ${e.detail}` : e.detail))
+          .filter((m, i, all) => all.indexOf(m) === i)
         if (!messages.length) {
           return new ShopwareConnectionError(
             `Shopware rejected the request (HTTP 400) from ${connection.url}.`,
@@ -70,28 +131,22 @@ export function toConnectionError(
         return new ShopwareConnectionError(`Shopware rejected the data:\n${list}${tail}`)
       }
       case 401:
-        return new ShopwareConnectionError(
-          'Authentication failed — check the client ID and client secret of your integration.',
-        )
+        return new ShopwareConnectionError('Authentication failed.')
       case 403: {
         const missing = missingPrivileges(error)
         if (missing.length) {
           return new ShopwareConnectionError(
-            `The integration is missing the ${missing.join(', ')} ${missing.length === 1 ? 'privilege' : 'privileges'} — grant them to its role in Settings → System → Integrations.`,
+            `The integration is missing the ${missing.join(', ')} ${missing.length === 1 ? 'privilege' : 'privileges'}.`,
           )
         }
-        return new ShopwareConnectionError(
-          'The integration is missing permissions — grant its role admin API access in Settings → System → Integrations.',
-        )
+        return new ShopwareConnectionError('The integration is missing permissions.')
       }
       case 404:
-        return new ShopwareConnectionError(
-          `No Shopware admin API found at ${connection.url} — check the shop URL.`,
-        )
+        return new ShopwareConnectionError(`No Shopware admin API found at ${connection.url}.`)
       default:
         if (error.status >= 500) {
           return new ShopwareConnectionError(
-            `${connection.url} is not responding (HTTP ${error.status}) — the shop may be down or in maintenance.`,
+            `${connection.url} is not responding (HTTP ${error.status}).`,
           )
         }
         return new ShopwareConnectionError(
@@ -99,9 +154,7 @@ export function toConnectionError(
         )
     }
   }
-  return new ShopwareConnectionError(
-    `Could not reach ${connection.url} — check the URL and your network connection.`,
-  )
+  return new ShopwareConnectionError(`Could not reach ${connection.url}.`)
 }
 
 export async function validateConnection(connection: ShopwareConnection): Promise<void> {

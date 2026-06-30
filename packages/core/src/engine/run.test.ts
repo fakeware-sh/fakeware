@@ -4,13 +4,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LoadedConfig } from '../config'
 import { createInMemorySink } from '../domain'
+import { ShopwareApiError } from '../shopware'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
-import { TransactionError } from './errors'
+import { buildWritePlan } from './build-graph'
+import { discoverDataFiles } from './discover'
+import { ApplyStopped } from './errors'
+import { evaluateDataFiles } from './evaluate'
 import { buildManifest, readManifest, writeManifest } from './manifest'
-import { type OnError, type RunOptions, runDown, runUp } from './run'
+import { type ApplyFailure, type RunOptions, runDown, runUp } from './run'
 
 const coreIndex = join(import.meta.dir, '..', 'index.ts')
-
 const shopContext = fakeShopContext()
 
 function up(opts: Omit<RunOptions, 'shopContext'>): ReturnType<typeof runUp> {
@@ -19,15 +22,9 @@ function up(opts: Omit<RunOptions, 'shopContext'>): ReturnType<typeof runUp> {
 
 let counter = 0
 
-function loadedFor(
-  dir: string,
-  transaction: { onError: OnError; atomic: boolean } = { onError: 'rollback', atomic: false },
-): LoadedConfig {
+function loadedFor(dir: string): LoadedConfig {
   return {
-    config: {
-      shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
-      transaction,
-    },
+    config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     configPath: join(dir, 'fakeware.config.ts'),
     projectRoot: dir,
@@ -68,16 +65,24 @@ describe('runUp / runDown', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  test('upserts every entity in dependency order and writes a manifest', async () => {
+  test('writes every entity in dependency order and writes a manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
     const sink = createInMemorySink()
     const result = await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
 
-    const upserts = sink.calls.filter((c) => c.op === 'upsert').map((c) => c.entity)
-    expect(upserts.indexOf('tax')).toBeLessThan(upserts.indexOf('product'))
+    const writes = sink.calls.filter((c) => c.op === 'write').map((c) => c.entity)
+    expect(writes.indexOf('tax')).toBeLessThan(writes.indexOf('product'))
     expect(sink.snapshot().get('product')?.size).toBe(2)
     expect(result.steps.find((s) => s.entity === 'tax')?.created).toBe(1)
     expect(result.manifestWritten).toBe(true)
+  })
+
+  test('one transactional request per entity (no batching)', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const sink = createInMemorySink()
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+
+    expect(sink.calls.filter((c) => c.op === 'write' && c.entity === 'product')).toHaveLength(1)
   })
 
   test('a second up in a fresh process touches nothing (idempotent)', async () => {
@@ -91,7 +96,7 @@ describe('runUp / runDown', () => {
     expect(JSON.parse(second)).toEqual([])
   })
 
-  test('re-upserts only the records whose hash drifted from the manifest', async () => {
+  test('re-writes only the records whose hash drifted from the manifest', async () => {
     const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
     await writeManifest(
       dir,
@@ -106,9 +111,9 @@ describe('runUp / runDown', () => {
     const sink = createInMemorySink()
     const result = await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
 
-    const upserts = sink.calls.filter((c) => c.op === 'upsert')
-    expect(upserts).toHaveLength(1)
-    expect(upserts[0]?.entity).toBe('tax')
+    const writes = sink.calls.filter((c) => c.op === 'write')
+    expect(writes).toHaveLength(1)
+    expect(writes[0]?.entity).toBe('tax')
     expect(result.steps[0]?.created).toBe(1)
   })
 
@@ -118,6 +123,16 @@ describe('runUp / runDown', () => {
     const result = await up({ loaded: loadedFor(dir), sink, dryRun: true })
     expect(sink.calls).toHaveLength(0)
     expect(result.manifestWritten).toBe(false)
+  })
+
+  test('a no-op run writes nothing but still reports steps', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    await up({ loaded: loadedFor(dir), sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
+
+    const sink = createInMemorySink()
+    const result = await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+    expect(result.committed).toBe(0)
+    expect(sink.calls).toHaveLength(0)
   })
 
   test('down deletes exactly the manifest records (reverse order) and removes the manifest', async () => {
@@ -141,239 +156,305 @@ describe('runUp / runDown', () => {
     const sink = createInMemorySink()
     const result = await runDown({ loaded: loadedFor(dir), sink })
     expect(result.reverted).toBe(false)
+    expect(result.failures).toEqual([])
     expect(sink.calls).toHaveLength(0)
   })
 })
 
-describe('runUp transactions', () => {
+describe('runDown resilience', () => {
   let root: string
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'fakeware-tx-'))
+    root = await mkdtemp(join(tmpdir(), 'fakeware-down-'))
   })
   afterEach(async () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  const atomic = { onError: 'rollback' as OnError, atomic: true }
-
-  test('atomic path issues a single applyAtomic with every entity in dependency order', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink()
-    const result = await up({
-      loaded: loadedFor(dir, atomic),
-      sink,
-      now: 'T',
-      fakewareVersion: '1',
-    })
-
-    const atomicCalls = sink.calls.filter((c) => c.op === 'applyAtomic')
-    expect(atomicCalls).toHaveLength(1)
-    expect(sink.calls.filter((c) => c.op === 'upsert')).toHaveLength(0)
-    const order = atomicCalls[0]?.operations.map((o) => o.entity) ?? []
-    expect(order.indexOf('tax')).toBeLessThan(order.indexOf('product'))
-    expect(result.mode).toBe('atomic')
-    expect(result.manifestWritten).toBe(true)
-    expect(await readManifest(dir, 'https://shop.test')).not.toBeNull()
-  })
-
-  test('atomic rollback: a failed applyAtomic writes no manifest and leaves the store empty', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failApplyAtomic: true })
-
-    await expect(
-      up({ loaded: loadedFor(dir, atomic), sink, now: 'T', fakewareVersion: '1' }),
-    ).rejects.toThrow()
-
-    expect(sink.snapshot().size).toBe(0)
-    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
-  })
-
-  test('saga rollback: deletes created records in reverse order and throws TransactionError', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failUpsertOn: 'product' })
-
-    let caught: unknown
-    try {
-      await up({
-        loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-        sink,
-        now: 'T',
+  async function seedManifest(dir: string, entities: string[]): Promise<void> {
+    await writeManifest(
+      dir,
+      buildManifest({
         fakewareVersion: '1',
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(TransactionError)
-    expect((caught as TransactionError).failedEntity).toBe('product')
-    const deletes = sink.calls.filter((c) => c.op === 'delete')
-    expect(deletes.map((c) => c.entity)).toEqual(['tax'])
-    expect(sink.snapshot().get('tax')?.size ?? 0).toBe(0)
-    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
-  })
-
-  test('saga rollback surfaces a TransactionError even when compensation itself fails', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failUpsertOn: 'product', failDeleteOn: 'tax' })
-
-    let caught: unknown
-    try {
-      await up({
-        loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-        sink,
-        now: 'T',
-        fakewareVersion: '1',
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(TransactionError)
-    const tx = caught as TransactionError
-    expect(tx.failedEntity).toBe('product')
-    expect(tx.compensationErrors).toHaveLength(1)
-    expect(tx.rolledBack).toHaveLength(0)
-    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
-  })
-
-  test('saga rollback deletes the failing entity records committed before a mid-batch failure', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failUpsertAfter: { entity: 'product', records: 1 } })
-
-    let caught: unknown
-    try {
-      await up({
-        loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-        sink,
-        now: 'T',
-        fakewareVersion: '1',
-      })
-    } catch (error) {
-      caught = error
-    }
-
-    expect(caught).toBeInstanceOf(TransactionError)
-    expect((caught as TransactionError).failedEntity).toBe('product')
-    const deletes = sink.calls.filter((c) => c.op === 'delete')
-    expect(deletes.map((c) => c.entity)).toEqual(['product', 'tax'])
-    expect(deletes[0]?.ids).toHaveLength(1)
-    expect(sink.snapshot().get('product')?.size ?? 0).toBe(0)
-    expect(sink.snapshot().get('tax')?.size ?? 0).toBe(0)
-    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
-  })
-
-  test('saga rollback only deletes records this run created, not pre-existing updates', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const firstSink = createInMemorySink()
-    await up({
-      loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-      sink: firstSink,
-      now: 'T',
-      fakewareVersion: '1',
-    })
-    const taxId = [...(firstSink.snapshot().get('tax')?.keys() ?? [])][0]
-
-    await writeFile(
-      join(dir, 'data', 'tax.ts'),
-      `import { define } from '${coreIndex}'\ndefine('tax', [{ $key: 'standard', taxRate: 20 }])\n`,
-    )
-
-    const sink = createInMemorySink({ failUpsertOn: 'product' })
-    await up({
-      loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-      sink,
-      now: 'T',
-      fakewareVersion: '1',
-    }).catch(() => {})
-
-    const deletedTaxIds = sink.calls.filter((c) => c.op === 'delete' && c.entity === 'tax')
-    expect(deletedTaxIds).toHaveLength(0)
-    expect(taxId).toBeDefined()
-  })
-
-  test("onError 'stop' leaves successfully-written entities in place and writes no manifest", async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failUpsertOn: 'product' })
-
-    await expect(
-      up({
-        loaded: loadedFor(dir, { onError: 'stop', atomic: false }),
-        sink,
-        now: 'T',
-        fakewareVersion: '1',
+        createdAt: 'T',
+        shopwareUrl: 'https://shop.test',
+        entities: entities.map((entity) => ({
+          entity,
+          records: [{ id: `${entity}-1`, hash: 'h' }],
+        })),
       }),
-    ).rejects.toThrow()
+    )
+  }
 
-    expect(sink.calls.filter((c) => c.op === 'delete')).toHaveLength(0)
-    expect(sink.snapshot().get('tax')?.size).toBe(1)
+  test('converges across passes: a conflict clears once its dependent is deleted', async () => {
+    const dir = await scaffoldProject(root, {})
+    // manifest order [tax, product] → reverse tries product first, then tax.
+    // tax is "in use" until product is gone; one extra pass should clear it.
+    await seedManifest(dir, ['tax', 'product'])
+    const sink = createInMemorySink({
+      failDeleteWhile: (entity, deleted) => entity === 'tax' && !deleted.has('product'),
+    })
+
+    const result = await runDown({ loaded: loadedFor(dir), sink })
+
+    expect(result.reverted).toBe(true)
+    expect(result.failures).toEqual([])
+    const deletes = sink.calls.filter((c) => c.op === 'delete').map((c) => c.entity)
+    expect(deletes).toEqual(['product', 'tax'])
     expect(await readManifest(dir, 'https://shop.test')).toBeNull()
   })
 
-  test("onError 'continue' skips the failing entity, applies the rest, throws, writes a restricted manifest", async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const sink = createInMemorySink({ failUpsertOn: 'product' })
+  test('keeps only the still-blocked entities in the manifest and reports failures', async () => {
+    const dir = await scaffoldProject(root, {})
+    await seedManifest(dir, ['tax', 'product'])
+    const failures: ApplyFailure[] = []
+    const sink = createInMemorySink({ failDeleteOn: 'tax' })
 
-    let caught: unknown
-    try {
-      await up({
-        loaded: loadedFor(dir, { onError: 'continue', atomic: false }),
-        sink,
-        now: 'T',
-        fakewareVersion: '1',
-      })
-    } catch (error) {
-      caught = error
-    }
+    const result = await runDown({
+      loaded: loadedFor(dir),
+      sink,
+      reporter: { failed: (f) => failures.push(f) },
+    })
 
-    expect(caught).toBeInstanceOf(TransactionError)
-    expect(sink.snapshot().get('tax')?.size).toBe(1)
-    expect(sink.calls.filter((c) => c.op === 'delete')).toHaveLength(0)
+    expect(result.reverted).toBe(false)
+    expect(result.failures.map((f) => f.entity)).toEqual(['tax'])
+    expect(result.failures[0]?.error).toBeInstanceOf(ShopwareApiError)
+    expect(failures.map((f) => f.entity)).toEqual(['tax'])
+
     const manifest = await readManifest(dir, 'https://shop.test')
     expect(manifest?.entities.map((e) => e.entity)).toEqual(['tax'])
   })
 
-  test('the byte threshold falls back from atomic to the saga path', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
-    const big = `import { define, many } from '${coreIndex}'
-define('product', many(10, (ctx) => ({ name: 'p' + ctx.index, blob: 'x'.repeat(1024 * 1024) })))
-`
-    await writeFile(join(dir, 'data', 'product.ts'), big)
+  test('re-running down after the conflict clears finishes the teardown (converges)', async () => {
+    const dir = await scaffoldProject(root, {})
+    await seedManifest(dir, ['tax', 'product'])
 
+    await runDown({ loaded: loadedFor(dir), sink: createInMemorySink({ failDeleteOn: 'tax' }) })
+    // manifest now lists only tax; conflict cleared on the retry.
     const sink = createInMemorySink()
-    const result = await up({
-      loaded: loadedFor(dir, atomic),
-      sink,
-      now: 'T',
-      fakewareVersion: '1',
-    })
+    const result = await runDown({ loaded: loadedFor(dir), sink })
 
-    expect(result.mode).toBe('saga')
-    expect(sink.calls.filter((c) => c.op === 'applyAtomic')).toHaveLength(0)
-    expect(sink.calls.filter((c) => c.op === 'upsert').length).toBeGreaterThan(0)
+    expect(result.reverted).toBe(true)
+    expect(sink.calls.filter((c) => c.op === 'delete').map((c) => c.entity)).toEqual(['tax'])
+    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
   })
 
-  test('atomic:false forces the saga path even for a small dataset', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+  test('an unexpected (non-Shopware) delete error aborts rather than being swallowed', async () => {
+    const dir = await scaffoldProject(root, {})
+    await seedManifest(dir, ['tax'])
     const sink = createInMemorySink()
-    const result = await up({
-      loaded: loadedFor(dir, { onError: 'rollback', atomic: false }),
-      sink,
-      now: 'T',
-      fakewareVersion: '1',
-    })
-
-    expect(result.mode).toBe('saga')
-    expect(sink.calls.filter((c) => c.op === 'applyAtomic')).toHaveLength(0)
+    sink.delete = async () => {
+      throw new TypeError('boom')
+    }
+    await expect(runDown({ loaded: loadedFor(dir), sink })).rejects.toBeInstanceOf(TypeError)
   })
 
-  test('a no-op run touches neither path and writes no manifest', async () => {
-    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
-    await up({ loaded: loadedFor(dir, atomic), sink: createInMemorySink(), now: 'T' })
-
+  test('dry-run reports steps, deletes nothing, leaves the manifest', async () => {
+    const dir = await scaffoldProject(root, {})
+    await seedManifest(dir, ['tax', 'product'])
     const sink = createInMemorySink()
-    const result = await up({ loaded: loadedFor(dir, atomic), sink, now: 'T' })
-    expect(result.mode).toBe('noop')
+    const result = await runDown({ loaded: loadedFor(dir), sink, dryRun: true })
+
+    expect(result.reverted).toBe(false)
     expect(sink.calls).toHaveLength(0)
+    expect(await readManifest(dir, 'https://shop.test')).not.toBeNull()
+  })
+})
+
+describe('runUp failure handling', () => {
+  let root: string
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'fakeware-fail-'))
+  })
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  test('keeps successfully-committed entities, deletes nothing, stops with ApplyStopped', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const sink = createInMemorySink({ failWriteOn: 'product' })
+
+    await expect(
+      up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' }),
+    ).rejects.toBeInstanceOf(ApplyStopped)
+
+    expect(sink.calls.filter((c) => c.op === 'delete')).toHaveLength(0)
+    expect(sink.snapshot().get('tax')?.size).toBe(1)
+  })
+
+  test('persists a manifest of only the committed entities so down can clean up', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const sink = createInMemorySink({ failWriteOn: 'product' })
+
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' }).catch(() => {})
+
+    const manifest = await readManifest(dir, 'https://shop.test')
+    expect(manifest?.entities.map((e) => e.entity)).toEqual(['tax'])
+  })
+
+  test('re-running resumes: entities already in the manifest (by hash) are skipped, the rest are written', async () => {
+    const hashDir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    const hashPlan = buildWritePlan(
+      await evaluateDataFiles(await discoverDataFiles(hashDir)),
+      shopContext,
+    )
+    const taxRecords = (hashPlan.records.get('tax') ?? []).map((r) => ({
+      id: r.record.id,
+      hash: r.hash,
+    }))
+
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    await writeManifest(
+      dir,
+      buildManifest({
+        fakewareVersion: '1',
+        createdAt: 'T',
+        shopwareUrl: 'https://shop.test',
+        entities: [{ entity: 'tax', records: taxRecords }],
+      }),
+    )
+
+    const sink = createInMemorySink()
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+
+    const written = sink.calls.filter((c) => c.op === 'write').map((c) => c.entity)
+    expect(written).toEqual(['product'])
+    expect(sink.snapshot().get('product')?.size).toBe(2)
+  })
+
+  test('reports the failure once, before persisting, with the structured error', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const sink = createInMemorySink({ failWriteOn: 'product' })
+    const failures: ApplyFailure[] = []
+
+    await up({
+      loaded: loadedFor(dir),
+      sink,
+      now: 'T',
+      fakewareVersion: '1',
+      reporter: { failed: (f) => failures.push(f) },
+    }).catch(() => {})
+
+    expect(failures).toHaveLength(1)
+    expect(failures[0]?.entity).toBe('product')
+    expect(failures[0]?.committed).toEqual(['tax'])
+  })
+
+  test('a ShopwareApiError from the sink surfaces to the reporter', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    const failing = {
+      async write(): Promise<void> {
+        throw new ShopwareApiError('boom', {
+          status: 400,
+          entity: 'tax',
+          errors: [
+            { code: 'X', detail: 'bad', field: 'taxRate', pointer: '/0/taxRate', recordId: 'r' },
+          ],
+          retryable: false,
+          cause: null,
+        })
+      },
+      async delete(): Promise<void> {},
+    }
+    const failures: ApplyFailure[] = []
+    await up({
+      loaded: loadedFor(dir),
+      sink: failing,
+      now: 'T',
+      fakewareVersion: '1',
+      reporter: { failed: (f) => failures.push(f) },
+    }).catch(() => {})
+
+    expect(failures[0]?.error.errors[0]?.field).toBe('taxRate')
+  })
+})
+
+describe('manifest write-ahead (crash safety)', () => {
+  let root: string
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'fakeware-wal-'))
+  })
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  test('up records an entity as pending in the manifest BEFORE its sync lands', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    const base = createInMemorySink()
+    let pendingAtWrite: boolean | undefined
+    const sink = {
+      async write(entity: string, records: { id: string }[]): Promise<void> {
+        const m = await readManifest(dir, 'https://shop.test')
+        pendingAtWrite = m?.entities.find((e) => e.entity === entity)?.pending
+        await base.write(entity, records)
+      },
+      delete: base.delete,
+    }
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+
+    expect(pendingAtWrite).toBe(true)
+    const final = await readManifest(dir, 'https://shop.test')
+    expect(final?.entities.find((e) => e.entity === 'tax')?.pending).toBeUndefined()
+  })
+
+  test('a pending entity left by a crash is re-sent on the next up (not trusted)', async () => {
+    const hashDir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    const hashPlan = buildWritePlan(
+      await evaluateDataFiles(await discoverDataFiles(hashDir)),
+      shopContext,
+    )
+    const taxRecords = (hashPlan.records.get('tax') ?? []).map((r) => ({
+      id: r.record.id,
+      hash: r.hash,
+    }))
+
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    await writeManifest(
+      dir,
+      buildManifest({
+        fakewareVersion: '1',
+        createdAt: 'T',
+        shopwareUrl: 'https://shop.test',
+        entities: [{ entity: 'tax', records: taxRecords, pending: true }],
+      }),
+    )
+
+    const sink = createInMemorySink()
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+
+    // pending = unconfirmed, so it is re-written rather than skipped as unchanged
+    expect(sink.calls.filter((c) => c.op === 'write').map((c) => c.entity)).toEqual(['tax'])
+    const final = await readManifest(dir, 'https://shop.test')
+    expect(final?.entities.find((e) => e.entity === 'tax')?.pending).toBeUndefined()
+  })
+
+  test('down marks an entity as pending in the manifest BEFORE its delete lands', async () => {
+    const dir = await scaffoldProject(root, {})
+    await writeManifest(
+      dir,
+      buildManifest({
+        fakewareVersion: '1',
+        createdAt: 'T',
+        shopwareUrl: 'https://shop.test',
+        entities: [{ entity: 'tax', records: [{ id: 'tax-1', hash: 'h' }] }],
+      }),
+    )
+    const base = createInMemorySink()
+    let pendingAtDelete: boolean | undefined
+    const sink = {
+      write: base.write,
+      async delete(entity: string, ids: string[]): Promise<void> {
+        const m = await readManifest(dir, 'https://shop.test')
+        pendingAtDelete = m?.entities.find((e) => e.entity === entity)?.pending
+        await base.delete(entity, ids)
+      },
+    }
+    const result = await runDown({ loaded: loadedFor(dir), sink })
+
+    expect(pendingAtDelete).toBe(true)
+    expect(result.reverted).toBe(true)
+    expect(await readManifest(dir, 'https://shop.test')).toBeNull()
   })
 })

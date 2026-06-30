@@ -86,6 +86,7 @@ const salesChannelRow = z.object({
   typeId: z.string(),
   currencyId: z.string(),
   languageId: z.string(),
+  countryId: z.string().nullish(),
   active: z.boolean().nullish(),
 })
 const countryRow = z.object({
@@ -163,6 +164,7 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
         typeId: r.typeId,
         currencyId: r.currencyId,
         languageId: r.languageId,
+        countryId: r.countryId ?? null,
         active: r.active ?? true,
       }))
     },
@@ -266,6 +268,7 @@ interface ShopDefaults {
   salesChannel: ShopContextData['salesChannels'][number]
   language: ShopContextData['languages'][number]
   currency: ShopContextData['currencies'][number]
+  country: ShopContextData['countries'][number] | null
 }
 
 function resolveDefaults(data: ShopContextData): ShopDefaults {
@@ -278,7 +281,16 @@ function resolveDefaults(data: ShopContextData): ShopDefaults {
     data.currencies.find((c) => c.isSystemDefault) ??
     data.currencies.find((c) => c.id === salesChannel.currencyId) ??
     required(data.currencies, 'currencies')
-  return { salesChannel, language, currency }
+  const country =
+    data.countries.find((c) => c.id === salesChannel.countryId) ?? data.countries[0] ?? null
+  return { salesChannel, language, currency, country }
+}
+
+function highestTax(taxes: ShopContextData['taxes']): ShopContextData['taxes'][number] | null {
+  return taxes.reduce<ShopContextData['taxes'][number] | null>(
+    (best, t) => (best === null || t.taxRate > best.taxRate ? t : best),
+    null,
+  )
 }
 
 export function buildShopContextIndex(data: ShopContextData): ShopContextIndex {
@@ -287,17 +299,22 @@ export function buildShopContextIndex(data: ShopContextData): ShopContextIndex {
     currencyByIso: new Map(data.currencies.map((c) => [c.isoCode.toUpperCase(), c])),
     currencyDefault: defaults.currency,
     languageByLocale: new Map(data.languages.map((l) => [l.locale, l])),
-    languageSystem: defaults.language,
+    languageDefault: defaults.language,
     salesChannelByName: new Map(data.salesChannels.map((s) => [s.name, s])),
     salesChannelDefault: defaults.salesChannel,
     countryByIso: new Map(data.countries.map((c) => [c.iso.toUpperCase(), c])),
+    countryDefault: defaults.country,
     salutationByKey: new Map(data.salutations.map((s) => [s.salutationKey, s])),
+    salutationDefault: data.salutations[0] ?? null,
     stateByMachineState: new Map(
       data.stateMachineStates.map((s) => [`${s.machineTechnicalName}::${s.technicalName}`, s]),
     ),
     taxByRate: new Map(data.taxes.map((t) => [t.taxRate, t])),
+    taxDefault: highestTax(data.taxes),
     paymentMethodByTechnicalName: new Map(data.paymentMethods.map((p) => [p.technicalName, p])),
+    paymentMethodDefault: data.paymentMethods[0] ?? null,
     shippingMethodByTechnicalName: new Map(data.shippingMethods.map((s) => [s.technicalName, s])),
+    shippingMethodDefault: data.shippingMethods[0] ?? null,
   }
 }
 
@@ -313,8 +330,8 @@ export function toShopContext(data: ShopContextData): ShopContext {
 export async function fetchShopContext(
   connection: ShopwareConnection,
   extraFetchers: OwnedFetcher[] = [],
+  client: ShopwareClient = createShopwareClient(connection),
 ): Promise<ShopContext> {
-  const client = createShopwareClient(connection)
   const builtIn: OwnedFetcher[] = BUILT_IN_FETCHERS.map((fetcher) => ({
     plugin: '',
     fetcher,

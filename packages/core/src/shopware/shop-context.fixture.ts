@@ -11,6 +11,7 @@ const EMPTY: ShopContextData = {
       typeId: 'type-storefront',
       currencyId: 'currency-eur',
       languageId: 'language-en',
+      countryId: null,
       active: true,
     },
   ],

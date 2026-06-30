@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { define, drain, ref, resetRegistry, setActiveRefIndex } from '../define'
-import { currency, ShopContextError } from '../shopware/shop-context'
+import { define, drain, ref, resetRegistry } from '../define'
+import { ShopContextError, shop } from '../shopware/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { buildWritePlan } from './build-graph'
 import { GraphError } from './errors'
@@ -12,12 +12,11 @@ const shopContext = fakeShopContext({
 
 beforeEach(() => {
   resetRegistry()
-  setActiveRefIndex(undefined)
 })
 
 describe('buildWritePlan', () => {
-  test('orders a referenced entity before its referrer', () => {
-    define('product', { $key: 'hero', taxId: () => ref('tax/standard') })
+  test('orders a referenced entity before its referrer (no thunk needed)', () => {
+    define('product', { $key: 'hero', taxId: ref('tax/standard') })
     define('tax', [{ $key: 'standard', taxRate: 19 }])
     const plan = buildWritePlan(drain(), shopContext)
     expect(plan.order.indexOf('tax')).toBeLessThan(plan.order.indexOf('product'))
@@ -26,39 +25,76 @@ describe('buildWritePlan', () => {
   test('resolves payloads and injects ids', () => {
     define('tax', [{ $key: 'standard', taxRate: 19 }])
     const plan = buildWritePlan(drain(), shopContext)
-    const record = plan.records.get('tax')?.[0]
+    const record = plan.records.get('tax')?.[0]?.record
     expect(record?.taxRate).toBe(19)
     expect(record?.id).toMatch(/^[0-9a-f]{32}$/)
     expect(record).not.toHaveProperty('$key')
   })
 
   test('ignores self-referential entities (same batch)', () => {
-    define('category', [{ $key: 'root' }, { $key: 'child', parentId: () => ref('category/root') }])
+    define('category', [{ $key: 'root' }, { $key: 'child', parentId: ref('category/root') }])
     const plan = buildWritePlan(drain(), shopContext)
     expect(plan.order).toEqual(['category'])
   })
 
   test('throws GraphError on a reference cycle', () => {
-    define('product', { $key: 'x', cmsPageId: () => ref('category/y') })
-    define('category', { $key: 'y', cmsPageId: () => ref('product/x') })
+    define('product', { $key: 'x', cmsPageId: ref('category/y') })
+    define('category', { $key: 'y', cmsPageId: ref('product/x') })
     expect(() => buildWritePlan(drain(), shopContext)).toThrow(GraphError)
   })
 
-  test('resolves shop lookups inside record functions, via helper and ctx.shop', () => {
-    define('order', { $key: 'a', currencyId: () => currency('EUR').id })
+  test('resolves shop tokens directly and via ctx.shop', () => {
+    define('order', { $key: 'a', currencyId: shop.currency('EUR') })
     define('order_address', {
       $key: 'a',
-      countryId: (ctx) => ctx.shop.country('DE').id,
-      salutationId: (ctx) => ctx.shop.salutation('mr').id,
+      countryId: shop.country('DE'),
+      salutationId: (ctx) => ctx.shop.salutation('mr'),
     })
     const plan = buildWritePlan(drain(), shopContext)
-    expect(plan.records.get('order')?.[0]?.currencyId).toBe('currency-eur')
-    expect(plan.records.get('order_address')?.[0]?.countryId).toBe('country-de')
-    expect(plan.records.get('order_address')?.[0]?.salutationId).toBe('sal-mr')
+    expect(plan.records.get('order')?.[0]?.record.currencyId).toBe('currency-eur')
+    expect(plan.records.get('order_address')?.[0]?.record.countryId).toBe('country-de')
+    expect(plan.records.get('order_address')?.[0]?.record.salutationId).toBe('sal-mr')
+  })
+
+  test('a shop token adds no dependency edge', () => {
+    define('product', { $key: 'p', taxId: shop.defaultTax })
+    const plan = buildWritePlan(
+      drain(),
+      fakeShopContext({ taxes: [{ id: 'tax-19', name: 'Std', taxRate: 19 }] }),
+    )
+    expect(plan.order).toEqual(['product'])
   })
 
   test('surfaces ShopContextError for an unknown lookup key', () => {
-    define('order', { $key: 'a', currencyId: () => currency('GBP').id })
+    define('order', { $key: 'a', currencyId: shop.currency('GBP') })
     expect(() => buildWritePlan(drain(), shopContext)).toThrow(ShopContextError)
+  })
+
+  test('hash is stable when only the resolved shop id changes', () => {
+    define('product', { $key: 'p', taxId: shop.defaultTax })
+    const a = buildWritePlan(
+      drain(),
+      fakeShopContext({ taxes: [{ id: 'tax-AAA', name: 'Std', taxRate: 19 }] }),
+    )
+    resetRegistry()
+    define('product', { $key: 'p', taxId: shop.defaultTax })
+    const b = buildWritePlan(
+      drain(),
+      fakeShopContext({ taxes: [{ id: 'tax-BBB', name: 'Std', taxRate: 19 }] }),
+    )
+    expect(a.records.get('product')?.[0]?.record.taxId).toBe('tax-AAA')
+    expect(b.records.get('product')?.[0]?.record.taxId).toBe('tax-BBB')
+    expect(a.records.get('product')?.[0]?.hash).toBe(b.records.get('product')?.[0]?.hash as string)
+  })
+
+  test('ref(entity, index) resolves positionally', () => {
+    define('tax', [
+      { $key: 'a', taxRate: 7 },
+      { $key: 'b', taxRate: 19 },
+    ])
+    define('product', { $key: 'p', taxId: ref('tax', 1) })
+    const plan = buildWritePlan(drain(), shopContext)
+    const taxIds = plan.records.get('tax')?.map((r) => r.record.id) ?? []
+    expect(plan.records.get('product')?.[0]?.record.taxId).toBe(taxIds[1])
   })
 })

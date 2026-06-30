@@ -1,23 +1,24 @@
 import type { LoadedConfig } from '../config'
-import { recordHash } from '../define'
-import type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from '../domain'
-import type { ConfigContext, FakewarePlugin, PluginContext } from '../plugin'
+import type { ShopwareSink, SinkRecord } from '../domain'
 import {
+  type ConfigContext,
   collectFetchers,
   createPluginLogger,
-  type LogSink,
+  type FakewarePlugin,
+  type LogEntry,
+  type PluginContext,
   runPluginHook,
   runPluginResultHook,
 } from '../plugin'
 import {
-  ATOMIC_REQUEST_BYTE_LIMIT,
-  estimateSyncBytes,
   fetchShopContext,
   type ShopContext,
+  ShopwareApiError,
+  type ShopwareClient,
 } from '../shopware'
-import { buildWritePlan } from './build-graph'
+import { buildWritePlan, type PlanRecord } from './build-graph'
 import { discoverDataFiles } from './discover'
-import { TransactionError } from './errors'
+import { ApplyStopped } from './errors'
 import { evaluateDataFiles } from './evaluate'
 import {
   buildManifest,
@@ -29,18 +30,6 @@ import {
   writeManifest,
 } from './manifest'
 
-export interface Reporter {
-  onStart?(entity: string, records?: number): void
-  onBatch?(progress: BatchProgress): void
-  onStep?(step: ReportStep): void
-  onTransactionStart?(info: { mode: 'atomic' | 'saga' }): void
-  onCommit?(info: { committed: number }): void
-  onCompensate?(entity: string, count: number): void
-  onCompensateFail?(entity: string): void
-  onSkip?(info: { entity: string; error: unknown }): void
-  onStop?(info: { failedEntity: string; error: unknown; message: string }): void
-}
-
 export interface ReportStep {
   entity: string
   created: number
@@ -49,57 +38,66 @@ export interface ReportStep {
   deleted: number
 }
 
-export type OnError = 'rollback' | 'continue' | 'stop'
+export interface ApplyFailure {
+  entity: string
+  committed: string[]
+  error: ShopwareApiError
+}
 
-export interface TransactionOptions {
-  onError: OnError
-  atomic: boolean
+export interface Reporter {
+  entityStart?(entity: string, records: number): void
+  entityDone?(step: ReportStep): void
+  failed?(failure: ApplyFailure): void
+  log?(entry: LogEntry): void
 }
 
 export interface RunOptions {
   loaded: LoadedConfig
   sink: ShopwareSink
+  client?: ShopwareClient
   dryRun?: boolean
   reporter?: Reporter
   fakewareVersion?: string
   now?: string
-  transaction?: TransactionOptions
   shopContext?: ShopContext
   mode?: string
-  logSink?: LogSink
 }
 
 export interface UpResult {
   steps: ReportStep[]
   manifestWritten: boolean
-  mode: 'atomic' | 'saga' | 'dry-run' | 'noop'
   committed: number
-  rolledBack: number
 }
 
 export interface DownResult {
   steps: ReportStep[]
   reverted: boolean
+  failures: ApplyFailure[]
 }
 
 interface EntityWrite {
   entity: string
   toWrite: SinkRecord[]
-  createdIds: string[]
   manifestRecords: ManifestRecord[]
   step: ReportStep
+}
+
+function reporterLogSink(reporter?: Reporter) {
+  return {
+    debug: false,
+    write(entry: LogEntry): void {
+      reporter?.log?.(entry)
+    },
+  }
 }
 
 function priorHashes(manifest: Manifest | null): Map<string, Map<string, string>> {
   const map = new Map<string, Map<string, string>>()
   for (const e of manifest?.entities ?? []) {
+    if (e.pending) continue
     map.set(e.entity, new Map(e.records.map((r) => [r.id, r.hash])))
   }
   return map
-}
-
-function resolveTransaction(opts: RunOptions): TransactionOptions {
-  return opts.transaction ?? opts.loaded.config.transaction
 }
 
 function configContextFor(opts: RunOptions, plugin: FakewarePlugin): ConfigContext {
@@ -108,7 +106,7 @@ function configContextFor(opts: RunOptions, plugin: FakewarePlugin): ConfigConte
     connection: opts.loaded.connection,
     projectRoot: opts.loaded.projectRoot,
     mode: opts.mode ?? 'development',
-    logger: createPluginLogger(plugin.name, opts.logSink),
+    logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter)),
   }
 }
 
@@ -122,50 +120,26 @@ function pluginContextFor(
 
 function diffEntity(
   entity: string,
-  records: SinkRecord[],
+  records: PlanRecord[],
   prior: Map<string, string>,
 ): EntityWrite {
   const toWrite: SinkRecord[] = []
-  const createdIds: string[] = []
   let created = 0
   let updated = 0
   let unchanged = 0
-  const manifestRecords = records.map((record) => {
-    const hash = recordHash(record)
+  const manifestRecords = records.map(({ record, hash }) => {
     const previous = prior.get(record.id)
-    if (previous === undefined) {
-      created++
-      createdIds.push(record.id)
-    } else if (previous === hash) {
-      unchanged++
-    } else {
-      updated++
-    }
+    if (previous === undefined) created++
+    else if (previous === hash) unchanged++
+    else updated++
     if (previous !== hash) toWrite.push(record)
     return { id: record.id, hash }
   })
   return {
     entity,
     toWrite,
-    createdIds,
     manifestRecords,
     step: { entity, created, updated, unchanged, deleted: 0 },
-  }
-}
-
-function partialWrite(w: EntityWrite, committed: number): EntityWrite | null {
-  if (committed <= 0) return null
-  const createdSet = new Set(w.createdIds)
-  const prefix = w.toWrite.slice(0, committed)
-  const createdIds = prefix.map((r) => r.id).filter((id) => createdSet.has(id))
-  const updated = prefix.length - createdIds.length
-  if (createdIds.length === 0 && updated === 0) return null
-  return {
-    entity: w.entity,
-    toWrite: [],
-    createdIds,
-    manifestRecords: [],
-    step: { entity: w.entity, created: 0, updated, unchanged: 0, deleted: 0 },
   }
 }
 
@@ -179,7 +153,8 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
   )
 
   const shopContext =
-    opts.shopContext ?? (await fetchShopContext(loaded.connection, collectFetchers(plugins)))
+    opts.shopContext ??
+    (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client))
 
   await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
     pluginContextFor(opts, plugin, shopContext),
@@ -204,44 +179,29 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
 
 async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
-  const tx = resolveTransaction(opts)
   const files = await discoverDataFiles(loaded.projectRoot)
   const drained = await evaluateDataFiles(files)
   const plan = buildWritePlan(drained, shopContext)
 
   const prior = priorHashes(await readManifest(loaded.projectRoot, loaded.connection.url))
-
-  const writes: EntityWrite[] = plan.order.map((entity) =>
+  const writes = plan.order.map((entity) =>
     diffEntity(
       entity,
       plan.records.get(entity) ?? [],
       prior.get(entity) ?? new Map<string, string>(),
     ),
   )
-
   const steps = writes.map((w) => w.step)
-  const manifestEntities: ManifestEntity[] = writes.map((w) => ({
-    entity: w.entity,
-    records: w.manifestRecords,
-  }))
-  const committed = steps.reduce((n, s) => n + s.created + s.updated, 0)
-  const pending = writes.filter((w) => w.toWrite.length > 0)
 
-  if (dryRun || pending.length === 0) {
+  if (dryRun) {
     for (const w of writes) {
-      reporter?.onStart?.(w.entity)
-      reporter?.onStep?.(w.step)
+      reporter?.entityStart?.(w.entity, w.toWrite.length)
+      reporter?.entityDone?.(w.step)
     }
-    return {
-      steps,
-      manifestWritten: false,
-      mode: dryRun ? 'dry-run' : 'noop',
-      committed: 0,
-      rolledBack: 0,
-    }
+    return { steps, manifestWritten: false, committed: 0 }
   }
 
-  const writeManifestNow = (entities: ManifestEntity[]): Promise<void> =>
+  const persist = (entities: ManifestEntity[]): Promise<void> =>
     writeManifest(
       loaded.projectRoot,
       buildManifest({
@@ -252,159 +212,36 @@ async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<Up
       }),
     )
 
-  const operations: SyncOperation[] = pending.map((w) => ({
-    entity: w.entity,
-    action: 'upsert',
-    records: w.toWrite,
-  }))
-
-  if (tx.atomic && estimateSyncBytes(operations) <= ATOMIC_REQUEST_BYTE_LIMIT) {
-    reporter?.onTransactionStart?.({ mode: 'atomic' })
-    try {
-      await sink.applyAtomic(operations)
-    } catch (error) {
-      const message = 'Apply failed — Shopware rolled back all changes.'
-      reporter?.onStop?.({ failedEntity: '', error, message })
-      throw new TransactionError(message, {
-        cause: error,
-        rolledBack: [],
-        failedEntity: '',
-      })
-    }
-    await writeManifestNow(manifestEntities)
-    reporter?.onCommit?.({ committed })
-    return { steps, manifestWritten: true, mode: 'atomic', committed, rolledBack: 0 }
-  }
-
-  reporter?.onTransactionStart?.({ mode: 'saga' })
-  const written: EntityWrite[] = []
-  const skipped: { entity: string; error: unknown }[] = []
-
-  for (const w of pending) {
-    reporter?.onStart?.(w.entity, w.toWrite.length)
-    let committedRecords = 0
-    try {
-      await sink.upsert(w.entity, w.toWrite, (progress) => {
-        committedRecords = progress.records
-        reporter?.onBatch?.(progress)
-      })
-      written.push(w)
-      reporter?.onStep?.(w.step)
-    } catch (error) {
-      if (tx.onError === 'stop') {
-        const message = `Writing ${w.entity} failed — stopped.`
-        reporter?.onStop?.({ failedEntity: w.entity, error, message })
-        throw new TransactionError(message, {
-          cause: error,
-          rolledBack: [],
-          failedEntity: w.entity,
-        })
-      }
-      if (tx.onError === 'continue') {
-        skipped.push({ entity: w.entity, error })
-        reporter?.onSkip?.({ entity: w.entity, error })
-        continue
-      }
-      const message = `Could not apply ${w.entity}.`
-      reporter?.onStop?.({ failedEntity: w.entity, error, message })
-      const partial = partialWrite(w, committedRecords)
-      const toCompensate = partial ? [...written, partial] : written
-      const { rolledBack, unrevertableUpdates, compensationErrors } = await compensate(
-        sink,
-        toCompensate,
-        reporter,
-      )
-      throw new TransactionError(message, {
-        cause: error,
-        rolledBack,
-        failedEntity: w.entity,
-        unrevertableUpdates,
-        compensationErrors,
-      })
-    }
-  }
+  const ledger: ManifestEntity[] = []
+  let committed = 0
 
   for (const w of writes) {
-    if (!written.includes(w) && !skipped.some((s) => s.entity === w.entity)) {
-      reporter?.onStart?.(w.entity)
-      reporter?.onStep?.(w.step)
+    if (w.toWrite.length === 0) {
+      ledger.push({ entity: w.entity, records: w.manifestRecords })
+      reporter?.entityDone?.(w.step)
+      continue
     }
-  }
-
-  if (skipped.length > 0) {
-    const writtenEntities = new Set(written.map((w) => w.entity))
-    await writeManifestNow(restrictManifest(manifestEntities, prior, writtenEntities))
-    const first = skipped[0] as { entity: string; error: unknown }
-    throw new TransactionError(
-      `Applied with ${skipped.length} skipped entit${skipped.length === 1 ? 'y' : 'ies'}.`,
-      { cause: skipped, rolledBack: [], failedEntity: first.entity },
-    )
-  }
-
-  await writeManifestNow(manifestEntities)
-  reporter?.onCommit?.({ committed })
-  return { steps, manifestWritten: true, mode: 'saga', committed, rolledBack: 0 }
-}
-
-async function compensate(
-  sink: ShopwareSink,
-  written: EntityWrite[],
-  reporter?: Reporter,
-): Promise<{
-  rolledBack: ReportStep[]
-  unrevertableUpdates: boolean
-  compensationErrors: unknown[]
-}> {
-  const rolledBack: ReportStep[] = []
-  const compensationErrors: unknown[] = []
-  for (const w of [...written].reverse()) {
-    if (w.createdIds.length === 0) continue
+    reporter?.entityStart?.(w.entity, w.toWrite.length)
+    const confirmed = { entity: w.entity, records: w.manifestRecords }
+    await persist([...ledger, { ...confirmed, pending: true }])
     try {
-      await sink.delete(w.entity, w.createdIds)
-      rolledBack.push({
-        entity: w.entity,
-        created: 0,
-        updated: 0,
-        unchanged: 0,
-        deleted: w.createdIds.length,
-      })
-      reporter?.onCompensate?.(w.entity, w.createdIds.length)
+      await sink.write(w.entity, w.toWrite)
     } catch (error) {
-      compensationErrors.push(error)
-      reporter?.onCompensateFail?.(w.entity)
+      reporter?.failed?.({
+        entity: w.entity,
+        committed: ledger.map((l) => l.entity),
+        error: error as ShopwareApiError,
+      })
+      await persist(ledger)
+      throw new ApplyStopped()
     }
+    ledger.push(confirmed)
+    committed += w.step.created + w.step.updated
+    await persist(ledger)
+    reporter?.entityDone?.(w.step)
   }
-  const unrevertableUpdates = written.some((w) => w.step.updated > 0)
-  return { rolledBack, unrevertableUpdates, compensationErrors }
-}
 
-function restrictManifest(
-  desired: ManifestEntity[],
-  prior: Map<string, Map<string, string>>,
-  writtenEntities: Set<string>,
-): ManifestEntity[] {
-  const out: ManifestEntity[] = []
-  const seen = new Set<string>()
-  for (const e of desired) {
-    seen.add(e.entity)
-    if (writtenEntities.has(e.entity)) {
-      out.push(e)
-    } else {
-      const priorRecords = prior.get(e.entity)
-      if (priorRecords && priorRecords.size > 0) {
-        out.push({
-          entity: e.entity,
-          records: [...priorRecords].map(([id, hash]) => ({ id, hash })),
-        })
-      }
-    }
-  }
-  for (const [entity, records] of prior) {
-    if (!seen.has(entity) && records.size > 0) {
-      out.push({ entity, records: [...records].map(([id, hash]) => ({ id, hash })) })
-    }
-  }
-  return out
+  return { steps, manifestWritten: ledger.length > 0, committed }
 }
 
 export async function runDown(opts: RunOptions): Promise<DownResult> {
@@ -417,14 +254,15 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
   )
 
   const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
-  if (!manifest) return { steps: [], reverted: false }
+  if (!manifest) return { steps: [], reverted: false, failures: [] }
 
   const needsContext = plugins.some(
     (plugin) =>
       plugin.hooks?.contextReady || plugin.hooks?.beforeRevert || plugin.hooks?.afterRevert,
   )
   const shopContext = needsContext
-    ? (opts.shopContext ?? (await fetchShopContext(loaded.connection, collectFetchers(plugins))))
+    ? (opts.shopContext ??
+      (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client)))
     : opts.shopContext
 
   if (shopContext) {
@@ -454,26 +292,95 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
 
 async function revertManifest(opts: RunOptions, manifest: Manifest): Promise<DownResult> {
   const { loaded, sink, dryRun, reporter } = opts
-  reporter?.onTransactionStart?.({ mode: 'saga' })
 
-  const steps: ReportStep[] = []
-  for (const entity of [...manifest.entities].reverse()) {
-    const ids = entity.records.map((r) => r.id)
-    reporter?.onStart?.(entity.entity, ids.length)
-    if (!dryRun && ids.length > 0) {
-      await sink.delete(entity.entity, ids, (progress) => reporter?.onBatch?.(progress))
-    }
-    const step: ReportStep = {
-      entity: entity.entity,
-      created: 0,
-      updated: 0,
-      unchanged: 0,
-      deleted: ids.length,
-    }
-    steps.push(step)
-    reporter?.onStep?.(step)
+  const stepFor = (entity: ManifestEntity): ReportStep => ({
+    entity: entity.entity,
+    created: 0,
+    updated: 0,
+    unchanged: 0,
+    deleted: entity.records.length,
+  })
+
+  if (dryRun) {
+    const steps = [...manifest.entities].reverse().map((entity) => {
+      reporter?.entityStart?.(entity.entity, entity.records.length)
+      const step = stepFor(entity)
+      reporter?.entityDone?.(step)
+      return step
+    })
+    return { steps, reverted: false, failures: [] }
   }
 
-  if (!dryRun) await removeManifest(loaded.projectRoot, loaded.connection.url)
-  return { steps, reverted: !dryRun }
+  const persist = (entities: ManifestEntity[]): Promise<void> =>
+    writeManifest(
+      loaded.projectRoot,
+      buildManifest({
+        fakewareVersion: opts.fakewareVersion ?? manifest.fakewareVersion,
+        createdAt: manifest.createdAt,
+        shopwareUrl: loaded.connection.url,
+        entities,
+      }),
+    )
+
+  const steps: ReportStep[] = []
+  const deleted = new Set<string>()
+  let remaining: ManifestEntity[] = [...manifest.entities].reverse()
+  let lastError = new Map<string, ShopwareApiError>()
+
+  while (remaining.length > 0) {
+    const stillFailing: ManifestEntity[] = []
+    const failedThisPass = new Map<string, ShopwareApiError>()
+    let progressed = false
+
+    for (const entity of remaining) {
+      const ids = entity.records.map((r) => r.id)
+      reporter?.entityStart?.(entity.entity, ids.length)
+      await persist(
+        manifest.entities
+          .filter((e) => !deleted.has(e.entity))
+          .map((e) => (e.entity === entity.entity ? { ...e, pending: true } : e)),
+      )
+      try {
+        await sink.delete(entity.entity, ids)
+      } catch (error) {
+        if (!(error instanceof ShopwareApiError)) throw error
+        stillFailing.push(entity)
+        failedThisPass.set(entity.entity, error)
+        await persist(manifest.entities.filter((e) => !deleted.has(e.entity)))
+        continue
+      }
+      progressed = true
+      deleted.add(entity.entity)
+      const step = stepFor(entity)
+      steps.push(step)
+      reporter?.entityDone?.(step)
+      await persist(manifest.entities.filter((e) => !deleted.has(e.entity)))
+    }
+
+    remaining = stillFailing
+    lastError = failedThisPass
+    if (!progressed) break
+  }
+
+  if (remaining.length === 0) {
+    await removeManifest(loaded.projectRoot, loaded.connection.url)
+    return { steps, reverted: true, failures: [] }
+  }
+
+  await persist(manifest.entities.filter((e) => !deleted.has(e.entity)))
+  const committed = steps.map((s) => s.entity)
+  const failures: ApplyFailure[] = remaining.map((entity) => {
+    const error =
+      lastError.get(entity.entity) ??
+      new ShopwareApiError(`Could not delete ${entity.entity}.`, {
+        status: null,
+        entity: entity.entity,
+        errors: [],
+        retryable: false,
+        cause: null,
+      })
+    reporter?.failed?.({ entity: entity.entity, committed, error })
+    return { entity: entity.entity, committed, error }
+  })
+  return { steps, reverted: false, failures }
 }

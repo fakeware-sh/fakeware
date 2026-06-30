@@ -45,16 +45,14 @@ mock.module('../shopware/client', () => ({
   REQUEST_TIMEOUT_MS: 120_000,
   createShopwareClient: (): ShopwareClient =>
     ({ invoke: (action: string) => respondTo(action) }) as unknown as ShopwareClient,
+  withRetry: <T>(task: () => Promise<T>): Promise<T> => task(),
 }))
 
 const { runUp, runDown } = await import('./run')
 
 function loadedFor(dir: string, plugins: FakewarePlugin[]): LoadedConfig {
   return {
-    config: {
-      shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
-      transaction: { onError: 'rollback', atomic: false },
-    },
+    config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     configPath: join(dir, 'fakeware.config.ts'),
     projectRoot: dir,
@@ -112,7 +110,7 @@ describe('runUp with plugins', () => {
           order.push(`${name}:beforeApply:${dryRun}`)
         },
         afterApply: ({ result }) => {
-          order.push(`${name}:afterApply:${result.mode}`)
+          order.push(`${name}:afterApply:${result.committed}`)
         },
       },
     })
@@ -128,8 +126,8 @@ describe('runUp with plugins', () => {
       'b:contextReady',
       'a:beforeApply:false',
       'b:beforeApply:false',
-      'a:afterApply:noop',
-      'b:afterApply:noop',
+      'a:afterApply:0',
+      'b:afterApply:0',
     ])
   })
 

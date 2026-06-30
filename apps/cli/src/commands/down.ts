@@ -1,16 +1,10 @@
 import * as p from '@clack/prompts'
 import { readManifest, runDown } from '@fakeware/core'
 import { loadConfig } from '@fakeware/core/config'
-import { createSyncSink } from '@fakeware/core/shopware'
+import { createShopwareClient, createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
-import {
-  counts,
-  pluginLogSink,
-  promptConfirmDestroy,
-  reportError,
-  spinnerReporter,
-} from '../prompts'
+import { counts, promptConfirmDestroy, reportError, spinnerReporter } from '../prompts'
 
 interface DownFlags {
   config?: string
@@ -42,21 +36,34 @@ export function downCommand(): Command {
           }
         }
 
-        const sink = createSyncSink(loaded.connection)
-        const result = await runDown({
-          loaded,
-          sink,
-          logSink: pluginLogSink(),
-          reporter: spinnerReporter({ active: 'Removing', done: 'Removed' }, (step) =>
-            counts(['-', step.deleted]),
-          ),
-        })
+        const client = createShopwareClient(loaded.connection)
+        const reporter = spinnerReporter({ active: 'Removing', done: 'Removed' }, (step) =>
+          counts(['-', step.deleted]),
+        )
+        let result: Awaited<ReturnType<typeof runDown>>
+        try {
+          result = await runDown({
+            loaded,
+            client,
+            sink: createSyncSink(loaded.connection, { client }),
+            reporter,
+          })
+        } finally {
+          reporter.finish()
+        }
 
         const deleted = result.steps.reduce((n, s) => n + s.deleted, 0)
         const label = deleted === 1 ? 'record' : 'records'
-        p.outro(
-          `Removed ${pc.green(String(deleted))} ${label} from ${pc.cyan(loaded.connection.url)}`,
-        )
+        const where = pc.cyan(loaded.connection.url)
+        if (result.failures.length > 0) {
+          const failed = result.failures.map((f) => pc.cyan(f.entity)).join(', ')
+          p.outro(
+            `Removed ${pc.green(String(deleted))} ${label} from ${where}. ${pc.red(`Failed to remove ${result.failures.length}`)}: ${failed}.`,
+          )
+          process.exitCode = 1
+          return
+        }
+        p.outro(`Removed ${pc.green(String(deleted))} ${label} from ${where}`)
       } catch (error) {
         reportError(error)
       }

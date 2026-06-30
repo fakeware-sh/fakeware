@@ -1,6 +1,5 @@
 export { promptConfirmDestroy } from './confirm-destroy'
 export { introBanner } from './intro'
-export { pluginLogSink } from './plugin-log'
 export { counts, spinnerReporter } from './progress'
 export {
   type ExistingDirChoice,

@@ -1,7 +1,17 @@
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
-import { defineRecords, type RecordValue, type RefIndex } from './registry'
-import type { EntityName, RecordFor, RegistryEntityName } from './schema'
+import { defineRecords, type RecordValue } from './registry'
+import type { EntityName, RecordFor, RefPath, RegistryEntityName } from './schema'
+import {
+  type PickToken,
+  pickToken,
+  type RefIndexToken,
+  type RefsToken,
+  type RefToken,
+  refIndexToken,
+  refsToken,
+  refToken,
+} from './tokens'
 
 export function define<const E extends EntityName | RegistryEntityName>(
   entity: E,
@@ -10,41 +20,27 @@ export function define<const E extends EntityName | RegistryEntityName>(
   defineRecords(entity, records as RecordValue | RecordValue[])
 }
 
-export function many<R extends Record<string, unknown>>(n: number, fn: (ctx: Ctx) => R): R {
-  return Array.from({ length: n }, () => fn) as unknown as R
+export function many<R>(n: number, fn: (ctx: Ctx) => R): R[] {
+  return Array.from({ length: n }, () => fn) as unknown as R[]
 }
 
-let active: RefIndex | undefined
-
-export function setActiveRefIndex(refIndex: RefIndex | undefined): void {
-  active = refIndex
-}
-
-function requireActive(): RefIndex {
-  if (!active) {
-    throw new RefError('ref()/refs() may only be called while resolving definitions.')
+export function ref(path: RefPath): RefToken
+export function ref(entity: EntityName | RegistryEntityName, index: number): RefIndexToken
+export function ref(pathOrEntity: string, index?: number): RefToken | RefIndexToken {
+  if (typeof index === 'number') {
+    return refIndexToken(pathOrEntity, index)
   }
-  return active
-}
-
-export function ref(path: string): string {
-  const slash = path.indexOf('/')
+  const slash = pathOrEntity.indexOf('/')
   if (slash === -1) {
-    throw new RefError(`ref('${path}') must be of the form 'entity/key'.`)
+    throw new RefError(`ref('${pathOrEntity}') must be of the form 'entity/key'.`)
   }
-  const entity = path.slice(0, slash)
-  const key = path.slice(slash + 1)
-  const id = requireActive().byEntity.get(entity)?.byKey.get(key)
-  if (!id) {
-    throw new RefError(`ref('${path}') does not match any defined record.`)
-  }
-  return id
+  return refToken(pathOrEntity.slice(0, slash), pathOrEntity.slice(slash + 1))
 }
 
-export function refs(entity: string): string[] {
-  const slot = requireActive().byEntity.get(entity)
-  if (!slot) {
-    throw new RefError(`refs('${entity}') does not match any defined entity.`)
-  }
-  return [...slot.all]
+export function refs(entity: EntityName | RegistryEntityName): RefsToken {
+  return refsToken(entity)
+}
+
+export function pick(token: RefsToken, count?: number): PickToken {
+  return pickToken(token.entity, count ?? null)
 }

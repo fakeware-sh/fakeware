@@ -1,25 +1,23 @@
 import * as p from '@clack/prompts'
-import { GraphError, LoadModuleError, RefError, TransactionError } from '@fakeware/core'
+import { ApplyStopped, GraphError, LoadModuleError, RefError } from '@fakeware/core'
 import { ConfigError } from '@fakeware/core/config'
-import { ShopContextError, ShopwareConnectionError } from '@fakeware/core/shopware'
-
-function transactionLines(error: TransactionError): string[] {
-  const lines = [error.message]
-  if (error.compensationErrors.length > 0) {
-    lines.push('Some records could not be rolled back.')
-  }
-  if (error.unrevertableUpdates) {
-    lines.push('Updated records were not reverted — re-run `fakeware up` to retry.')
-  }
-  if (error.cause instanceof Error) {
-    lines.push(error.cause.message)
-  }
-  return lines
-}
+import {
+  ShopContextError,
+  ShopwareApiError,
+  ShopwareConnectionError,
+} from '@fakeware/core/shopware'
 
 export function reportError(error: unknown): never {
-  if (error instanceof TransactionError) {
-    p.cancel(transactionLines(error).join('\n\n'))
+  if (error instanceof ApplyStopped) {
+    process.exitCode = 1
+    process.exit(1)
+  }
+  if (error instanceof ShopwareApiError) {
+    const lines = [
+      error.message,
+      ...error.errors.map((e) => `  - ${e.field ? `${e.field}: ` : ''}${e.detail}`),
+    ]
+    p.cancel(lines.join('\n'))
     process.exit(1)
   }
   if (
