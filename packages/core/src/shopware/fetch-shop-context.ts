@@ -32,6 +32,43 @@ function rowsOf(raw: unknown): unknown {
   return value ?? []
 }
 
+function totalOf(raw: unknown): number | undefined {
+  let value = raw
+  while (value && typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as { total?: unknown; data?: unknown }
+    if (typeof record.total === 'number') return record.total
+    if (!('data' in record)) break
+    value = record.data
+  }
+  return undefined
+}
+
+async function fetchAllPages(
+  client: ShopwareClient,
+  operation: string,
+  body: Record<string, unknown>,
+): Promise<{ data: unknown[] }> {
+  const collected: unknown[] = []
+  let page = 1
+  for (;;) {
+    const raw = await client.invoke(
+      operation as never,
+      {
+        body: { ...body, page, limit: SEARCH_LIMIT, 'total-count-mode': 1 },
+      } as never,
+    )
+    const rows = rowsOf(raw)
+    const pageRows = Array.isArray(rows) ? rows : []
+    collected.push(...pageRows)
+    const total = totalOf(raw)
+    if (pageRows.length === 0) break
+    if (total !== undefined && collected.length >= total) break
+    if (total === undefined && pageRows.length < SEARCH_LIMIT) break
+    page += 1
+  }
+  return { data: collected }
+}
+
 const currencyRow = z.object({
   id: z.string(),
   name: z.string(),
@@ -155,8 +192,8 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   {
     entity: 'state machine states',
     fetch: (c) =>
-      c.invoke('searchStateMachineState post /search/state-machine-state', {
-        body: { associations: { stateMachine: {} }, limit: SEARCH_LIMIT },
+      fetchAllPages(c, 'searchStateMachineState post /search/state-machine-state', {
+        associations: { stateMachine: {} },
       }),
     merge: (data, raw) => {
       data.stateMachineStates = parseRows('state machine states', stateRow, rowsOf(raw))
