@@ -25,9 +25,7 @@ export function createCollectingLogSink(debug = false): CollectingLogSink {
   }
 }
 
-const DEFAULT_CONFIG: FakewareConfig = {
-  transaction: { onError: 'rollback', atomic: true },
-}
+const DEFAULT_CONFIG: FakewareConfig = {}
 
 const DEFAULT_CONNECTION: ShopwareConnection = {
   url: 'https://shop.test',

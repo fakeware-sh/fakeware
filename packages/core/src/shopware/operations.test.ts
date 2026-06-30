@@ -72,9 +72,7 @@ describe('toConnectionError', () => {
   })
 
   test('401 maps to an authentication message', () => {
-    expect(toConnectionError(connection, apiError(401)).message).toBe(
-      'Authentication failed — check the client ID and client secret of your integration.',
-    )
+    expect(toConnectionError(connection, apiError(401)).message).toBe('Authentication failed.')
   })
 
   test('403 lists the missing privileges', () => {
@@ -101,7 +99,7 @@ describe('toConnectionError', () => {
 
   test('5xx maps to a shop-is-down message', () => {
     expect(toConnectionError(connection, apiError(503)).message).toBe(
-      `${connection.url} is not responding (HTTP 503) — the shop may be down or in maintenance.`,
+      `${connection.url} is not responding (HTTP 503).`,
     )
   })
 
@@ -116,13 +114,13 @@ describe('toConnectionError', () => {
       { code: 'FRAMEWORK__MISSING_PRIVILEGE_ERROR', detail: 'not-json{' },
     ])
     expect(toConnectionError(connection, error).message).toBe(
-      'The integration is missing permissions — grant its role admin API access in Settings → System → Integrations.',
+      'The integration is missing permissions.',
     )
   })
 
   test('non-API errors map to a reachability message', () => {
     expect(toConnectionError(connection, new Error('boom')).message).toBe(
-      `Could not reach ${connection.url} — check the URL and your network connection.`,
+      `Could not reach ${connection.url}.`,
     )
   })
 })

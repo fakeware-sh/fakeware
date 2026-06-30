@@ -1,5 +1,6 @@
 import type { Schemas } from '@shopware/api-client/admin-api-types'
 import type { Ctx } from './ctx'
+import type { AnyToken } from './tokens'
 
 type Words<
   S extends string,
@@ -51,16 +52,16 @@ type WritableKeys<T> = {
   [K in keyof T]-?: K extends NoiseField ? never : IsWritable<T, K> extends true ? K : never
 }[keyof T]
 
-type AssocObject<T> = ('id' extends keyof T ? { id?: string } : object) & {
+type AssocObject<T> = ('id' extends keyof T ? { id?: string | AnyToken } : object) & {
   [K in keyof T]?: unknown
 }
 
 type AssocElement<U> = U extends object ? AssocObject<U> : U
 
 type Field<T> = T extends (infer U)[]
-  ? Producible<AssocElement<U>>[]
+  ? Producible<AssocElement<U>>[] | AnyToken
   : T extends string | number | boolean | null
-    ? T
+    ? T | AnyToken
     : T extends object
       ? AssocObject<T>
       : T
@@ -77,7 +78,11 @@ export interface EntityRegistry {}
 
 export type RegistryEntityName = keyof EntityRegistry & string
 
-type AuthoredField<T> = T extends (ctx: Ctx) => infer R ? (ctx: Ctx) => R : T | ((ctx: Ctx) => T)
+export type RefPath = `${EntityName}/${string}` | `${RegistryEntityName}/${string}`
+
+type AuthoredField<T> = T extends (ctx: Ctx) => infer R
+  ? (ctx: Ctx) => R
+  : T | AnyToken | ((ctx: Ctx) => T | AnyToken)
 
 type RegistryRecordShape<E extends RegistryEntityName> = { $key?: string } & {
   [K in keyof EntityRegistry[E] as Exclude<K, '$key'>]: AuthoredField<EntityRegistry[E][K]>

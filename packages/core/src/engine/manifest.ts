@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { ConfigError } from '../config'
 
 const MANIFEST_DIR = '.fakeware'
-const CURRENT_VERSION = 1 as const
+const CURRENT_VERSION = 2 as const
 
 function shopKey(shopwareUrl: string): string {
   return createHash('sha256').update(shopwareUrl).digest('hex').slice(0, 16)
@@ -18,10 +18,11 @@ export interface ManifestRecord {
 export interface ManifestEntity {
   entity: string
   records: ManifestRecord[]
+  pending?: boolean
 }
 
 export interface Manifest {
-  version: 1
+  version: 2
   fakewareVersion: string
   createdAt: string
   shopwareUrl: string
@@ -77,15 +78,13 @@ export async function readManifest(
     case CURRENT_VERSION: {
       const manifest = parsed as Manifest
       if (checksumOf(manifest.entities) !== manifest.checksum) {
-        throw new ConfigError(
-          `Manifest at ${path} is corrupt (checksum mismatch). Re-run \`fakeware up\`.`,
-        )
+        throw new ConfigError(`Manifest at ${path} is corrupt (checksum mismatch).`)
       }
       return manifest
     }
     default:
       throw new ConfigError(
-        `Unsupported manifest version ${parsed.version} (this CLI understands up to ${CURRENT_VERSION}). Upgrade fakeware.`,
+        `Manifest at ${path} uses version ${parsed.version}, but this fakeware reads version ${CURRENT_VERSION}.`,
       )
   }
 }
@@ -93,7 +92,9 @@ export async function readManifest(
 export async function writeManifest(projectRoot: string, manifest: Manifest): Promise<void> {
   const path = manifestPath(projectRoot, manifest.shopwareUrl)
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`)
+  const tmp = `${path}.${process.pid}.tmp`
+  await writeFile(tmp, `${JSON.stringify(manifest, null, 2)}\n`)
+  await rename(tmp, path)
 }
 
 export async function removeManifest(projectRoot: string, shopwareUrl: string): Promise<void> {

@@ -1,5 +1,5 @@
 import * as p from '@clack/prompts'
-import type { Reporter, ReportStep } from '@fakeware/core'
+import type { ApplyFailure, LogEntry, Reporter, ReportStep } from '@fakeware/core'
 import pc from 'picocolors'
 
 type Marker = '+' | '-' | '~' | '='
@@ -11,83 +11,82 @@ const PAINT: Record<Marker, (s: string) => string> = {
   '=': pc.dim,
 }
 
+export function counts(...parts: [Marker, number][]): string {
+  const shown = parts.filter(([, n]) => n > 0)
+  if (shown.length === 0) return pc.dim('—')
+  return shown.map(([marker, n]) => PAINT[marker](`${marker}${n}`)).join(' ')
+}
+
+function errorBlock(failure: ApplyFailure): string {
+  const { error } = failure
+  const status = error.status !== null ? pc.dim(` (HTTP ${error.status})`) : ''
+  const head = `${pc.red('✖')} ${pc.cyan(failure.entity)} ${error.message}${status}`
+  const details = error.errors.slice(0, 10).map((e) => {
+    const field = e.field ? `${pc.yellow(e.field)}: ` : ''
+    const where = e.recordId ? pc.dim(` (${e.recordId})`) : ''
+    return `    ${pc.dim('•')} ${field}${e.detail}${where}`
+  })
+  const more = error.errors.length - 10
+  if (more > 0) details.push(pc.dim(`    • …and ${more} more`))
+  return [head, ...details].join('\n')
+}
+
+export interface RunReporter extends Reporter {
+  finish(): void
+}
+
 export function spinnerReporter(
   verb: { active: string; done: string },
   detail: (step: ReportStep) => string,
-): Reporter {
-  let active: p.SpinnerResult | null = null
-  let bar: p.ProgressResult | null = null
-  let head = ''
-  let advanced = 0
-  let atomic = false
+): RunReporter {
+  const spinner = p.spinner()
+  const done: ReportStep[] = []
+  const failures: ApplyFailure[] = []
+  const logs: LogEntry[] = []
+  let started = false
+
+  const ensure = (): void => {
+    if (!started) {
+      spinner.start(`${verb.active}…`)
+      started = true
+    }
+  }
+
   return {
-    onTransactionStart: (info) => {
-      atomic = info.mode === 'atomic'
-      if (atomic) {
-        active = p.spinner()
-        active.start(verb.active)
+    entityStart(entity): void {
+      ensure()
+      spinner.message(`${verb.active} ${pc.cyan(entity)}`)
+    },
+    entityDone(step): void {
+      done.push(step)
+      ensure()
+      spinner.message(`${verb.done} ${pc.cyan(step.entity)} ${detail(step)}`)
+    },
+    failed(failure): void {
+      failures.push(failure)
+    },
+    log(entry): void {
+      logs.push(entry)
+    },
+    finish(): void {
+      const summary = done
+        .map((s) => `${pc.cyan(s.entity)} ${detail(s)}`)
+        .filter((line) => line.length > 0)
+      if (started) {
+        spinner.stop(
+          done.length > 0
+            ? `${verb.done} ${pc.dim(`${done.length} ${done.length === 1 ? 'entity' : 'entities'}`)}`
+            : `${verb.done} ${pc.dim('nothing to do')}`,
+        )
       }
-    },
-    onStart: (entity, records) => {
-      if (atomic) return
-      head = `${verb.active} ${pc.cyan(entity)}`
-      advanced = 0
-      if (records && records > 1) {
-        bar = p.progress({ style: 'block', max: records, size: 20 })
-        bar.start(`${head}  ${pc.dim(`0/${records}`)}`)
-        active = bar
-      } else {
-        bar = null
-        active = p.spinner()
-        active.start(head)
+      for (const entry of logs) {
+        const line = `${pc.dim(`[${entry.plugin}]`)} ${entry.message}`
+        if (entry.level === 'error') p.log.error(line)
+        else if (entry.level === 'warn') p.log.warn(line)
+        else p.log.info(line)
       }
-    },
-    onBatch: (progress) => {
-      if (!bar) return
-      bar.advance(
-        progress.records - advanced,
-        `${head}  ${pc.dim(`${progress.records}/${progress.recordsTotal}`)}`,
-      )
-      advanced = progress.records
-    },
-    onStep: (step) => {
-      if (atomic) return
-      active?.stop(`${verb.done} ${pc.cyan(step.entity)}${detail(step)}`)
-      active = bar = null
-    },
-    onCommit: (info) => {
-      if (!atomic) return
-      const label = info.committed === 1 ? 'change' : 'changes'
-      active?.stop(`${verb.done} ${pc.green(String(info.committed))} ${label}`)
-      active = null
-    },
-    onCompensate: (entity, count) => {
-      p.log.message(`Reverted ${pc.cyan(entity)}${counts(['-', count])}`, {
-        symbol: pc.yellow('↺'),
-      })
-    },
-    onCompensateFail: (entity) => {
-      p.log.warn(`Could not revert ${pc.cyan(entity)}`)
-    },
-    onSkip: (info) => {
-      active?.error(`${verb.active} ${pc.cyan(info.entity)}`)
-      active = bar = null
-      p.log.warn(`Skipped ${pc.cyan(info.entity)}`)
-      if (info.error instanceof Error) p.log.message(pc.dim(info.error.message))
-    },
-    onStop: (info) => {
-      const label = info.failedEntity
-        ? info.message.replace(info.failedEntity, pc.cyan(info.failedEntity))
-        : info.message
-      active?.error(label)
-      active = bar = null
+      if (summary.length > 0) p.log.message(summary.join('\n'))
+      for (const failure of failures) p.log.error(errorBlock(failure))
     },
   }
-}
-
-export function counts(...parts: [Marker, number][]): string {
-  const shown = parts.filter(([, n]) => n > 0)
-  if (shown.length === 0) return pc.dim('  —')
-  const body = shown.map(([marker, n]) => PAINT[marker](`${marker}${n}`)).join(' ')
-  return `  ${body}`
 }

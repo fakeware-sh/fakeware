@@ -91,6 +91,7 @@ mock.module('./client', () => ({
     ({
       invoke: (action: string, params?: unknown) => respondTo(action, params),
     }) as unknown as ShopwareClient,
+  withRetry: <T>(task: () => Promise<T>): Promise<T> => task(),
 }))
 
 const { fetchShopContext } = await import('./fetch-shop-context')
@@ -133,7 +134,7 @@ describe('fetchShopContext', () => {
   test('defaults to the active sales channel and its language, and the system currency', async () => {
     const ctx = await fetchShopContext(connection)
     expect(ctx.index.salesChannelDefault.id).toBe('sc-store')
-    expect(ctx.index.languageSystem.id).toBe('lang-en')
+    expect(ctx.index.languageDefault.id).toBe('lang-en')
     expect(ctx.index.currencyDefault.id).toBe('cur-eur')
   })
 
@@ -238,6 +239,7 @@ describe('default resolution', () => {
           typeId: 't',
           currencyId: 'cur-usd',
           languageId: 'lang-en',
+          countryId: null,
           active: true,
         },
       ],

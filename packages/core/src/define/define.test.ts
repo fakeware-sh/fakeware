@@ -1,16 +1,25 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { shopLookup } from '../shopware/shop-context'
+import { shop } from '../shopware/shop-context'
+import { fakeShopContext } from '../shopware/shop-context.fixture'
 import type { Ctx } from './ctx'
-import { define, many, ref, refs, setActiveRefIndex } from './define'
+import { define, many, pick, ref, refs } from './define'
 import { RefError } from './errors'
 import { deterministicId } from './ids'
 import { buildRefIndex, drain, resetRegistry } from './registry'
-import { resolveValue } from './resolve'
+import { type ResolveScope, resolveValue } from './resolve'
+
+const shopContext = fakeShopContext()
 
 beforeEach(() => {
   resetRegistry()
-  setActiveRefIndex(undefined)
 })
+
+function scopeFor(): ResolveScope {
+  const { refIndex } = buildRefIndex(drain())
+  return { refIndex, shop: shopContext, seed: 1 }
+}
+
+const baseCtx: Ctx = { index: 3, count: 9, seed: 1, shop }
 
 describe('define + many', () => {
   test('define accepts a single record and an array', () => {
@@ -46,56 +55,77 @@ describe('define + many', () => {
 })
 
 describe('resolveValue', () => {
-  const ctx: Ctx = { index: 3, count: 9, ref: () => 'r', refs: () => [], shop: shopLookup }
-
   test('calls functions with ctx and recurses into the result', () => {
-    expect(resolveValue((c: Ctx) => ({ i: c.index }), ctx)).toEqual({ i: 3 })
+    expect(resolveValue((c: Ctx) => ({ i: c.index }), baseCtx, scopeFor())).toEqual({ i: 3 })
   })
 
   test('recurses through nested objects and arrays', () => {
     const value = { a: [{ b: (c: Ctx) => c.count }] }
-    expect(resolveValue(value, ctx)).toEqual({ a: [{ b: 9 }] })
+    expect(resolveValue(value, baseCtx, scopeFor())).toEqual({ a: [{ b: 9 }] })
   })
 
   test('strips $key from the payload', () => {
-    expect(resolveValue({ $key: 'standard', name: 'x' }, ctx)).toEqual({ name: 'x' })
+    expect(resolveValue({ $key: 'standard', name: 'x' }, baseCtx, scopeFor())).toEqual({
+      name: 'x',
+    })
   })
 
   test('leaves primitives and Dates untouched', () => {
     const d = new Date(0)
-    expect(resolveValue({ n: 1, s: 'a', d }, ctx)).toEqual({ n: 1, s: 'a', d })
+    expect(resolveValue({ n: 1, s: 'a', d }, baseCtx, scopeFor())).toEqual({ n: 1, s: 'a', d })
   })
 })
 
-describe('ref / refs', () => {
-  test('resolve independently of definition order', () => {
-    define('product', { $key: 'hero', taxId: () => ref('tax/standard') })
-    define('tax', [{ $key: 'standard' }])
-    const { refIndex } = buildRefIndex(drain())
-    setActiveRefIndex(refIndex)
-    expect(ref('tax/standard')).toBe(deterministicId('tax', 'standard'))
+describe('ref / refs / pick', () => {
+  test('ref and refs are pure token constructors (no active context needed)', () => {
+    const token = ref('tax/standard')
+    expect(token).toMatchObject({ entity: 'tax', key: 'standard' })
+    expect(refs('tax')).toMatchObject({ entity: 'tax' })
   })
 
-  test('refs returns all ids of an entity in order', () => {
+  test('ref resolves to the keyed id at write time', () => {
+    define('product', { $key: 'hero', taxId: ref('tax/standard') })
+    define('tax', [{ $key: 'standard' }])
+    const scope = scopeFor()
+    expect(resolveValue(ref('tax/standard'), baseCtx, scope)).toBe(
+      deterministicId('tax', 'standard'),
+    )
+  })
+
+  test('refs resolves to all ids of an entity in order', () => {
     define('category', [{ $key: 'a' }, { $key: 'b' }])
-    const { refIndex } = buildRefIndex(drain())
-    setActiveRefIndex(refIndex)
-    expect(refs('category')).toEqual([
+    const scope = scopeFor()
+    expect(resolveValue(refs('category'), baseCtx, scope)).toEqual([
       deterministicId('category', 'a'),
       deterministicId('category', 'b'),
     ])
   })
 
-  test('unknown ref throws RefError', () => {
-    define('tax', [{ $key: 'standard' }])
-    const { refIndex } = buildRefIndex(drain())
-    setActiveRefIndex(refIndex)
-    expect(() => ref('tax/missing')).toThrow(RefError)
-    expect(() => refs('nope')).toThrow(RefError)
-    expect(() => ref('noslash')).toThrow(RefError)
+  test('ref(entity, index) resolves positionally', () => {
+    define('category', [{ $key: 'a' }, { $key: 'b' }])
+    const scope = scopeFor()
+    expect(resolveValue(ref('category', 1), baseCtx, scope)).toBe(deterministicId('category', 'b'))
   })
 
-  test('ref outside resolution throws', () => {
-    expect(() => ref('tax/standard')).toThrow(RefError)
+  test('pick resolves to one deterministic element', () => {
+    define('category', [{ $key: 'a' }, { $key: 'b' }, { $key: 'c' }])
+    const scope = scopeFor()
+    const chosen = resolveValue(pick(refs('category')), baseCtx, scope) as string
+    expect([
+      deterministicId('category', 'a'),
+      deterministicId('category', 'b'),
+      deterministicId('category', 'c'),
+    ]).toContain(chosen)
+  })
+
+  test('unknown ref throws RefError at resolve time', () => {
+    define('tax', [{ $key: 'standard' }])
+    const scope = scopeFor()
+    expect(() => resolveValue(ref('tax/missing'), baseCtx, scope)).toThrow(RefError)
+    expect(() => resolveValue(refs('currency'), baseCtx, scope)).toThrow(RefError)
+  })
+
+  test('a malformed ref path throws at construction', () => {
+    expect(() => ref('noslash' as never)).toThrow(RefError)
   })
 })

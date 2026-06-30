@@ -5,7 +5,7 @@ import { dispatchOnError, PluginError, runPluginHook, runPluginResultHook } from
 
 function ctxFor(plugin: FakewarePlugin): ConfigContext {
   return {
-    config: { transaction: { onError: 'rollback', atomic: true } },
+    config: {},
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     projectRoot: '/tmp/p',
     mode: 'test',

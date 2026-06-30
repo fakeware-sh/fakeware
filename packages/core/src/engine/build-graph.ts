@@ -2,43 +2,23 @@ import {
   buildRefIndex,
   type Ctx,
   type DrainedEntries,
-  isPlainObject,
+  hashOf,
   type RefIndex,
-  ref as refById,
-  refs as refsByEntity,
-  resolveValue,
-  setActiveRefIndex,
+  type ResolveScope,
+  resolveRecord,
 } from '../define'
 import type { SinkRecord } from '../domain'
-import { type ShopContext, setActiveShopContext, shopLookup } from '../shopware/shop-context'
+import { type ShopContext, setActiveShopContext, shop } from '../shopware/shop-context'
 import { GraphError } from './errors'
+
+export interface PlanRecord {
+  record: SinkRecord
+  hash: string
+}
 
 export interface WritePlan {
   order: string[]
-  records: Map<string, SinkRecord[]>
-}
-
-function ownerByIdOf(refIndex: RefIndex): Map<string, string> {
-  const owner = new Map<string, string>()
-  for (const [entity, slot] of refIndex.byEntity) {
-    for (const id of slot.all) owner.set(id, entity)
-  }
-  return owner
-}
-
-function collectIdRefs(value: unknown, ownerById: Map<string, string>, into: Set<string>): void {
-  if (typeof value === 'string') {
-    const owner = ownerById.get(value)
-    if (owner) into.add(owner)
-    return
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) collectIdRefs(item, ownerById, into)
-    return
-  }
-  if (isPlainObject(value)) {
-    for (const v of Object.values(value)) collectIdRefs(v, ownerById, into)
-  }
+  records: Map<string, PlanRecord[]>
 }
 
 function topoSort(entities: string[], edges: Map<string, Set<string>>): string[] {
@@ -70,42 +50,53 @@ function topoSort(entities: string[], edges: Map<string, Set<string>>): string[]
   return ordered
 }
 
+function recordSeed(entity: string, index: number): number {
+  let h = 2166136261
+  const key = `${entity}:${index}`
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
 export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext): WritePlan {
   const { refIndex, ids } = buildRefIndex(drained)
-  const ownerById = ownerByIdOf(refIndex)
   const entities = drained.map((d) => d.entity)
 
-  const records = new Map<string, SinkRecord[]>()
+  const records = new Map<string, PlanRecord[]>()
   const edges = new Map<string, Set<string>>(entities.map((e) => [e, new Set<string>()]))
 
-  setActiveRefIndex(refIndex)
   setActiveShopContext(shopContext)
   try {
     for (const { entity, entries } of drained) {
-      const out: SinkRecord[] = []
+      const out: PlanRecord[] = []
       entries.forEach((entry, i) => {
         const ctx: Ctx = {
           index: i,
           count: entries.length,
-          ref: refById,
-          refs: refsByEntity,
-          shop: shopLookup,
+          seed: recordSeed(entity, i),
+          shop,
         }
-        const payload = resolveValue(entry.value, ctx) as Record<string, unknown>
+        const scope: ResolveScope = {
+          refIndex: refIndex as RefIndex,
+          shop: shopContext,
+          seed: ctx.seed,
+          onEntityRef: (dep) => {
+            if (dep !== entity) edges.get(entity)?.add(dep)
+          },
+        }
+        const { value, canonical } = resolveRecord(entry.value, ctx, scope)
         const id = ids.get(entry) as string
-
-        const referenced = new Set<string>()
-        collectIdRefs(payload, ownerById, referenced)
-        for (const dep of referenced) {
-          if (dep !== entity) edges.get(entity)?.add(dep)
-        }
-
-        out.push({ ...payload, id })
+        const payload = value as Record<string, unknown>
+        out.push({
+          record: { ...payload, id },
+          hash: hashOf({ ...(canonical as Record<string, unknown>), id }),
+        })
       })
       records.set(entity, out)
     }
   } finally {
-    setActiveRefIndex(undefined)
     setActiveShopContext(undefined)
   }
 

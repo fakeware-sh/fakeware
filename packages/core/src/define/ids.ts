@@ -48,3 +48,9 @@ export function recordHash(payload: unknown): string {
     .update(JSON.stringify(canonicalize(payload)))
     .digest('hex')
 }
+
+export function hashOf(canonical: unknown): string {
+  return createHash('sha256')
+    .update(JSON.stringify(canonicalize(canonical)))
+    .digest('hex')
+}

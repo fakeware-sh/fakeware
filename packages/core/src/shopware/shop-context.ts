@@ -1,3 +1,5 @@
+import { type ShopToken, shopToken } from '../define/tokens'
+
 export interface ShopContextRecord {
   id: string
   name: string
@@ -17,6 +19,7 @@ export interface ShopContextSalesChannel extends ShopContextRecord {
   typeId: string
   currencyId: string
   languageId: string
+  countryId: string | null
   active: boolean
 }
 
@@ -68,15 +71,20 @@ export interface ShopContextIndex {
   currencyByIso: Map<string, ShopContextCurrency>
   currencyDefault: ShopContextCurrency
   languageByLocale: Map<string, ShopContextLanguage>
-  languageSystem: ShopContextLanguage
+  languageDefault: ShopContextLanguage
   salesChannelByName: Map<string, ShopContextSalesChannel>
   salesChannelDefault: ShopContextSalesChannel
   countryByIso: Map<string, ShopContextCountry>
+  countryDefault: ShopContextCountry | null
   salutationByKey: Map<string, ShopContextSalutation>
+  salutationDefault: ShopContextSalutation | null
   stateByMachineState: Map<string, ShopContextStateMachineState>
   taxByRate: Map<number, ShopContextTax>
+  taxDefault: ShopContextTax | null
   paymentMethodByTechnicalName: Map<string, ShopContextPaymentMethod>
+  paymentMethodDefault: ShopContextPaymentMethod | null
   shippingMethodByTechnicalName: Map<string, ShopContextShippingMethod>
+  shippingMethodDefault: ShopContextShippingMethod | null
 }
 
 export interface ShopContext extends ShopContextData {
@@ -85,150 +93,201 @@ export interface ShopContext extends ShopContextData {
 
 export class ShopContextError extends Error {}
 
-export interface ShopLookup {
-  context(): ShopContext
-  currency(isoCode: string): ShopContextCurrency
-  defaultCurrency(): ShopContextCurrency
-  language(locale: string): ShopContextLanguage
-  defaultLanguage(): ShopContextLanguage
-  salesChannel(name: string): ShopContextSalesChannel
-  defaultSalesChannel(): ShopContextSalesChannel
-  country(iso: string): ShopContextCountry
-  salutation(key: string): ShopContextSalutation
-  stateMachineState(machine: string, technicalName: string): ShopContextStateMachineState
-  orderState(technicalName: string): ShopContextStateMachineState
-  orderDeliveryState(technicalName: string): ShopContextStateMachineState
-  orderTransactionState(technicalName: string): ShopContextStateMachineState
-  tax(rate: number): ShopContextTax
-  paymentMethod(technicalName: string): ShopContextPaymentMethod
-  shippingMethod(technicalName: string): ShopContextShippingMethod
-}
-
 function missing(kind: string, key: string, available: string[]): ShopContextError {
   const list = available.length ? available.join(', ') : '(none returned by the shop)'
   return new ShopContextError(`${kind} '${key}' not found. Available: ${list}.`)
 }
 
-export function createShopLookup(ctx: ShopContext): ShopLookup {
-  const i = ctx.index
-  const state = (machine: string, technicalName: string): ShopContextStateMachineState => {
-    const found = i.stateByMachineState.get(`${machine}::${technicalName}`)
-    if (!found) {
-      const states = ctx.stateMachineStates
-        .filter((s) => s.machineTechnicalName === machine)
-        .map((s) => s.technicalName)
-      const hint = states.length ? states.join(', ') : `(machine '${machine}' not found)`
-      throw new ShopContextError(
-        `stateMachineState('${machine}', '${technicalName}') not found. States for '${machine}': ${hint}.`,
-      )
-    }
-    return found
+function requireDefault<T>(value: T | null, kind: string): T {
+  if (value === null || value === undefined) {
+    throw new ShopContextError(`The shop returned no ${kind}, so there is no default to use.`)
   }
-  return {
-    context: () => ctx,
-    currency: (isoCode) => {
-      const found = i.currencyByIso.get(isoCode.toUpperCase())
-      if (!found) throw missing('currency', isoCode, [...i.currencyByIso.keys()])
-      return found
-    },
-    defaultCurrency: () => i.currencyDefault,
-    language: (locale) => {
-      const found = i.languageByLocale.get(locale)
-      if (!found) throw missing('language', locale, [...i.languageByLocale.keys()])
-      return found
-    },
-    defaultLanguage: () => i.languageSystem,
-    salesChannel: (name) => {
-      const found = i.salesChannelByName.get(name)
-      if (!found) throw missing('salesChannel', name, [...i.salesChannelByName.keys()])
-      return found
-    },
-    defaultSalesChannel: () => i.salesChannelDefault,
-    country: (iso) => {
-      const found = i.countryByIso.get(iso.toUpperCase())
-      if (!found) throw missing('country', iso, [...i.countryByIso.keys()])
-      return found
-    },
-    salutation: (key) => {
-      const found = i.salutationByKey.get(key)
-      if (!found) throw missing('salutation', key, [...i.salutationByKey.keys()])
-      return found
-    },
-    stateMachineState: state,
-    orderState: (technicalName) => state('order.state', technicalName),
-    orderDeliveryState: (technicalName) => state('order_delivery.state', technicalName),
-    orderTransactionState: (technicalName) => state('order_transaction.state', technicalName),
-    tax: (rate) => {
-      const found = i.taxByRate.get(rate)
-      if (!found) throw missing('tax', String(rate), [...i.taxByRate.keys()].map(String))
-      return found
-    },
-    paymentMethod: (technicalName) => {
-      const found = i.paymentMethodByTechnicalName.get(technicalName)
-      if (!found) {
-        throw missing('paymentMethod', technicalName, [...i.paymentMethodByTechnicalName.keys()])
-      }
-      return found
-    },
-    shippingMethod: (technicalName) => {
-      const found = i.shippingMethodByTechnicalName.get(technicalName)
-      if (!found) {
-        throw missing('shippingMethod', technicalName, [...i.shippingMethodByTechnicalName.keys()])
-      }
-      return found
-    },
-  }
+  return value
 }
 
-let active: ShopLookup | undefined
-
-export function setActiveShopContext(ctx: ShopContext | undefined): void {
-  active = ctx ? createShopLookup(ctx) : undefined
+function lookupId(shop: ShopContext, resolve: (shop: ShopContext) => ShopContextRecord): string {
+  return resolve(shop).id
 }
 
-function requireActive(): ShopLookup {
-  if (!active) {
+function findCurrency(shop: ShopContext, isoCode: string): ShopContextCurrency {
+  const found = shop.index.currencyByIso.get(isoCode.toUpperCase())
+  if (!found) throw missing('currency', isoCode, [...shop.index.currencyByIso.keys()])
+  return found
+}
+
+function findLanguage(shop: ShopContext, locale: string): ShopContextLanguage {
+  const found = shop.index.languageByLocale.get(locale)
+  if (!found) throw missing('language', locale, [...shop.index.languageByLocale.keys()])
+  return found
+}
+
+function findSalesChannel(shop: ShopContext, name: string): ShopContextSalesChannel {
+  const found = shop.index.salesChannelByName.get(name)
+  if (!found) throw missing('salesChannel', name, [...shop.index.salesChannelByName.keys()])
+  return found
+}
+
+function findCountry(shop: ShopContext, iso: string): ShopContextCountry {
+  const found = shop.index.countryByIso.get(iso.toUpperCase())
+  if (!found) throw missing('country', iso, [...shop.index.countryByIso.keys()])
+  return found
+}
+
+function findSalutation(shop: ShopContext, key: string): ShopContextSalutation {
+  const found = shop.index.salutationByKey.get(key)
+  if (!found) throw missing('salutation', key, [...shop.index.salutationByKey.keys()])
+  return found
+}
+
+function findState(
+  shop: ShopContext,
+  machine: string,
+  technicalName: string,
+): ShopContextStateMachineState {
+  const found = shop.index.stateByMachineState.get(`${machine}::${technicalName}`)
+  if (!found) {
+    const states = shop.stateMachineStates
+      .filter((s) => s.machineTechnicalName === machine)
+      .map((s) => s.technicalName)
+    const hint = states.length ? states.join(', ') : `(machine '${machine}' not found)`
     throw new ShopContextError(
-      'Shop lookups may only be called while resolving definitions. Wrap the call in a ' +
-        "function, e.g. define('order', () => ({ currencyId: currency('EUR').id })).",
+      `stateMachineState('${machine}', '${technicalName}') not found. States for '${machine}': ${hint}.`,
     )
   }
-  return active
+  return found
 }
 
-export const shopLookup: ShopLookup = {
-  context: () => requireActive().context(),
-  currency: (isoCode) => requireActive().currency(isoCode),
-  defaultCurrency: () => requireActive().defaultCurrency(),
-  language: (locale) => requireActive().language(locale),
-  defaultLanguage: () => requireActive().defaultLanguage(),
-  salesChannel: (name) => requireActive().salesChannel(name),
-  defaultSalesChannel: () => requireActive().defaultSalesChannel(),
-  country: (iso) => requireActive().country(iso),
-  salutation: (key) => requireActive().salutation(key),
-  stateMachineState: (machine, technicalName) =>
-    requireActive().stateMachineState(machine, technicalName),
-  orderState: (technicalName) => requireActive().orderState(technicalName),
-  orderDeliveryState: (technicalName) => requireActive().orderDeliveryState(technicalName),
-  orderTransactionState: (technicalName) => requireActive().orderTransactionState(technicalName),
-  tax: (rate) => requireActive().tax(rate),
-  paymentMethod: (technicalName) => requireActive().paymentMethod(technicalName),
-  shippingMethod: (technicalName) => requireActive().shippingMethod(technicalName),
+function findTax(shop: ShopContext, rate: number): ShopContextTax {
+  const found = shop.index.taxByRate.get(rate)
+  if (!found) throw missing('tax', String(rate), [...shop.index.taxByRate.keys()].map(String))
+  return found
 }
 
-export const shop = shopLookup.context
-export const currency = shopLookup.currency
-export const defaultCurrency = shopLookup.defaultCurrency
-export const language = shopLookup.language
-export const defaultLanguage = shopLookup.defaultLanguage
-export const salesChannel = shopLookup.salesChannel
-export const defaultSalesChannel = shopLookup.defaultSalesChannel
-export const country = shopLookup.country
-export const salutation = shopLookup.salutation
-export const stateMachineState = shopLookup.stateMachineState
-export const orderState = shopLookup.orderState
-export const orderDeliveryState = shopLookup.orderDeliveryState
-export const orderTransactionState = shopLookup.orderTransactionState
-export const tax = shopLookup.tax
-export const paymentMethod = shopLookup.paymentMethod
-export const shippingMethod = shopLookup.shippingMethod
+function findPaymentMethod(shop: ShopContext, technicalName: string): ShopContextPaymentMethod {
+  const found = shop.index.paymentMethodByTechnicalName.get(technicalName)
+  if (!found) {
+    throw missing('paymentMethod', technicalName, [
+      ...shop.index.paymentMethodByTechnicalName.keys(),
+    ])
+  }
+  return found
+}
+
+function findShippingMethod(shop: ShopContext, technicalName: string): ShopContextShippingMethod {
+  const found = shop.index.shippingMethodByTechnicalName.get(technicalName)
+  if (!found) {
+    throw missing('shippingMethod', technicalName, [
+      ...shop.index.shippingMethodByTechnicalName.keys(),
+    ])
+  }
+  return found
+}
+
+export interface Shop {
+  context(): ShopContext
+  readonly extensions: ShopContextExtensions
+
+  readonly defaultCurrency: ShopToken
+  readonly defaultLanguage: ShopToken
+  readonly defaultSalesChannel: ShopToken
+  readonly defaultCountry: ShopToken
+  readonly defaultSalutation: ShopToken
+  readonly defaultTax: ShopToken
+  readonly defaultPaymentMethod: ShopToken
+  readonly defaultShippingMethod: ShopToken
+
+  currency(isoCode: string): ShopToken
+  language(locale: string): ShopToken
+  salesChannel(name: string): ShopToken
+  country(iso: string): ShopToken
+  salutation(key: string): ShopToken
+  tax(rate: number): ShopToken
+  paymentMethod(technicalName: string): ShopToken
+  shippingMethod(technicalName: string): ShopToken
+  stateMachineState(machine: string, technicalName: string): ShopToken
+  orderState(technicalName: string): ShopToken
+  orderDeliveryState(technicalName: string): ShopToken
+  orderTransactionState(technicalName: string): ShopToken
+}
+
+const tokens = {
+  defaultCurrency: shopToken('defaultCurrency', (s) => s.index.currencyDefault.id),
+  defaultLanguage: shopToken('defaultLanguage', (s) => s.index.languageDefault.id),
+  defaultSalesChannel: shopToken('defaultSalesChannel', (s) => s.index.salesChannelDefault.id),
+  defaultCountry: shopToken(
+    'defaultCountry',
+    (s) => requireDefault(s.index.countryDefault, 'countries').id,
+  ),
+  defaultSalutation: shopToken(
+    'defaultSalutation',
+    (s) => requireDefault(s.index.salutationDefault, 'salutations').id,
+  ),
+  defaultTax: shopToken('defaultTax', (s) => requireDefault(s.index.taxDefault, 'taxes').id),
+  defaultPaymentMethod: shopToken(
+    'defaultPaymentMethod',
+    (s) => requireDefault(s.index.paymentMethodDefault, 'payment methods').id,
+  ),
+  defaultShippingMethod: shopToken(
+    'defaultShippingMethod',
+    (s) => requireDefault(s.index.shippingMethodDefault, 'shipping methods').id,
+  ),
+}
+
+let activeContext: ShopContext | undefined
+
+export function setActiveShopContext(ctx: ShopContext | undefined): void {
+  activeContext = ctx
+}
+
+function requireActiveContext(): ShopContext {
+  if (!activeContext) {
+    throw new ShopContextError(
+      'shop.context()/shop.extensions are only available while resolving definitions.',
+    )
+  }
+  return activeContext
+}
+
+export const shop: Shop = {
+  context: () => requireActiveContext(),
+  get extensions() {
+    return requireActiveContext().extensions
+  },
+  defaultCurrency: tokens.defaultCurrency,
+  defaultLanguage: tokens.defaultLanguage,
+  defaultSalesChannel: tokens.defaultSalesChannel,
+  defaultCountry: tokens.defaultCountry,
+  defaultSalutation: tokens.defaultSalutation,
+  defaultTax: tokens.defaultTax,
+  defaultPaymentMethod: tokens.defaultPaymentMethod,
+  defaultShippingMethod: tokens.defaultShippingMethod,
+  currency: (iso) =>
+    shopToken(`currency:${iso.toUpperCase()}`, (s) => lookupId(s, (x) => findCurrency(x, iso))),
+  language: (locale) =>
+    shopToken(`language:${locale}`, (s) => lookupId(s, (x) => findLanguage(x, locale))),
+  salesChannel: (name) =>
+    shopToken(`salesChannel:${name}`, (s) => lookupId(s, (x) => findSalesChannel(x, name))),
+  country: (iso) =>
+    shopToken(`country:${iso.toUpperCase()}`, (s) => lookupId(s, (x) => findCountry(x, iso))),
+  salutation: (key) =>
+    shopToken(`salutation:${key}`, (s) => lookupId(s, (x) => findSalutation(x, key))),
+  tax: (rate) => shopToken(`tax:${rate}`, (s) => lookupId(s, (x) => findTax(x, rate))),
+  paymentMethod: (tn) =>
+    shopToken(`paymentMethod:${tn}`, (s) => lookupId(s, (x) => findPaymentMethod(x, tn))),
+  shippingMethod: (tn) =>
+    shopToken(`shippingMethod:${tn}`, (s) => lookupId(s, (x) => findShippingMethod(x, tn))),
+  stateMachineState: (machine, tn) =>
+    shopToken(`state:${machine}:${tn}`, (s) => lookupId(s, (x) => findState(x, machine, tn))),
+  orderState: (tn) =>
+    shopToken(`state:order.state:${tn}`, (s) =>
+      lookupId(s, (x) => findState(x, 'order.state', tn)),
+    ),
+  orderDeliveryState: (tn) =>
+    shopToken(`state:order_delivery.state:${tn}`, (s) =>
+      lookupId(s, (x) => findState(x, 'order_delivery.state', tn)),
+    ),
+  orderTransactionState: (tn) =>
+    shopToken(`state:order_transaction.state:${tn}`, (s) =>
+      lookupId(s, (x) => findState(x, 'order_transaction.state', tn)),
+    ),
+}

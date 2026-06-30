@@ -1,13 +1,18 @@
-export { createShopwareClient, type ShopwareClient } from './client'
-export { ShopwareConnectionError } from './errors'
+export { createShopwareClient, type ShopwareClient, withRetry } from './client'
+export {
+  type ParsedApiError,
+  ShopwareApiError,
+  ShopwareConnectionError,
+} from './errors'
 export {
   buildShopContextIndex,
   fetchShopContext,
   type ShopContextFetcher,
   toShopContext,
 } from './fetch-shop-context'
-export { toConnectionError, validateConnection } from './operations'
+export { toApiError, toConnectionError, validateConnection } from './operations'
 export {
+  type Shop,
   type ShopContext,
   type ShopContextCountry,
   type ShopContextCurrency,
@@ -23,8 +28,8 @@ export {
   type ShopContextShippingMethod,
   type ShopContextStateMachineState,
   type ShopContextTax,
-  type ShopLookup,
   setActiveShopContext,
+  shop,
 } from './shop-context'
-export { ATOMIC_REQUEST_BYTE_LIMIT, createSyncSink, estimateSyncBytes } from './sink'
+export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
 export type { ShopwareConnection } from './types'

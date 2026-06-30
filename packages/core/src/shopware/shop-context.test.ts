@@ -1,23 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import {
-  country,
-  createShopLookup,
-  currency,
-  defaultCurrency,
-  defaultLanguage,
-  defaultSalesChannel,
-  orderDeliveryState,
-  orderState,
-  orderTransactionState,
-  paymentMethod,
-  ShopContextError,
-  salutation,
-  setActiveShopContext,
-  shippingMethod,
-  shopLookup,
-  stateMachineState,
-  tax,
-} from './shop-context'
+import { type ShopContext, ShopContextError, setActiveShopContext, shop } from './shop-context'
 import { fakeShopContext } from './shop-context.fixture'
 
 const ctx = fakeShopContext({
@@ -36,6 +18,7 @@ const ctx = fakeShopContext({
       typeId: 'type-store',
       currencyId: 'cur-eur',
       languageId: 'lang-en',
+      countryId: 'country-de',
       active: true,
     },
   ],
@@ -59,88 +42,84 @@ const ctx = fakeShopContext({
       machineTechnicalName: 'order_transaction.state',
     },
   ],
-  taxes: [{ id: 'tax-19', name: 'Standard', taxRate: 19 }],
+  taxes: [
+    { id: 'tax-7', name: 'Reduced', taxRate: 7 },
+    { id: 'tax-19', name: 'Standard', taxRate: 19 },
+  ],
   paymentMethods: [{ id: 'pm-invoice', name: 'Invoice', technicalName: 'fakeware_invoice' }],
   shippingMethods: [{ id: 'sm-standard', name: 'Standard', technicalName: 'fakeware_standard' }],
 })
+
+function id(token: { resolve(s: ShopContext): string }): string {
+  return token.resolve(ctx)
+}
 
 afterEach(() => {
   setActiveShopContext(undefined)
 })
 
-describe('createShopLookup', () => {
-  const lookup = createShopLookup(ctx)
-
-  test('resolves records by meaning', () => {
-    expect(lookup.currency('EUR').id).toBe('cur-eur')
-    expect(lookup.language('de-DE').id).toBe('lang-de')
-    expect(lookup.country('DE').id).toBe('country-de')
-    expect(lookup.salutation('mr').id).toBe('sal-mr')
-    expect(lookup.tax(19).id).toBe('tax-19')
-    expect(lookup.paymentMethod('fakeware_invoice').id).toBe('pm-invoice')
-    expect(lookup.shippingMethod('fakeware_standard').id).toBe('sm-standard')
+describe('shop tokens', () => {
+  test('resolve records by meaning', () => {
+    expect(id(shop.currency('EUR'))).toBe('cur-eur')
+    expect(id(shop.language('de-DE'))).toBe('lang-de')
+    expect(id(shop.country('DE'))).toBe('country-de')
+    expect(id(shop.salutation('mr'))).toBe('sal-mr')
+    expect(id(shop.tax(19))).toBe('tax-19')
+    expect(id(shop.paymentMethod('fakeware_invoice'))).toBe('pm-invoice')
+    expect(id(shop.shippingMethod('fakeware_standard'))).toBe('sm-standard')
   })
 
   test('currency and country lookups are case-insensitive', () => {
-    expect(lookup.currency('eur').id).toBe('cur-eur')
-    expect(lookup.country('de').id).toBe('country-de')
+    expect(id(shop.currency('eur'))).toBe('cur-eur')
+    expect(id(shop.country('de'))).toBe('country-de')
   })
 
   test('resolves the order state machines', () => {
-    expect(lookup.orderState('open').id).toBe('os-open')
-    expect(lookup.orderDeliveryState('open').id).toBe('ods-open')
-    expect(lookup.orderTransactionState('open').id).toBe('ots-open')
-    expect(lookup.stateMachineState('order.state', 'open').id).toBe('os-open')
+    expect(id(shop.orderState('open'))).toBe('os-open')
+    expect(id(shop.orderDeliveryState('open'))).toBe('ods-open')
+    expect(id(shop.orderTransactionState('open'))).toBe('ots-open')
+    expect(id(shop.stateMachineState('order.state', 'open'))).toBe('os-open')
   })
 
-  test('resolves defaults from the active sales channel and the system flags', () => {
-    expect(lookup.defaultSalesChannel().id).toBe('sc-store')
-    expect(lookup.defaultCurrency().id).toBe('cur-eur')
-    expect(lookup.defaultLanguage().id).toBe('lang-en')
+  test('resolves defaults', () => {
+    expect(id(shop.defaultSalesChannel)).toBe('sc-store')
+    expect(id(shop.defaultCurrency)).toBe('cur-eur')
+    expect(id(shop.defaultLanguage)).toBe('lang-en')
+    expect(id(shop.defaultCountry)).toBe('country-de')
+    expect(id(shop.defaultSalutation)).toBe('sal-mr')
+    expect(id(shop.defaultTax)).toBe('tax-19')
+    expect(id(shop.defaultPaymentMethod)).toBe('pm-invoice')
+    expect(id(shop.defaultShippingMethod)).toBe('sm-standard')
+  })
+
+  test('a stable descriptor is independent of the resolved id', () => {
+    expect(shop.defaultCurrency.descriptor).toBe('defaultCurrency')
+    expect(shop.country('DE').descriptor).toBe('country:DE')
   })
 
   test('a missing key throws ShopContextError listing what is available', () => {
-    expect(() => lookup.currency('GBP')).toThrow(ShopContextError)
-    expect(() => lookup.currency('GBP')).toThrow(/EUR/)
-    expect(() => lookup.country('ZZ')).toThrow(/DE/)
+    expect(() => id(shop.currency('GBP'))).toThrow(ShopContextError)
+    expect(() => id(shop.currency('GBP'))).toThrow(/EUR/)
+    expect(() => id(shop.country('ZZ'))).toThrow(/DE/)
   })
 
   test('a missing state names the states of that machine', () => {
-    expect(() => lookup.orderState('closed')).toThrow(ShopContextError)
-    expect(() => lookup.orderState('closed')).toThrow(/order\.state/)
-    expect(() => lookup.orderState('closed')).toThrow(/open/)
+    expect(() => id(shop.orderState('closed'))).toThrow(ShopContextError)
+    expect(() => id(shop.orderState('closed'))).toThrow(/order\.state/)
+    expect(() => id(shop.orderState('closed'))).toThrow(/open/)
   })
 })
 
-describe('module-global lookups', () => {
-  test('standalone helpers throw before a context is active', () => {
+describe('eager context access', () => {
+  test('context()/extensions throw before a context is active', () => {
     setActiveShopContext(undefined)
-    expect(() => currency('EUR')).toThrow(ShopContextError)
-    expect(() => defaultLanguage()).toThrow(ShopContextError)
+    expect(() => shop.context()).toThrow(ShopContextError)
+    expect(() => shop.extensions).toThrow(ShopContextError)
   })
 
-  test('helpers and shopLookup resolve once a context is active', () => {
+  test('context()/extensions read the active context', () => {
     setActiveShopContext(ctx)
-    expect(currency('EUR').id).toBe('cur-eur')
-    expect(country('DE').id).toBe('country-de')
-    expect(salutation('mr').id).toBe('sal-mr')
-    expect(defaultCurrency().id).toBe('cur-eur')
-    expect(defaultSalesChannel().id).toBe('sc-store')
-    expect(tax(19).id).toBe('tax-19')
-    expect(paymentMethod('fakeware_invoice').id).toBe('pm-invoice')
-    expect(shippingMethod('fakeware_standard').id).toBe('sm-standard')
-    expect(orderState('open').id).toBe('os-open')
-    expect(orderDeliveryState('open').id).toBe('ods-open')
-    expect(orderTransactionState('open').id).toBe('ots-open')
-    expect(stateMachineState('order.state', 'open').id).toBe('os-open')
-    expect(shopLookup.currency('EUR').id).toBe('cur-eur')
-    expect(shopLookup.context()).toBe(ctx)
-  })
-
-  test('clearing the context makes helpers throw again', () => {
-    setActiveShopContext(ctx)
-    expect(currency('EUR').id).toBe('cur-eur')
-    setActiveShopContext(undefined)
-    expect(() => currency('EUR')).toThrow(ShopContextError)
+    expect(shop.context()).toBe(ctx)
+    expect(shop.extensions).toBe(ctx.extensions)
   })
 })

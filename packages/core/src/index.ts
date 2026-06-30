@@ -1,26 +1,33 @@
 export type {
+  AnyToken,
   Ctx,
   DefineRecord,
   EntityName,
   EntityRegistry,
+  PickToken,
   RecordFor,
+  ReferenceToken,
+  RefIndexToken,
+  RefPath,
+  RefsToken,
+  RefToken,
   RegistryEntityName,
+  ShopToken,
 } from './define'
-export { define, many, RefError, ref, refs } from './define'
-export type { BatchProgress, ShopwareSink, SinkRecord, SyncOperation } from './domain'
+export { define, many, pick, RefError, ref, refs, shopToken } from './define'
+export type { ShopwareSink, SinkRecord } from './domain'
 export type {
+  ApplyFailure,
   DownResult,
   Manifest,
   ManifestEntity,
   ManifestRecord,
-  OnError,
   Reporter,
   ReportStep,
   RunOptions,
-  TransactionOptions,
   UpResult,
 } from './engine'
-export { GraphError, readManifest, runDown, runUp, TransactionError } from './engine'
+export { ApplyStopped, GraphError, readManifest, runDown, runUp } from './engine'
 export type {
   ApplyContext,
   ConfigContext,
@@ -38,8 +45,9 @@ export type {
 } from './plugin'
 export { consoleLogSink, definePlugin, PluginError, silentLogSink } from './plugin'
 export { LoadModuleError } from './runtime'
-export type { ShopContextFetcher } from './shopware/fetch-shop-context'
 export type {
+  ParsedApiError,
+  Shop,
   ShopContext,
   ShopContextCountry,
   ShopContextCurrency,
@@ -52,24 +60,7 @@ export type {
   ShopContextSalutation,
   ShopContextStateMachineState,
   ShopContextTax,
-  ShopLookup,
-} from './shopware/shop-context'
-export {
-  country,
-  currency,
-  defaultCurrency,
-  defaultLanguage,
-  defaultSalesChannel,
-  language,
-  orderDeliveryState,
-  orderState,
-  orderTransactionState,
-  paymentMethod,
-  ShopContextError,
-  salesChannel,
-  salutation,
-  shippingMethod,
-  shop,
-  stateMachineState,
-  tax,
-} from './shopware/shop-context'
+} from './shopware'
+export { ShopContextError, ShopwareApiError, ShopwareConnectionError } from './shopware'
+export type { ShopContextFetcher } from './shopware/fetch-shop-context'
+export { shop } from './shopware/shop-context'
