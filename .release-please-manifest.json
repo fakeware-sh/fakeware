@@ -1,5 +1,5 @@
 {
   "packages/core": "0.0.9",
   "apps/cli": "0.0.10",
-  "apps/create-fakeware": "1.0.4"
+  "apps/create-fakeware": "1.1.0"
 }

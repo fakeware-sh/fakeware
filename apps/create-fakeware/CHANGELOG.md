@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0](https://github.com/fakeware-sh/fakeware/compare/create-fakeware-v1.0.4...create-fakeware-v1.1.0) (2026-07-01)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/cli bumped to 0.0.10
+
 ## [1.0.4](https://github.com/fakeware-sh/fakeware/compare/create-fakeware-v1.0.3...create-fakeware-v1.0.4) (2026-06-09)
 
 
