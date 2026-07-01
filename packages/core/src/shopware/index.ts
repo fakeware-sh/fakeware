@@ -12,6 +12,14 @@ export {
 } from './fetch-shop-context'
 export { toApiError, toConnectionError, validateConnection } from './operations'
 export {
+  type CalculatedPrice,
+  type CalculatedPriceOptions,
+  type CartPrice,
+  type GrossPrice,
+  type GrossPriceOptions,
+  price,
+} from './price'
+export {
   type Shop,
   type ShopContext,
   type ShopContextCountry,
