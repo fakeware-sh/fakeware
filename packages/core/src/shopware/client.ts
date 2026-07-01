@@ -1,6 +1,6 @@
-import { ApiClientError, createAdminAPIClient } from '@shopware/api-client'
+import { createAdminAPIClient } from '@shopware/api-client'
 import type { operations } from '@shopware/api-client/admin-api-types'
-import { isRetryableStatus, isTimeoutError } from './operations'
+import { isApiClientError, isRetryableStatus, isTimeoutError } from './operations'
 import type { ShopwareConnection } from './types'
 
 export type ShopwareClient = ReturnType<typeof createAdminAPIClient<operations>>
@@ -27,7 +27,7 @@ export function createShopwareClient(connection: ShopwareConnection): ShopwareCl
 
 function isRetryable(error: unknown): boolean {
   if (isTimeoutError(error)) return true
-  if (error instanceof ApiClientError) return isRetryableStatus(error.status)
+  if (isApiClientError(error)) return isRetryableStatus(error.status)
   return false
 }
 

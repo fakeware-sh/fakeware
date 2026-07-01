@@ -1,4 +1,4 @@
-import { ApiClientError, type ApiError } from '@shopware/api-client'
+import type { ApiClientError, ApiError } from '@shopware/api-client'
 import type { SinkRecord } from '../domain'
 import { createShopwareClient, REQUEST_TIMEOUT_MS } from './client'
 import { type ParsedApiError, ShopwareApiError, ShopwareConnectionError } from './errors'
@@ -10,6 +10,14 @@ function safeJsonParse<T>(input: string): T | null {
   } catch {
     return null
   }
+}
+
+export function isApiClientError(error: unknown): error is ApiClientError<{ errors: ApiError[] }> {
+  return (
+    error instanceof Error &&
+    typeof (error as { status?: unknown }).status === 'number' &&
+    Array.isArray((error as { details?: { errors?: unknown } }).details?.errors)
+  )
 }
 
 export function isTimeoutError(error: unknown): boolean {
@@ -81,7 +89,7 @@ export function toApiError(
       cause: error,
     })
   }
-  if (error instanceof ApiClientError) {
+  if (isApiClientError(error)) {
     const parsed = parseErrors(error, records)
     const summary =
       parsed.length === 1
@@ -113,7 +121,7 @@ export function toConnectionError(
       `${connection.url} did not respond within ${REQUEST_TIMEOUT_MS / 1000}s.`,
     )
   }
-  if (error instanceof ApiClientError) {
+  if (isApiClientError(error)) {
     switch (error.status) {
       case 400: {
         const messages = parseErrors(error, [])
