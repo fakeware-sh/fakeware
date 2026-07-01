@@ -9,3 +9,18 @@ pre-commit:
       glob: "*.{ts,tsx}"
       run: npx tsc --build --noEmit
       root: "."
+    - name: lockfile-no-plugins
+      glob: bun.lock
+      run: |
+        grep -q '"plugins/' bun.lock || exit 0
+        hidden=""; trap '[ -n "$hidden" ] && mv "$hidden/plugins" plugins && rmdir "$hidden"' EXIT
+        [ -d plugins ] && { hidden="$(mktemp -d)"; mv plugins "$hidden/plugins"; }
+        bun install --lockfile-only >/dev/null 2>&1
+      stage_fixed: true
+
+post-commit:
+  jobs:
+    - name: lockfile-relink-plugins
+      run: |
+        ls plugins/*/package.json >/dev/null 2>&1 || exit 0
+        bun install --lockfile-only >/dev/null 2>&1
