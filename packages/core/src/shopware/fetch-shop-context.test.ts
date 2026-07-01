@@ -91,7 +91,6 @@ mock.module('./client', () => ({
     ({
       invoke: (action: string, params?: unknown) => respondTo(action, params),
     }) as unknown as ShopwareClient,
-  withRetry: <T>(task: () => Promise<T>): Promise<T> => task(),
 }))
 
 const { fetchShopContext } = await import('./fetch-shop-context')

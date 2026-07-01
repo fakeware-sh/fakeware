@@ -45,7 +45,6 @@ mock.module('../shopware/client', () => ({
   REQUEST_TIMEOUT_MS: 120_000,
   createShopwareClient: (): ShopwareClient =>
     ({ invoke: (action: string) => respondTo(action) }) as unknown as ShopwareClient,
-  withRetry: <T>(task: () => Promise<T>): Promise<T> => task(),
 }))
 
 const { runUp, runDown } = await import('./run')
