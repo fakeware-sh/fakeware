@@ -1,0 +1,8 @@
+node_modules
+.output
+.nuxt
+.data
+.nitro
+.cache
+*.log
+.DS_Store
