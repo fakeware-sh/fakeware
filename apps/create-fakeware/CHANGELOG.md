@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.1.0](https://github.com/fakeware-sh/fakeware/compare/create-fakeware-v1.0.4...create-fakeware-v1.1.0) (2026-07-01)
+
+
+### Features
+
+* add create-fakeware ([d17f13c](https://github.com/fakeware-sh/fakeware/commit/d17f13cc420e49dbbe313a6dfd3d4781d08b1136))
+
+
+### Bug Fixes
+
+* remove test script ([d4f4b06](https://github.com/fakeware-sh/fakeware/commit/d4f4b06544ed8e96242ffe41ade56719bc8bc083))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/cli bumped to 0.0.3
+
 ## [1.0.4](https://github.com/fakeware-sh/fakeware/compare/create-fakeware-v1.0.3...create-fakeware-v1.0.4) (2026-06-09)
 
 
