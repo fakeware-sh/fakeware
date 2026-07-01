@@ -14,18 +14,19 @@
   },
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "plugins/*"
   ],
   "scripts": {
     "prepare": "lefthook install",
-    "dev": "bun run scripts/dev.ts",
+    "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "test:coverage": "bun test --coverage",
     "check": "biome check . && bun run typecheck",
     "fix": "biome check . --write && bun run typecheck",
     "typecheck": "bun run --filter '*' typecheck",
-    "clean": "rm -rf node_modules apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo"
+    "clean": "rm -rf node_modules apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist plugins/*/node_modules plugins/*/dist apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo plugins/*/*.tsbuildinfo"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
