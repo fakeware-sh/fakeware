@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/cli",
-  "version": "0.0.10",
+  "version": "0.0.3",
   "description": "The Fakeware cli",
   "type": "module",
   "license": "MIT",

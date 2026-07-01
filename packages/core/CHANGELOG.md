@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.0.3](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.9...core-v0.0.3) (2026-07-01)
+
+
+### Features
+
+* add core as dev dependency in scaffold ([8917ec2](https://github.com/fakeware-sh/fakeware/commit/8917ec2265a751784f43134173c291bc2002d9b1))
+* add plugin hooks, logging, and testing support ([0e5bb78](https://github.com/fakeware-sh/fakeware/commit/0e5bb78a59e773530099989448d380dd7d70f494))
+* add plugin system ([42d6155](https://github.com/fakeware-sh/fakeware/commit/42d6155bab4c3aad6f3815dda09a85474a2a394e))
+* **core:** add a request timeout to Shopware api calls ([f263c33](https://github.com/fakeware-sh/fakeware/commit/f263c33dea31646bcb4937acf5beeb7488ba1883))
+* **core:** add deterministic order association builders ([7218a5f](https://github.com/fakeware-sh/fakeware/commit/7218a5fc80eb5d4c3710570df15ee0eef1f2550b))
+* **core:** add dynamic Shopware shop context for id-free lookups ([b0fd5ac](https://github.com/fakeware-sh/fakeware/commit/b0fd5ac2fa5274b97deffe5b4a731dbea10cee37))
+* **core:** add shopware api client ([b510716](https://github.com/fakeware-sh/fakeware/commit/b510716b6eef979a5246e72f588c7944d5d98071))
+* **core:** add Shopware price helper for gross, calculated and cart prices ([1028e76](https://github.com/fakeware-sh/fakeware/commit/1028e76cacdf93556939908ed0c3c9919f338eaa))
+* **core:** order self-referential records within an entity by keyed refs ([57516b2](https://github.com/fakeware-sh/fakeware/commit/57516b222fa9a41ccaef2435842ad501fe173205))
+* **core:** unify ref selectors and add typed define key map with keyed helper ([635d77a](https://github.com/fakeware-sh/fakeware/commit/635d77ae05824448165766eb38af04d7f9fda51f))
+* **core:** validate Shopware language response with zod ([b4bfd17](https://github.com/fakeware-sh/fakeware/commit/b4bfd172e98856e2f80cd272e24fc290756d14d3))
+* init setup and init command ([5601fd0](https://github.com/fakeware-sh/fakeware/commit/5601fd07afc4514de24d8326e0c7ad8131c072bf))
+* make shop connection optional and use ts config ([f0dcc6a](https://github.com/fakeware-sh/fakeware/commit/f0dcc6a4fe72e59fcac4168bffdd7fa71e0c4dfe))
+* make up transactional and load user files via jiti ([d7694cd](https://github.com/fakeware-sh/fakeware/commit/d7694cdb2b954f90d96a112e1dddf667b3f5ed7a))
+* report batch progress and format Shopware errors ([17d70f0](https://github.com/fakeware-sh/fakeware/commit/17d70f0948d9ca2452e79e5498c121240b1df7c0))
+* up and down command and manifest system ([72a6c97](https://github.com/fakeware-sh/fakeware/commit/72a6c979f93b1abef34070e9d8c3a251acb15510))
+
+
+### Bug Fixes
+
+* add api error guard ([6b1790f](https://github.com/fakeware-sh/fakeware/commit/6b1790f3e8b40982fac92e5a9a2047e62fe081ec))
+* add pagination for state machine states fetching ([d7e7d97](https://github.com/fakeware-sh/fakeware/commit/d7e7d9728f91b2e4f1eafecffc4809ab1eb88c49))
+* core and cli version on scaffold ([2e7c1db](https://github.com/fakeware-sh/fakeware/commit/2e7c1db850ed1cec8eb845a80219ebcdc11ffced))
+* **core:** move withRetry into a leaf retry module so test mocks can't clobber it ([#24](https://github.com/fakeware-sh/fakeware/issues/24)) ([d7627cc](https://github.com/fakeware-sh/fakeware/commit/d7627cca3da64ae5e09a3d83c0c16c824985675a))
+* jiti virtual module for core ([a8d36f3](https://github.com/fakeware-sh/fakeware/commit/a8d36f31116f8a691a7a872f312f78b6c1e3971f))
+
+
+### Code Refactoring
+
+* rename fakeware-sh to fakeware ([1468e4e](https://github.com/fakeware-sh/fakeware/commit/1468e4e4bd28259d86abc81d472fed96f4230305))
+* update descriptions ([c79e993](https://github.com/fakeware-sh/fakeware/commit/c79e993b05dab6f1b2b8e33a95214669735e08ce))
+
+
+### Continuous Integration
+
+* switch to npm registry ([2805db0](https://github.com/fakeware-sh/fakeware/commit/2805db0c0bb6cbbf20e394ae96651f907edddab5))
+
 ## [0.0.9](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.8...core-v0.0.9) (2026-06-09)
 
 

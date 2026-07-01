@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.0.3](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.10...cli-v0.0.3) (2026-07-01)
+
+
+### Features
+
+* add core as dev dependency in scaffold ([8917ec2](https://github.com/fakeware-sh/fakeware/commit/8917ec2265a751784f43134173c291bc2002d9b1))
+* add create-fakeware ([d17f13c](https://github.com/fakeware-sh/fakeware/commit/d17f13cc420e49dbbe313a6dfd3d4781d08b1136))
+* add init review step and consistent run phase progress ([bbc1f70](https://github.com/fakeware-sh/fakeware/commit/bbc1f70ea4c456f5e51ead5e62784b80506b9678))
+* add plugin hooks, logging, and testing support ([0e5bb78](https://github.com/fakeware-sh/fakeware/commit/0e5bb78a59e773530099989448d380dd7d70f494))
+* add tsconfig to scaffold ([3769432](https://github.com/fakeware-sh/fakeware/commit/3769432509cec2bd5ed84907220cec2606146b47))
+* **cli:** give a clear error when the package manager is missing ([8691c28](https://github.com/fakeware-sh/fakeware/commit/8691c28937b428e220f6b8374ffcd92af93c4c31))
+* **core:** add dynamic Shopware shop context for id-free lookups ([b0fd5ac](https://github.com/fakeware-sh/fakeware/commit/b0fd5ac2fa5274b97deffe5b4a731dbea10cee37))
+* **core:** add shopware api client ([b510716](https://github.com/fakeware-sh/fakeware/commit/b510716b6eef979a5246e72f588c7944d5d98071))
+* fail fast when init target directory is not empty ([0f74a15](https://github.com/fakeware-sh/fakeware/commit/0f74a15c160dfdc50190e6252a93342273ce5e09))
+* init setup and init command ([5601fd0](https://github.com/fakeware-sh/fakeware/commit/5601fd07afc4514de24d8326e0c7ad8131c072bf))
+* make shop connection optional and use ts config ([f0dcc6a](https://github.com/fakeware-sh/fakeware/commit/f0dcc6a4fe72e59fcac4168bffdd7fa71e0c4dfe))
+* make up transactional and load user files via jiti ([d7694cd](https://github.com/fakeware-sh/fakeware/commit/d7694cdb2b954f90d96a112e1dddf667b3f5ed7a))
+* report batch progress and format Shopware errors ([17d70f0](https://github.com/fakeware-sh/fakeware/commit/17d70f0948d9ca2452e79e5498c121240b1df7c0))
+* up and down command and manifest system ([72a6c97](https://github.com/fakeware-sh/fakeware/commit/72a6c979f93b1abef34070e9d8c3a251acb15510))
+
+
+### Bug Fixes
+
+* **cli:** remove unimplemented --secrets keychain option ([3bdf7bc](https://github.com/fakeware-sh/fakeware/commit/3bdf7bc9afce80ba70a34173cd1b9c04c1dbd2d1))
+* **cli:** write .gitignore before .env when scaffolding ([9a74761](https://github.com/fakeware-sh/fakeware/commit/9a74761c136b5b771cf7888272628fc3625d90d8))
+* core and cli version on scaffold ([2e7c1db](https://github.com/fakeware-sh/fakeware/commit/2e7c1db850ed1cec8eb845a80219ebcdc11ffced))
+* node types in tsconfig scaffold ([3909fe6](https://github.com/fakeware-sh/fakeware/commit/3909fe64f001b37a26ca8663035fc2c153318535))
+
+
+### Code Refactoring
+
+* rename fakeware-sh to fakeware ([1468e4e](https://github.com/fakeware-sh/fakeware/commit/1468e4e4bd28259d86abc81d472fed96f4230305))
+* update descriptions ([c79e993](https://github.com/fakeware-sh/fakeware/commit/c79e993b05dab6f1b2b8e33a95214669735e08ce))
+
+
+### Continuous Integration
+
+* switch to npm registry ([2805db0](https://github.com/fakeware-sh/fakeware/commit/2805db0c0bb6cbbf20e394ae96651f907edddab5))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.3
+
 ## [0.0.10](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.9...cli-v0.0.10) (2026-06-09)
 
 
