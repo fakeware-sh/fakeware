@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "prepare": "lefthook install",
-    "dev": "bun run --filter '*' dev",
+    "dev": "bun run --filter '*' --parallel dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
     "test:coverage": "bun test --coverage",
