@@ -8,9 +8,11 @@ seo:
 ---
 orientation: horizontal
 headline: Open source · MIT licensed
+ui:
+  container: 'lg:items-center'
 links:
   - label: Get started
-    to: /docs/guide/introduction
+    to: /docs/usage/guide/introduction
     trailingIcon: i-lucide-arrow-right
     size: xl
   - label: Star on GitHub
@@ -22,13 +24,16 @@ links:
     size: xl
 ---
 #title
+:::span{class="inline-flex items-center gap-3"}
+:u-color-mode-image{light="/logo.png" dark="/logo.png" alt="Fakeware" class="h-12 w-auto shrink-0"}
 Fakeware
+:::
 
 #description
 Like database migrations, but for demo data. Fill your Shopware shop by describing products, categories and orders in TypeScript, then apply and remove them with a single command.
 
 #default
-:::code-group
+:::code-group{class="hero-code-group"}
 ```ts [products.ts]
 import { define, many } from '@fakeware/core'
 
@@ -177,11 +182,11 @@ Fakeware is built for developers who want realistic, reproducible Shopware data 
   ---
   links:
     - label: Read the guide
-      to: /docs/guide/introduction
+      to: /docs/usage/guide/introduction
       icon: i-lucide-book-open
       color: primary
     - label: Browse the reference
-      to: /docs/reference/cli
+      to: /docs/usage/reference/cli
       color: neutral
       variant: subtle
       trailingIcon: i-lucide-arrow-right

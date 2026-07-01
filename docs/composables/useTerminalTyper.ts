@@ -26,6 +26,7 @@ export interface TerminalLine {
   banner?: BannerColor
   isPrompt?: boolean
   cursor?: boolean
+  blink?: boolean
 }
 
 export interface TerminalSpinner {
@@ -138,6 +139,7 @@ export function useTerminalTyper(steps: TerminalStep[], options: TerminalTyperOp
     segments: [],
     isPrompt: true,
     cursor: true,
+    blink: true,
   })
 
   async function typeCommand(step: TerminalStep): Promise<void> {

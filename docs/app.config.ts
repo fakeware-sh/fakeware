@@ -13,9 +13,14 @@ export default defineAppConfig({
   },
   header: {
     title: 'Fakeware',
+    logo: {
+      light: '/logo.png',
+      dark: '/logo.png',
+      alt: 'Fakeware',
+    },
   },
-  socials: {
-    github: 'https://github.com/fakeware-sh/fakeware',
+  navigation: {
+    sub: 'header',
   },
   github: {
     url: 'https://github.com/fakeware-sh/fakeware',
@@ -24,9 +29,6 @@ export default defineAppConfig({
   },
   search: {
     fts: true,
-  },
-  navigation: {
-    sub: 'header',
   },
   toc: {
     title: 'On this page',

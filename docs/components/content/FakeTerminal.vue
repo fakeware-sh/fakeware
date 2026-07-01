@@ -156,7 +156,8 @@ onMounted(() => {
       :class="TEXT_CLASS[s.color]"
     >{{ s.text }}</span></template><span
       v-if="line.cursor"
-      class="terminal-cursor text-default"
+      class="text-default"
+      :class="{ 'terminal-cursor': line.blink }"
     >▋</span></div></div>
   </div>
 </template>

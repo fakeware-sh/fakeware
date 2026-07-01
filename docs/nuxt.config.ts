@@ -3,4 +3,9 @@ export default defineNuxtConfig({
   site: {
     name: 'Fakeware',
   },
+  app: {
+    head: {
+      link: [{ rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon-96x96.png' }],
+    },
+  },
 })
