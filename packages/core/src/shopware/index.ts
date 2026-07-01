@@ -1,4 +1,4 @@
-export { createShopwareClient, type ShopwareClient, withRetry } from './client'
+export { createShopwareClient, type ShopwareClient } from './client'
 export {
   type ParsedApiError,
   ShopwareApiError,
@@ -19,6 +19,7 @@ export {
   type GrossPriceOptions,
   price,
 } from './price'
+export { type RetryOptions, withRetry } from './retry'
 export {
   type Shop,
   type ShopContext,

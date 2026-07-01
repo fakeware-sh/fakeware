@@ -1,7 +1,8 @@
 import type { ShopwareSink, SinkRecord } from '../domain'
-import { createShopwareClient, type RetryOptions, type ShopwareClient, withRetry } from './client'
+import { createShopwareClient, type ShopwareClient } from './client'
 import { ShopwareApiError } from './errors'
 import { toApiError } from './operations'
+import { type RetryOptions, withRetry } from './retry'
 import type { ShopwareConnection } from './types'
 
 export const ENTITY_REQUEST_BYTE_LIMIT = 5 * 1024 * 1024
