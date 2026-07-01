@@ -1,7 +1,7 @@
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
-import { defineRecords, type RecordValue } from './registry'
-import type { EntityName, RecordFor, RefPath, RegistryEntityName } from './schema'
+import { defineRecords, type RecordValue, staticKey } from './registry'
+import type { EntityName, RecordFor, RegistryEntityName } from './schema'
 import {
   type PickToken,
   pickToken,
@@ -13,34 +13,67 @@ import {
   refToken,
 } from './tokens'
 
-export function define<const E extends EntityName | RegistryEntityName>(
-  entity: E,
-  records: RecordFor<E> | readonly RecordFor<E>[],
-): void {
-  defineRecords(entity, records as RecordValue | RecordValue[])
-}
+type AnyEntity = EntityName | RegistryEntityName
 
-export function many<R>(n: number, fn: (ctx: Ctx) => R): R[] {
-  return Array.from({ length: n }, () => fn) as unknown as R[]
-}
+type KeyOf<R> = R extends (...args: never[]) => unknown
+  ? never
+  : R extends { $key: infer K extends string }
+    ? K
+    : never
 
-export function ref(path: RefPath): RefToken
-export function ref(entity: EntityName | RegistryEntityName, index: number): RefIndexToken
-export function ref(pathOrEntity: string, index?: number): RefToken | RefIndexToken {
-  if (typeof index === 'number') {
-    return refIndexToken(pathOrEntity, index)
+type KeysOf<R> = R extends readonly (infer E)[] ? KeyOf<E> : KeyOf<R>
+
+export type KeyMap<R> = { [K in KeysOf<R>]: RefToken }
+
+export function define<
+  const E extends AnyEntity,
+  const R extends RecordFor<E> | readonly RecordFor<E>[],
+>(entity: E, records: R): KeyMap<R> {
+  const list = (Array.isArray(records) ? records : [records]) as RecordValue[]
+  defineRecords(entity, list)
+
+  const map: Record<string, RefToken> = {}
+  for (const value of list) {
+    const key = staticKey(value)
+    if (key === undefined) continue
+    if (key in map) {
+      throw new RefError(`define('${entity}', ...) has a duplicate $key '${key}'.`)
+    }
+    map[key] = refToken(entity, key)
   }
-  const slash = pathOrEntity.indexOf('/')
-  if (slash === -1) {
-    throw new RefError(`ref('${pathOrEntity}') must be of the form 'entity/key'.`)
+  return map as KeyMap<R>
+}
+
+export function many<R>(n: number, fn: (ctx: Ctx) => R): ((ctx: Ctx) => R)[] {
+  return Array.from({ length: n }, () => fn)
+}
+
+export function keyed<T extends object>(
+  list: readonly T[],
+  keyFn: (item: T, index: number) => string,
+): (T & { $key: string })[] {
+  const counts = new Map<string, number>()
+  return list.map((item, index) => {
+    const base = keyFn(item, index)
+    const seen = counts.get(base) ?? 0
+    counts.set(base, seen + 1)
+    const $key = seen === 0 ? base : `${base}-${seen}`
+    return { ...item, $key }
+  })
+}
+
+export interface RefBuilder {
+  key(key: string): RefToken
+  at(index: number): RefIndexToken
+  pick(count?: number): PickToken
+  all(): RefsToken
+}
+
+export function ref(entity: AnyEntity): RefBuilder {
+  return {
+    key: (key) => refToken(entity, key),
+    at: (index) => refIndexToken(entity, index),
+    pick: (count) => pickToken(entity, count ?? null),
+    all: () => refsToken(entity),
   }
-  return refToken(pathOrEntity.slice(0, slash), pathOrEntity.slice(slash + 1))
-}
-
-export function refs(entity: EntityName | RegistryEntityName): RefsToken {
-  return refsToken(entity)
-}
-
-export function pick(token: RefsToken, count?: number): PickToken {
-  return pickToken(token.entity, count ?? null)
 }

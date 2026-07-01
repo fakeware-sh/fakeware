@@ -22,7 +22,7 @@ export function resetRegistry(): void {
   entries = []
 }
 
-function staticKey(value: RecordValue): string | undefined {
+export function staticKey(value: RecordValue): string | undefined {
   if (typeof value !== 'function') {
     const k = (value as RecordObject).$key
     if (typeof k === 'string') return k

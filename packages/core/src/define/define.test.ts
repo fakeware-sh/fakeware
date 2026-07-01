@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { shop } from '../shopware/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import type { Ctx } from './ctx'
-import { define, many, pick, ref, refs } from './define'
+import { define, keyed, many, ref } from './define'
 import { RefError } from './errors'
 import { deterministicId } from './ids'
 import { buildRefIndex, drain, resetRegistry } from './registry'
@@ -76,41 +76,71 @@ describe('resolveValue', () => {
   })
 })
 
-describe('ref / refs / pick', () => {
-  test('ref and refs are pure token constructors (no active context needed)', () => {
-    const token = ref('tax/standard')
-    expect(token).toMatchObject({ entity: 'tax', key: 'standard' })
-    expect(refs('tax')).toMatchObject({ entity: 'tax' })
+describe('define return value (typed key map)', () => {
+  test('returns a ref token for each static $key', () => {
+    const tax = define('tax', [{ $key: 'standard' }, { $key: 'reduced' }])
+    expect(tax.standard).toMatchObject({ entity: 'tax', key: 'standard' })
+    expect(tax.reduced).toMatchObject({ entity: 'tax', key: 'reduced' })
   })
 
-  test('ref resolves to the keyed id at write time', () => {
-    define('product', { $key: 'hero', taxId: ref('tax/standard') })
+  test('a returned token resolves to the keyed id at write time', () => {
+    const tax = define('tax', [{ $key: 'standard' }])
+    const scope = scopeFor()
+    expect(resolveValue(tax.standard, baseCtx, scope)).toBe(deterministicId('tax', 'standard'))
+  })
+
+  test('function records and many(...) contribute no keys', () => {
+    const product = define(
+      'product',
+      many(3, () => ({ name: 'x' })),
+    )
+    expect(Object.keys(product)).toHaveLength(0)
+  })
+
+  test('duplicate $key within one define throws', () => {
+    expect(() => define('tax', [{ $key: 'dup' }, { $key: 'dup' }])).toThrow(RefError)
+  })
+})
+
+describe('ref builder', () => {
+  test('ref(entity).key/at/pick/all are pure token constructors', () => {
+    expect(ref('tax').key('standard')).toMatchObject({ entity: 'tax', key: 'standard' })
+    expect(ref('category').at(2)).toMatchObject({ entity: 'category', index: 2 })
+    expect(ref('category').all()).toMatchObject({ entity: 'category' })
+    expect(ref('category').pick()).toMatchObject({ entity: 'category', count: null })
+    expect(ref('category').pick(3)).toMatchObject({ entity: 'category', count: 3 })
+  })
+
+  test('ref(entity).key resolves to the keyed id at write time', () => {
+    define('product', { $key: 'hero', taxId: ref('tax').key('standard') })
     define('tax', [{ $key: 'standard' }])
     const scope = scopeFor()
-    expect(resolveValue(ref('tax/standard'), baseCtx, scope)).toBe(
+    expect(resolveValue(ref('tax').key('standard'), baseCtx, scope)).toBe(
       deterministicId('tax', 'standard'),
     )
   })
 
-  test('refs resolves to all ids of an entity in order', () => {
+  test('ref(entity).all resolves to all ids of an entity in order', () => {
     define('category', [{ $key: 'a' }, { $key: 'b' }])
     const scope = scopeFor()
-    expect(resolveValue(refs('category'), baseCtx, scope)).toEqual([
+    expect(resolveValue(ref('category').all(), baseCtx, scope)).toEqual([
       deterministicId('category', 'a'),
       deterministicId('category', 'b'),
     ])
   })
 
-  test('ref(entity, index) resolves positionally', () => {
+  test('ref(entity).at resolves positionally', () => {
     define('category', [{ $key: 'a' }, { $key: 'b' }])
     const scope = scopeFor()
-    expect(resolveValue(ref('category', 1), baseCtx, scope)).toBe(deterministicId('category', 'b'))
+    expect(resolveValue(ref('category').at(1), baseCtx, scope)).toBe(
+      deterministicId('category', 'b'),
+    )
   })
 
-  test('pick resolves to one deterministic element', () => {
+  test('ref(entity).pick resolves to one deterministic element', () => {
     define('category', [{ $key: 'a' }, { $key: 'b' }, { $key: 'c' }])
     const scope = scopeFor()
-    const chosen = resolveValue(pick(refs('category')), baseCtx, scope) as string
+    const chosen = resolveValue(ref('category').pick(), baseCtx, scope) as string
     expect([
       deterministicId('category', 'a'),
       deterministicId('category', 'b'),
@@ -121,11 +151,22 @@ describe('ref / refs / pick', () => {
   test('unknown ref throws RefError at resolve time', () => {
     define('tax', [{ $key: 'standard' }])
     const scope = scopeFor()
-    expect(() => resolveValue(ref('tax/missing'), baseCtx, scope)).toThrow(RefError)
-    expect(() => resolveValue(refs('currency'), baseCtx, scope)).toThrow(RefError)
+    expect(() => resolveValue(ref('tax').key('missing'), baseCtx, scope)).toThrow(RefError)
+    expect(() => resolveValue(ref('currency').all(), baseCtx, scope)).toThrow(RefError)
+  })
+})
+
+describe('keyed', () => {
+  test('stamps a $key on each record from keyFn', () => {
+    const records = keyed([{ name: 'Alpha' }, { name: 'Beta' }], (r) => r.name.toLowerCase())
+    expect(records).toEqual([
+      { name: 'Alpha', $key: 'alpha' },
+      { name: 'Beta', $key: 'beta' },
+    ])
   })
 
-  test('a malformed ref path throws at construction', () => {
-    expect(() => ref('noslash' as never)).toThrow(RefError)
+  test('disambiguates collisions deterministically by insertion order', () => {
+    const records = keyed([{ n: 'x' }, { n: 'x' }, { n: 'x' }], (r) => r.n)
+    expect(records.map((r) => r.$key)).toEqual(['x', 'x-1', 'x-2'])
   })
 })

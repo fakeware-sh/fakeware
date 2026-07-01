@@ -1,5 +1,5 @@
 export type { Ctx } from './ctx'
-export { define, many, pick, ref, refs } from './define'
+export { define, type KeyMap, keyed, many, type RefBuilder, ref } from './define'
 export { RefError } from './errors'
 export { deterministicId, hashOf, recordHash } from './ids'
 export { isPlainObject } from './is-plain-object'
