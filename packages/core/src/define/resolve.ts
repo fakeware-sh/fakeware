@@ -10,6 +10,7 @@ export interface ResolveScope {
   shop: ShopContext
   seed: number
   onEntityRef?(entity: string): void
+  onKeyRef?(entity: string, key: string): void
 }
 
 function slotFor(
@@ -48,8 +49,10 @@ function resolveReference(
   scope.onEntityRef?.((token as { entity: string }).entity)
   switch (token[TOKEN]) {
     case 'ref': {
+      scope.onKeyRef?.(token.entity, token.key)
       const id = slotFor(scope, token.entity).byKey.get(token.key)
-      if (!id) throw new RefError(`ref('${token.entity}/${token.key}') does not match any record.`)
+      if (!id)
+        throw new RefError(`ref('${token.entity}').key('${token.key}') does not match any record.`)
       return id
     }
     case 'ref-index': {
@@ -67,7 +70,7 @@ function resolveReference(
     case 'pick': {
       const all = slotFor(scope, token.entity).all
       if (all.length === 0) {
-        throw new RefError(`pick(refs('${token.entity}')) has no records to choose from.`)
+        throw new RefError(`ref('${token.entity}').pick() has no records to choose from.`)
       }
       if (token.count !== null) {
         return seededSample(scope.seed, all, token.count).map((id) => ({ id }))
