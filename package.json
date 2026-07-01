@@ -26,6 +26,11 @@
     "check": "biome check . && bun run typecheck",
     "fix": "biome check . --write && bun run typecheck",
     "typecheck": "bun run --filter '*' typecheck",
+    "docs:dev": "bun --cwd=docs run dev",
+    "docs:build": "bun --cwd=docs run build",
+    "docs:generate": "bun --cwd=docs run generate",
+    "docs:preview": "bun --cwd=docs run preview",
+    "docs:install": "bun install --cwd=docs",
     "clean": "rm -rf node_modules apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist plugins/*/node_modules plugins/*/dist apps/*/*.tsbuildinfo packages/*/*.tsbuildinfo plugins/*/*.tsbuildinfo"
   },
   "devDependencies": {
