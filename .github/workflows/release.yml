@@ -35,7 +35,7 @@ jobs:
         env:
           PR: ${{ steps.release.outputs.pr }}
         run: echo "branch=$(echo "$PR" | jq -r '.headBranchName')" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ steps.release.outputs.pr }}
         with:
           ref: ${{ steps.pr.outputs.branch }}
@@ -62,7 +62,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v6
         with:
