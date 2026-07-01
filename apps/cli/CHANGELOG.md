@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.11](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.10...cli-v0.0.11) (2026-07-01)
+
+
+### Features
+
+* add plugin hooks, logging, and testing support ([0e5bb78](https://github.com/fakeware-sh/fakeware/commit/0e5bb78a59e773530099989448d380dd7d70f494))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @fakeware/core bumped to 0.0.10
+
 ## [0.0.10](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.9...cli-v0.0.10) (2026-06-09)
 
 
