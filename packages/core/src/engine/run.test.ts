@@ -52,7 +52,7 @@ const TAX_19 = `import { define } from '${coreIndex}'
 define('tax', [{ $key: 'standard', taxRate: 19 }])
 `
 const PRODUCTS = `import { define, many, ref } from '${coreIndex}'
-define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, taxId: ref('tax/standard') })))
+define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, taxId: ref('tax').key('standard') })))
 `
 
 describe('runUp / runDown', () => {
@@ -91,6 +91,42 @@ describe('runUp / runDown', () => {
 
     const first = await runFixture(fixture, dir)
     expect(JSON.parse(first).length).toBeGreaterThan(0)
+
+    const second = await runFixture(fixture, dir)
+    expect(JSON.parse(second)).toEqual([])
+  })
+
+  test('builder-based order data is idempotent across fresh processes (deterministic assoc ids)', async () => {
+    const ORDERS = `import { faker } from '@faker-js/faker'
+import { builders, define, many, shop } from '${coreIndex}'
+faker.seed(1)
+define('order', many(5, (ctx) => {
+  const b = builders(ctx)
+  const addr = b.address({ firstName: faker.person.firstName(), countryId: shop.country('DE'), salutationId: shop.salutation('mr') })
+  return b.order({
+    orderNumber: '' + (10000 + ctx.index),
+    salesChannelId: shop.defaultSalesChannel,
+    currencyId: shop.currency('EUR'),
+    billing: addr,
+    lineItems: b.lineItems.products(Array.from({ length: faker.number.int({ min: 1, max: 4 }) }, () => ({
+      product: 'prod-' + faker.number.int({ min: 0, max: 9 }),
+      label: faker.commerce.productName(),
+      unitPrice: faker.number.float({ min: 5, max: 500, fractionDigits: 2 }),
+      quantity: faker.number.int({ min: 1, max: 3 }),
+    }))),
+    shippingCost: 4.99,
+    deliveries: [b.delivery({ ship: addr, method: 'ship-1', cost: 4.99 })],
+    payment: b.payment({ method: 'pay-1', amount: 100 }),
+  })
+}))
+`
+    const dir = await scaffoldProject(root, { 'orders.ts': ORDERS })
+    const fixture = join(import.meta.dir, 'run-once-orders.fixture.ts')
+
+    const first = await runFixture(fixture, dir)
+    const firstWrites = JSON.parse(first)
+    expect(firstWrites.length).toBeGreaterThan(0)
+    expect(firstWrites.find((w: { entity: string }) => w.entity === 'order')).toBeTruthy()
 
     const second = await runFixture(fixture, dir)
     expect(JSON.parse(second)).toEqual([])

@@ -1,11 +1,27 @@
 export type {
+  AddressInput,
+  AddressRecord,
+  AssocIds,
+  DeliveryInput,
+  DeliveryRecord,
+  LineItemRecord,
+  OrderBuilders,
+  OrderInput,
+  PaymentInput,
+  ProductLineInput,
+  TransactionRecord,
+} from './authoring'
+export { assocIds, builders } from './authoring'
+export type {
   AnyToken,
   Ctx,
   DefineRecord,
   EntityName,
   EntityRegistry,
+  KeyMap,
   PickToken,
   RecordFor,
+  RefBuilder,
   ReferenceToken,
   RefIndexToken,
   RefPath,
@@ -14,7 +30,7 @@ export type {
   RegistryEntityName,
   ShopToken,
 } from './define'
-export { define, many, pick, RefError, ref, refs, shopToken } from './define'
+export { define, keyed, many, RefError, ref, shopToken } from './define'
 export type { ShopwareSink, SinkRecord } from './domain'
 export type {
   ApplyFailure,
