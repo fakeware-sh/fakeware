@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.0.10](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.9...core-v0.0.10) (2026-07-01)
+
+
+### Features
+
+* add plugin hooks, logging, and testing support ([0e5bb78](https://github.com/fakeware-sh/fakeware/commit/0e5bb78a59e773530099989448d380dd7d70f494))
+* **core:** add deterministic order association builders ([7218a5f](https://github.com/fakeware-sh/fakeware/commit/7218a5fc80eb5d4c3710570df15ee0eef1f2550b))
+* **core:** add Shopware price helper for gross, calculated and cart prices ([1028e76](https://github.com/fakeware-sh/fakeware/commit/1028e76cacdf93556939908ed0c3c9919f338eaa))
+* **core:** order self-referential records within an entity by keyed refs ([57516b2](https://github.com/fakeware-sh/fakeware/commit/57516b222fa9a41ccaef2435842ad501fe173205))
+* **core:** unify ref selectors and add typed define key map with keyed helper ([635d77a](https://github.com/fakeware-sh/fakeware/commit/635d77ae05824448165766eb38af04d7f9fda51f))
+
+
+### Bug Fixes
+
+* add api error guard ([6b1790f](https://github.com/fakeware-sh/fakeware/commit/6b1790f3e8b40982fac92e5a9a2047e62fe081ec))
+* add pagination for state machine states fetching ([d7e7d97](https://github.com/fakeware-sh/fakeware/commit/d7e7d9728f91b2e4f1eafecffc4809ab1eb88c49))
+* **core:** move withRetry into a leaf retry module so test mocks can't clobber it ([#24](https://github.com/fakeware-sh/fakeware/issues/24)) ([d7627cc](https://github.com/fakeware-sh/fakeware/commit/d7627cca3da64ae5e09a3d83c0c16c824985675a))
+
 ## [0.0.9](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.8...core-v0.0.9) (2026-06-09)
 
 
