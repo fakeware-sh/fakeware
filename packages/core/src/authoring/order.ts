@@ -1,5 +1,6 @@
 import type { Ctx } from '../define/ctx'
 import type { AnyToken } from '../define/tokens'
+import type { CalculatedPrice } from '../shopware/price'
 import { price } from '../shopware/price'
 import { shop } from '../shopware/shop-context'
 import { type AssocIds, assocIds } from './local-ids'
@@ -44,7 +45,7 @@ export interface LineItemRecord {
   label: string
   quantity: number
   position: number
-  price: ReturnType<typeof price.calculated>
+  price: CalculatedPrice
   priceDefinition: { type: 'quantity'; price: number; quantity: number; taxRules: never[] }
   payload?: { productNumber: string }
 }
@@ -65,7 +66,7 @@ export interface DeliveryRecord {
   shippingOrderAddress: AddressRecord
   shippingDateEarliest?: string
   shippingDateLatest?: string
-  shippingCosts: ReturnType<typeof price.calculated>
+  shippingCosts: CalculatedPrice
 }
 
 export interface PaymentInput {
@@ -78,7 +79,7 @@ export interface TransactionRecord {
   id: string
   stateId: Id
   paymentMethodId: Id
-  amount: ReturnType<typeof price.calculated>
+  amount: CalculatedPrice
 }
 
 export interface OrderInput {

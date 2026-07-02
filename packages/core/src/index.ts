@@ -31,6 +31,7 @@ export type {
   RefToken,
   RegistryEntityName,
   ShopToken,
+  ShopValueToken,
 } from './define'
 export { define, keyed, many, RefError, ref, shopToken } from './define'
 export type { MediaUploadRecord, ShopwareSink, SinkRecord } from './domain'

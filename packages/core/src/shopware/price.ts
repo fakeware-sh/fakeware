@@ -1,5 +1,23 @@
-import type { ShopToken } from '../define/tokens'
+import {
+  isShopValueToken,
+  type ShopToken,
+  type ShopValueToken,
+  shopValueToken,
+} from '../define/tokens'
 import { shop } from './shop-context'
+
+export type TaxRate = number | ShopValueToken<number>
+
+function deferTax<T>(
+  descriptor: string,
+  tax: TaxRate,
+  compute: (taxRate: number) => T,
+): T | ShopValueToken<T> {
+  if (isShopValueToken(tax)) {
+    return shopValueToken(descriptor, (s) => compute(tax.resolveValue(s)))
+  }
+  return compute(tax)
+}
 
 function round(value: number): number {
   return Number(value.toFixed(2))
@@ -32,7 +50,7 @@ function taxBlock(
 }
 
 export interface GrossPriceOptions {
-  tax: number
+  tax: TaxRate
   currencyId?: string | ShopToken
 }
 
@@ -67,43 +85,88 @@ export interface CartPrice {
   taxRules: TaxRule[]
 }
 
-function grossPrice(unit: number, options: GrossPriceOptions): GrossPrice {
-  return {
+interface GrossPriceOptionsNumeric extends GrossPriceOptions {
+  tax: number
+}
+interface GrossPriceOptionsToken extends GrossPriceOptions {
+  tax: ShopValueToken<number>
+}
+function grossPrice(unit: number, options: GrossPriceOptionsNumeric): GrossPrice
+function grossPrice(unit: number, options: GrossPriceOptionsToken): ShopValueToken<GrossPrice>
+function grossPrice(
+  unit: number,
+  options: GrossPriceOptions,
+): GrossPrice | ShopValueToken<GrossPrice>
+function grossPrice(
+  unit: number,
+  options: GrossPriceOptions,
+): GrossPrice | ShopValueToken<GrossPrice> {
+  return deferTax(`price.gross:${unit}`, options.tax, (taxRate) => ({
     currencyId: options.currencyId ?? shop.defaultCurrency,
     gross: round(unit),
-    net: netFromGross(unit, options.tax),
+    net: netFromGross(unit, taxRate),
     linked: true,
-  }
+  }))
 }
 
 function calculatedPrice(
   unit: number,
-  taxRate: number,
+  tax: number,
+  options?: CalculatedPriceOptions,
+): CalculatedPrice
+function calculatedPrice(
+  unit: number,
+  tax: ShopValueToken<number>,
+  options?: CalculatedPriceOptions,
+): ShopValueToken<CalculatedPrice>
+function calculatedPrice(
+  unit: number,
+  tax: TaxRate,
+  options?: CalculatedPriceOptions,
+): CalculatedPrice | ShopValueToken<CalculatedPrice>
+function calculatedPrice(
+  unit: number,
+  tax: TaxRate,
   options: CalculatedPriceOptions = {},
-): CalculatedPrice {
+): CalculatedPrice | ShopValueToken<CalculatedPrice> {
   const quantity = options.qty ?? 1
   const total = round(unit * quantity)
-  return {
+  return deferTax(`price.calculated:${unit}x${quantity}`, tax, (taxRate) => ({
     unitPrice: round(unit),
     quantity,
     totalPrice: total,
     ...taxBlock(total, taxRate),
     referencePrice: null,
     listPrice: null,
-  }
+  }))
 }
 
-function cartPrice(positions: number, shipping: number, taxRate: number): CartPrice {
+function cartPrice(positions: number, shipping: number, tax: number): CartPrice
+function cartPrice(
+  positions: number,
+  shipping: number,
+  tax: ShopValueToken<number>,
+): ShopValueToken<CartPrice>
+function cartPrice(
+  positions: number,
+  shipping: number,
+  tax: TaxRate,
+): CartPrice | ShopValueToken<CartPrice>
+function cartPrice(
+  positions: number,
+  shipping: number,
+  tax: TaxRate,
+): CartPrice | ShopValueToken<CartPrice> {
   const positionPrice = round(positions)
   const total = round(positions + shipping)
-  return {
+  return deferTax(`price.cart:${positions}+${shipping}`, tax, (taxRate) => ({
     netPrice: netFromGross(total, taxRate),
     totalPrice: total,
     rawTotal: total,
     positionPrice,
     taxStatus: 'gross',
     ...taxBlock(total, taxRate),
-  }
+  }))
 }
 
 export const price = {

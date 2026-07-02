@@ -92,6 +92,11 @@ describe('shop tokens', () => {
     expect(id(shop.defaultShippingMethod)).toBe('sm-standard')
   })
 
+  test('exposes tax rates as value tokens resolved from context', () => {
+    expect(shop.defaultTaxRate.resolveValue(ctx)).toBe(19)
+    expect(shop.taxRate(7).resolveValue(ctx)).toBe(7)
+  })
+
   test('a stable descriptor is independent of the resolved id', () => {
     expect(shop.defaultCurrency.descriptor).toBe('defaultCurrency')
     expect(shop.country('DE').descriptor).toBe('country:DE')

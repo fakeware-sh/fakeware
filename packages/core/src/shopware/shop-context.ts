@@ -1,4 +1,4 @@
-import { type ShopToken, shopToken } from '../define/tokens'
+import { type ShopToken, type ShopValueToken, shopToken, shopValueToken } from '../define/tokens'
 
 export interface ShopContextRecord {
   id: string
@@ -208,12 +208,15 @@ export interface Shop {
   readonly defaultPaymentMethod: ShopToken
   readonly defaultShippingMethod: ShopToken
 
+  readonly defaultTaxRate: ShopValueToken<number>
+
   currency(isoCode: string): ShopToken
   language(locale: string): ShopToken
   salesChannel(name: string): ShopToken
   country(iso: string): ShopToken
   salutation(key: string): ShopToken
   tax(rate: number): ShopToken
+  taxRate(rate: number): ShopValueToken<number>
   paymentMethod(technicalName: string): ShopToken
   shippingMethod(technicalName: string): ShopToken
   stateMachineState(machine: string, technicalName: string): ShopToken
@@ -274,6 +277,10 @@ export const shop: Shop = {
   defaultTax: tokens.defaultTax,
   defaultPaymentMethod: tokens.defaultPaymentMethod,
   defaultShippingMethod: tokens.defaultShippingMethod,
+  defaultTaxRate: shopValueToken(
+    'defaultTaxRate',
+    (s) => requireDefault(s.index.taxDefault, 'taxes').taxRate,
+  ),
   currency: (iso) =>
     shopToken(`currency:${iso.toUpperCase()}`, (s) => lookupId(s, (x) => findCurrency(x, iso))),
   language: (locale) =>
@@ -285,6 +292,7 @@ export const shop: Shop = {
   salutation: (key) =>
     shopToken(`salutation:${key}`, (s) => lookupId(s, (x) => findSalutation(x, key))),
   tax: (rate) => shopToken(`tax:${rate}`, (s) => lookupId(s, (x) => findTax(x, rate))),
+  taxRate: (rate) => shopValueToken(`taxRate:${rate}`, (s) => findTax(s, rate).taxRate),
   paymentMethod: (tn) =>
     shopToken(`paymentMethod:${tn}`, (s) => lookupId(s, (x) => findPaymentMethod(x, tn))),
   shippingMethod: (tn) =>

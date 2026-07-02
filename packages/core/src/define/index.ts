@@ -22,5 +22,13 @@ export type {
   RefsToken,
   RefToken,
   ShopToken,
+  ShopValueToken,
 } from './tokens'
-export { isReferenceToken, isShopToken, isToken, shopToken } from './tokens'
+export {
+  isReferenceToken,
+  isShopToken,
+  isShopValueToken,
+  isToken,
+  shopToken,
+  shopValueToken,
+} from './tokens'

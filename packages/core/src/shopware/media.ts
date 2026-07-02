@@ -1,3 +1,4 @@
+import slugify from 'slugify'
 import { deterministicId } from '../define/ids'
 import type { AnyToken } from '../define/tokens'
 import { shop } from './shop-context'
@@ -62,13 +63,8 @@ function baseNameFromPath(path: string): string {
   return stem || 'media'
 }
 
-function slugify(value: string): string {
-  return (
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'media'
-  )
+function fileNameSlug(value: string): string {
+  return slugify(value, { lower: true, strict: true }) || 'media'
 }
 
 export function media(input: MediaInput): MediaRecord {
@@ -87,7 +83,7 @@ export function media(input: MediaInput): MediaRecord {
   }
 
   const source: MediaSource = hasUrl ? { url: path } : { file: path }
-  const stem = input.fileName ? slugify(input.fileName) : slugify(baseNameFromPath(path))
+  const stem = input.fileName ? fileNameSlug(input.fileName) : fileNameSlug(baseNameFromPath(path))
   const uniqueSuffix = deterministicId('media', input.$key ?? path).slice(0, 8)
   const fileName = `${stem}-${uniqueSuffix}`
 

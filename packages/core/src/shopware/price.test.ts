@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { isShopToken } from '../define/tokens'
+import { isShopToken, isShopValueToken, shopValueToken } from '../define/tokens'
 import { price } from './price'
+import type { ShopContext } from './shop-context'
+
+const rate = (n: number) => shopValueToken('test-rate', () => n)
+const fakeShop = {} as ShopContext
 
 describe('price.gross', () => {
   test('computes net from gross at the given tax rate and defaults currency to the shop token', () => {
@@ -44,5 +48,26 @@ describe('price.cart', () => {
     expect(p.taxStatus).toBe('gross')
     expect(p.netPrice).toBe(172.26)
     expect(p.calculatedTaxes[0]?.price).toBe(204.99)
+  })
+})
+
+describe('deferred tax rate token', () => {
+  test('gross defers to a value token that resolves net at write-time', () => {
+    const p = price.gross(119, { tax: rate(19) })
+    expect(isShopValueToken(p)).toBe(true)
+    const resolved = p.resolveValue(fakeShop)
+    expect(resolved.gross).toBe(119)
+    expect(resolved.net).toBe(100)
+  })
+
+  test('calculated and cart also defer with a token tax', () => {
+    const calc = price.calculated(100, rate(19), { qty: 2 })
+    expect(calc.resolveValue(fakeShop).calculatedTaxes[0]?.taxRate).toBe(19)
+    const cart = price.cart(200, 0, rate(7))
+    expect(cart.resolveValue(fakeShop).taxRules[0]?.taxRate).toBe(7)
+  })
+
+  test('a numeric tax stays eager (no token)', () => {
+    expect(isShopValueToken(price.gross(10, { tax: 19 }))).toBe(false)
   })
 })

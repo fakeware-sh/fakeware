@@ -31,8 +31,14 @@ export interface ShopToken {
   resolve(shop: ShopContext): string
 }
 
+export interface ShopValueToken<T = unknown> {
+  readonly [TOKEN]: 'shop-value'
+  readonly descriptor: string
+  resolveValue(shop: ShopContext): T
+}
+
 export type ReferenceToken = RefToken | RefIndexToken | RefsToken | PickToken
-export type AnyToken = ReferenceToken | ShopToken
+export type AnyToken = ReferenceToken | ShopToken | ShopValueToken
 
 export function isToken(value: unknown): value is AnyToken {
   return typeof value === 'object' && value !== null && TOKEN in value
@@ -46,6 +52,10 @@ export function isReferenceToken(value: unknown): value is ReferenceToken {
 
 export function isShopToken(value: unknown): value is ShopToken {
   return isToken(value) && value[TOKEN] === 'shop'
+}
+
+export function isShopValueToken(value: unknown): value is ShopValueToken {
+  return isToken(value) && value[TOKEN] === 'shop-value'
 }
 
 export function refToken(entity: string, key: string): RefToken {
@@ -66,4 +76,11 @@ export function pickToken(entity: string, count: number | null = null): PickToke
 
 export function shopToken(descriptor: string, resolve: (shop: ShopContext) => string): ShopToken {
   return { [TOKEN]: 'shop', descriptor, resolve }
+}
+
+export function shopValueToken<T>(
+  descriptor: string,
+  resolveValue: (shop: ShopContext) => T,
+): ShopValueToken<T> {
+  return { [TOKEN]: 'shop-value', descriptor, resolveValue }
 }

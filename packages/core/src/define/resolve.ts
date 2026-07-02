@@ -3,7 +3,7 @@ import type { Ctx } from './ctx'
 import { RefError } from './errors'
 import { isPlainObject } from './is-plain-object'
 import type { RefIndex } from './registry'
-import { type AnyToken, isReferenceToken, isShopToken, TOKEN } from './tokens'
+import { type AnyToken, isReferenceToken, isShopToken, isShopValueToken, TOKEN } from './tokens'
 
 export interface ResolveScope {
   refIndex: RefIndex
@@ -90,6 +90,9 @@ export interface Resolved {
 function resolve(value: unknown, ctx: Ctx, scope: ResolveScope): Resolved {
   if (isShopToken(value)) {
     return { value: value.resolve(scope.shop), canonical: `__shop__:${value.descriptor}` }
+  }
+  if (isShopValueToken(value)) {
+    return resolve(value.resolveValue(scope.shop), ctx, scope)
   }
   if (isReferenceToken(value)) {
     const resolved = resolveReference(value, scope)
