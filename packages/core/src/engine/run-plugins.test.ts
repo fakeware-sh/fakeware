@@ -32,6 +32,7 @@ const RESPONSES: Record<string, unknown> = {
   '/search/tax': { data: [] },
   '/search/payment-method': { data: [] },
   '/search/shipping-method': { data: [] },
+  '/search/media-folder': { data: [] },
 }
 
 const respondTo = async (action: string): Promise<unknown> => {

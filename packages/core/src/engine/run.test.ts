@@ -197,6 +197,67 @@ define('order', many(5, (ctx) => {
   })
 })
 
+describe('runUp — media & covers', () => {
+  let root: string
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'fakeware-media-run-'))
+  })
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  const MEDIA = `import { define, media } from '${coreIndex}'
+define('media', [media({ $key: 'hero', url: 'https://x.test/hero.png', alt: 'Hero' })])
+`
+  const PRODUCT_WITH_COVER = `import { cover, define, many, ref } from '${coreIndex}'
+define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, ...cover(ref('media').key('hero'), ctx) })))
+`
+
+  test('writes media before product, uploads bytes, and sets a product_media coverId', async () => {
+    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+    const sink = createInMemorySink()
+    await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
+
+    const writes = sink.calls.filter((c) => c.op === 'write').map((c) => c.entity)
+    expect(writes.indexOf('media')).toBeLessThan(writes.indexOf('product'))
+
+    const uploads = sink.calls.filter((c) => c.op === 'upload')
+    expect(uploads).toHaveLength(1)
+    expect(uploads[0]?.ids).toHaveLength(1)
+
+    const product = [...(sink.snapshot().get('product')?.values() ?? [])][0] as Record<
+      string,
+      unknown
+    >
+    const gallery = product.media as { id: string; mediaId: string }[]
+    expect(product.coverId).toBe(gallery[0]?.id ?? '')
+    expect(product.coverId).not.toBe(gallery[0]?.mediaId ?? '')
+  })
+
+  test('a second up uploads nothing (media idempotent)', async () => {
+    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+    const loaded = loadedFor(dir)
+    await up({ loaded, sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
+
+    const sink = createInMemorySink()
+    await up({ loaded, sink, now: 'T', fakewareVersion: '1' })
+    expect(sink.calls.filter((c) => c.op === 'upload')).toHaveLength(0)
+    expect(sink.calls.filter((c) => c.op === 'write')).toHaveLength(0)
+  })
+
+  test('an upload failure stops the run without confirming media in the manifest', async () => {
+    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+    const loaded = loadedFor(dir)
+    const sink = createInMemorySink({ failUploadOn: 'media' })
+    await expect(up({ loaded, sink, now: 'T', fakewareVersion: '1' })).rejects.toBeInstanceOf(
+      ApplyStopped,
+    )
+
+    const manifest = await readManifest(dir, loaded.connection.url)
+    expect(manifest?.entities.find((e) => e.entity === 'media')).toBeUndefined()
+  })
+})
+
 describe('runDown resilience', () => {
   let root: string
 

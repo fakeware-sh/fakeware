@@ -4,10 +4,12 @@ import type { ShopwareSink, SinkRecord } from './sink'
 export type SinkCall =
   | { op: 'write'; entity: string; ids: string[] }
   | { op: 'delete'; entity: string; ids: string[] }
+  | { op: 'upload'; entity: string; ids: string[] }
 
 export interface InMemorySinkOptions {
   failWriteOn?: string
   failDeleteOn?: string
+  failUploadOn?: string
   failDeleteWhile?: (entity: string, deleted: ReadonlySet<string>) => boolean
 }
 
@@ -66,6 +68,19 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
       for (const id of ids) b.delete(id)
       deleted.add(entity)
       calls.push({ op: 'delete', entity, ids: [...ids] })
+    },
+    async uploadMedia(records): Promise<void> {
+      if (options.failUploadOn === 'media') {
+        throw new ShopwareApiError('Simulated upload failure for media', {
+          status: 400,
+          entity: 'media',
+          errors: [],
+          retryable: false,
+          cause: null,
+        })
+      }
+      if (records.length > 0)
+        calls.push({ op: 'upload', entity: 'media', ids: records.map((r) => r.id) })
     },
     snapshot() {
       return store

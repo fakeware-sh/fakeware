@@ -74,6 +74,12 @@ const RESPONSES: Record<string, unknown> = {
   '/search/shipping-method': {
     data: [{ id: 'sm-standard', name: 'Standard', technicalName: 'fakeware_standard' }],
   },
+  '/search/media-folder': {
+    data: [
+      { id: 'mf-product', name: 'Product Media', defaultFolder: { entity: 'product' } },
+      { id: 'mf-plain', name: 'Plain Folder', defaultFolder: null },
+    ],
+  },
 }
 
 const defaultRespondTo = async (action: string, _params?: unknown): Promise<unknown> => {

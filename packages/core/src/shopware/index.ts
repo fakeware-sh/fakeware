@@ -10,6 +10,16 @@ export {
   type ShopContextFetcher,
   toShopContext,
 } from './fetch-shop-context'
+export {
+  MEDIA_UPLOAD_KEY,
+  type MediaFileSource,
+  type MediaInput,
+  type MediaRecord,
+  type MediaSource,
+  type MediaUploadSpec,
+  type MediaUrlSource,
+  media,
+} from './media'
 export { toApiError, toConnectionError, validateConnection } from './operations'
 export {
   type CalculatedPrice,
@@ -30,6 +40,7 @@ export {
   type ShopContextExtensions,
   type ShopContextIndex,
   type ShopContextLanguage,
+  type ShopContextMediaFolder,
   type ShopContextPaymentMethod,
   type ShopContextRecord,
   type ShopContextSalesChannel,

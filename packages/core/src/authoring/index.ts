@@ -1,5 +1,11 @@
 export { type AssocIds, assocIds } from './local-ids'
 export {
+  cover,
+  gallery,
+  type ProductCover,
+  type ProductMediaRecord,
+} from './media'
+export {
   type AddressInput,
   type AddressRecord,
   builders,

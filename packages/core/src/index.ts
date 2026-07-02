@@ -8,10 +8,12 @@ export type {
   OrderBuilders,
   OrderInput,
   PaymentInput,
+  ProductCover,
   ProductLineInput,
+  ProductMediaRecord,
   TransactionRecord,
 } from './authoring'
-export { assocIds, builders } from './authoring'
+export { assocIds, builders, cover, gallery } from './authoring'
 export type {
   AnyToken,
   Ctx,
@@ -31,7 +33,7 @@ export type {
   ShopToken,
 } from './define'
 export { define, keyed, many, RefError, ref, shopToken } from './define'
-export type { ShopwareSink, SinkRecord } from './domain'
+export type { MediaUploadRecord, ShopwareSink, SinkRecord } from './domain'
 export type {
   ApplyFailure,
   DownResult,
@@ -62,6 +64,12 @@ export type {
 export { consoleLogSink, definePlugin, PluginError, silentLogSink } from './plugin'
 export { LoadModuleError } from './runtime'
 export type {
+  MediaFileSource,
+  MediaInput,
+  MediaRecord,
+  MediaSource,
+  MediaUploadSpec,
+  MediaUrlSource,
   ParsedApiError,
   Shop,
   ShopContext,
@@ -70,6 +78,7 @@ export type {
   ShopContextData,
   ShopContextExtensions,
   ShopContextLanguage,
+  ShopContextMediaFolder,
   ShopContextPaymentMethod,
   ShopContextRecord,
   ShopContextSalesChannel,
@@ -77,6 +86,12 @@ export type {
   ShopContextStateMachineState,
   ShopContextTax,
 } from './shopware'
-export { ShopContextError, ShopwareApiError, ShopwareConnectionError } from './shopware'
+export {
+  MEDIA_UPLOAD_KEY,
+  media,
+  ShopContextError,
+  ShopwareApiError,
+  ShopwareConnectionError,
+} from './shopware'
 export type { ShopContextFetcher } from './shopware/fetch-shop-context'
 export { shop } from './shopware/shop-context'

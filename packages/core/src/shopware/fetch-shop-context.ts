@@ -121,6 +121,11 @@ const shippingMethodRow = z.object({
   name: z.string(),
   technicalName: z.string().nullish(),
 })
+const mediaFolderRow = z.object({
+  id: z.string(),
+  name: z.string().nullish(),
+  defaultFolder: z.object({ entity: z.string() }).nullish(),
+})
 
 const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   {
@@ -239,6 +244,22 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
         .map((r) => ({ id: r.id, name: r.name, technicalName: r.technicalName as string }))
     },
   },
+  {
+    entity: 'media folders',
+    fetch: (c) =>
+      c.invoke('searchMediaFolder post /search/media-folder', {
+        body: { limit: SEARCH_LIMIT, associations: { defaultFolder: {} } },
+      }),
+    merge: (data, raw) => {
+      data.mediaFolders = parseRows('media folders', mediaFolderRow, rowsOf(raw))
+        .filter((r) => r.defaultFolder?.entity)
+        .map((r) => ({
+          id: r.id,
+          name: r.name ?? (r.defaultFolder?.entity as string),
+          entity: r.defaultFolder?.entity as string,
+        }))
+    },
+  },
 ]
 
 function emptyData(): ShopContextData {
@@ -252,6 +273,7 @@ function emptyData(): ShopContextData {
     taxes: [],
     paymentMethods: [],
     shippingMethods: [],
+    mediaFolders: [],
     extensions: {},
   }
 }
@@ -315,6 +337,7 @@ export function buildShopContextIndex(data: ShopContextData): ShopContextIndex {
     paymentMethodDefault: data.paymentMethods[0] ?? null,
     shippingMethodByTechnicalName: new Map(data.shippingMethods.map((s) => [s.technicalName, s])),
     shippingMethodDefault: data.shippingMethods[0] ?? null,
+    mediaFolderByEntity: new Map(data.mediaFolders.map((f) => [f.entity, f])),
   }
 }
 

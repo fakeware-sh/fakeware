@@ -50,6 +50,10 @@ export interface ShopContextShippingMethod extends ShopContextRecord {
   technicalName: string
 }
 
+export interface ShopContextMediaFolder extends ShopContextRecord {
+  entity: string
+}
+
 export interface ShopContextExtensions {
   [key: string]: unknown
 }
@@ -64,6 +68,7 @@ export interface ShopContextData {
   taxes: ShopContextTax[]
   paymentMethods: ShopContextPaymentMethod[]
   shippingMethods: ShopContextShippingMethod[]
+  mediaFolders: ShopContextMediaFolder[]
   extensions: ShopContextExtensions
 }
 
@@ -85,6 +90,7 @@ export interface ShopContextIndex {
   paymentMethodDefault: ShopContextPaymentMethod | null
   shippingMethodByTechnicalName: Map<string, ShopContextShippingMethod>
   shippingMethodDefault: ShopContextShippingMethod | null
+  mediaFolderByEntity: Map<string, ShopContextMediaFolder>
 }
 
 export interface ShopContext extends ShopContextData {
@@ -183,6 +189,12 @@ function findShippingMethod(shop: ShopContext, technicalName: string): ShopConte
   return found
 }
 
+function findMediaFolder(shop: ShopContext, entity: string): ShopContextMediaFolder {
+  const found = shop.index.mediaFolderByEntity.get(entity)
+  if (!found) throw missing('mediaFolder', entity, [...shop.index.mediaFolderByEntity.keys()])
+  return found
+}
+
 export interface Shop {
   context(): ShopContext
   readonly extensions: ShopContextExtensions
@@ -208,6 +220,7 @@ export interface Shop {
   orderState(technicalName: string): ShopToken
   orderDeliveryState(technicalName: string): ShopToken
   orderTransactionState(technicalName: string): ShopToken
+  mediaFolder(entity?: string): ShopToken
 }
 
 const tokens = {
@@ -290,4 +303,6 @@ export const shop: Shop = {
     shopToken(`state:order_transaction.state:${tn}`, (s) =>
       lookupId(s, (x) => findState(x, 'order_transaction.state', tn)),
     ),
+  mediaFolder: (entity = 'product') =>
+    shopToken(`mediaFolder:${entity}`, (s) => lookupId(s, (x) => findMediaFolder(x, entity))),
 }

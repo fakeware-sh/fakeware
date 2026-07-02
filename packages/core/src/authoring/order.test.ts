@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { assocIds } from './local-ids'
+import { cover, gallery } from './media'
 import { builders } from './order'
 
 describe('assocIds', () => {
@@ -35,6 +36,39 @@ describe('builders — shared counter', () => {
     ])
     const ids = [addr.id, ...items.map((i) => i.id)]
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('cover / gallery', () => {
+  test('cover sets coverId to the single product_media row id', () => {
+    const result = cover('media-1', { seed: 5 })
+    expect(result.media).toHaveLength(1)
+    const [first] = result.media
+    expect(first?.mediaId).toBe('media-1')
+    expect(first?.position).toBe(0)
+    expect(result.coverId).toBe(first?.id ?? '')
+  })
+
+  test('gallery keeps order, numbers positions, and covers with the first', () => {
+    const result = gallery(['a', 'b', 'c'], { seed: 5 })
+    expect(result.media.map((m) => m.mediaId)).toEqual(['a', 'b', 'c'])
+    expect(result.media.map((m) => m.position)).toEqual([0, 1, 2])
+    expect(result.coverId).toBe(result.media[0]?.id ?? '')
+    expect(new Set(result.media.map((m) => m.id)).size).toBe(3)
+  })
+
+  test('coverId is never a mediaId', () => {
+    const result = gallery(['media-a', 'media-b'], { seed: 9 })
+    expect(result.coverId).not.toBe('media-a')
+    expect(result.media.some((m) => m.id === result.coverId)).toBe(true)
+  })
+
+  test('same seed is deterministic across calls', () => {
+    expect(cover('x', { seed: 3 }).coverId).toBe(cover('x', { seed: 3 }).coverId)
+  })
+
+  test('empty gallery throws', () => {
+    expect(() => gallery([], { seed: 1 })).toThrow(/at least one/)
   })
 })
 

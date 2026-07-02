@@ -35,6 +35,7 @@ const data: ShopContextData = {
   taxes: [{ id: 'tax-19', name: 'Std', taxRate: 19 }],
   paymentMethods: [],
   shippingMethods: [],
+  mediaFolders: [],
   extensions: {},
 }
 

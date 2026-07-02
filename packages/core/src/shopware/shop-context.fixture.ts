@@ -21,6 +21,7 @@ const EMPTY: ShopContextData = {
   taxes: [],
   paymentMethods: [],
   shippingMethods: [],
+  mediaFolders: [{ id: 'media-folder-product', name: 'Product Media', entity: 'product' }],
   extensions: {},
 }
 
