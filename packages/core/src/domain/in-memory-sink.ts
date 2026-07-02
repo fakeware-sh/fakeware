@@ -1,4 +1,5 @@
 import { ShopwareApiError } from '../shopware/errors'
+import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 import type { ShopwareSink, SinkRecord } from './sink'
 
 export type SinkCall =
@@ -70,6 +71,8 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
       calls.push({ op: 'delete', entity, ids: [...ids] })
     },
     async uploadMedia(records): Promise<void> {
+      const uploadable = records.filter((r) => MEDIA_UPLOAD_KEY in r)
+      if (uploadable.length === 0) return
       if (options.failUploadOn === 'media') {
         throw new ShopwareApiError('Simulated upload failure for media', {
           status: 400,
@@ -79,8 +82,7 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
           cause: null,
         })
       }
-      if (records.length > 0)
-        calls.push({ op: 'upload', entity: 'media', ids: records.map((r) => r.id) })
+      calls.push({ op: 'upload', entity: 'media', ids: uploadable.map((r) => r.id) })
     },
     snapshot() {
       return store

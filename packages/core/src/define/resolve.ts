@@ -1,3 +1,4 @@
+import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 import type { ShopContext } from '../shopware/shop-context'
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
@@ -112,10 +113,11 @@ function resolve(value: unknown, ctx: Ctx, scope: ResolveScope): Resolved {
     return { value: out, canonical: canon }
   }
   if (isPlainObject(value)) {
+    const keepKey = MEDIA_UPLOAD_KEY in value
     const out: Record<string, unknown> = {}
     const canon: Record<string, unknown> = {}
     for (const [key, v] of Object.entries(value)) {
-      if (key === '$key') continue
+      if (key === '$key' && !keepKey) continue
       const r = resolve(v, ctx, scope)
       out[key] = r.value
       canon[key] = r.canonical

@@ -7,7 +7,20 @@ import * as shopLookups from '../shopware/shop-context'
 
 export class LoadModuleError extends Error {}
 
-const core = { ...define, ...shopLookups, ...authoring, definePlugin }
+const { media, MEDIA_UPLOAD_KEY, ShopContextError, ShopwareApiError, ShopwareConnectionError } =
+  shopware
+
+const core = {
+  ...define,
+  ...shopLookups,
+  ...authoring,
+  definePlugin,
+  media,
+  MEDIA_UPLOAD_KEY,
+  ShopContextError,
+  ShopwareApiError,
+  ShopwareConnectionError,
+}
 
 const jiti = createJiti(import.meta.url, {
   virtualModules: {

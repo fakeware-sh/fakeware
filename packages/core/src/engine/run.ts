@@ -226,7 +226,7 @@ async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<Up
     await persist([...ledger, { ...confirmed, pending: true }])
     try {
       await sink.write(w.entity, w.toWrite)
-      if (w.entity === 'media' && sink.uploadMedia) {
+      if (sink.uploadMedia) {
         await sink.uploadMedia(w.toWrite, { projectRoot: loaded.projectRoot })
       }
     } catch (error) {

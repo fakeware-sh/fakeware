@@ -10,6 +10,7 @@ import {
 import type { SinkRecord } from '../domain'
 import { type ShopContext, setActiveShopContext, shop } from '../shopware/shop-context'
 import { GraphError } from './errors'
+import { hoistMedia, MEDIA_ENTITY } from './hoist-media'
 
 export interface PlanRecord {
   record: SinkRecord
@@ -112,6 +113,7 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
 
   const records = new Map<string, PlanRecord[]>()
   const edges = new Map<string, Set<string>>(entities.map((e) => [e, new Set<string>()]))
+  const hoistedMedia = new Map<string, PlanRecord>()
 
   setActiveShopContext(shopContext)
   try {
@@ -144,12 +146,27 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
             }
           },
         }
-        const { value, canonical } = resolveRecord(entry.value, ctx, scope)
+        const resolved = resolveRecord(entry.value, ctx, scope) as {
+          value: Record<string, unknown>
+          canonical: Record<string, unknown>
+        }
+        const ownerKey = entry.key ?? String(i)
+        const { media } = hoistMedia(entity, ownerKey, resolved)
+        for (const m of media) {
+          if (hoistedMedia.has(m.id)) continue
+          hoistedMedia.set(m.id, {
+            record: m.record,
+            hash: hashOf({ ...m.canonical, id: m.id }),
+          })
+        }
+        if (media.length > 0 && entity !== MEDIA_ENTITY) {
+          edges.get(entity)?.add(MEDIA_ENTITY)
+        }
+
         const id = ids.get(entry) as string
-        const payload = value as Record<string, unknown>
         out.push({
-          record: { ...payload, id },
-          hash: hashOf({ ...(canonical as Record<string, unknown>), id }),
+          record: { ...resolved.value, id },
+          hash: hashOf({ ...resolved.canonical, id }),
         })
         keyOfRecord.push(entry.key)
       })
@@ -159,5 +176,30 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
     setActiveShopContext(undefined)
   }
 
-  return { order: topoSort(entities, edges), records }
+  const planEntities = mergeHoistedMedia(entities, records, edges, hoistedMedia)
+
+  return { order: topoSort(planEntities, edges), records }
+}
+
+function mergeHoistedMedia(
+  entities: string[],
+  records: Map<string, PlanRecord[]>,
+  edges: Map<string, Set<string>>,
+  hoisted: Map<string, PlanRecord>,
+): string[] {
+  if (hoisted.size === 0) return entities
+
+  const existing = records.get(MEDIA_ENTITY) ?? []
+  const seen = new Set(existing.map((r) => r.record.id))
+  const merged = [...existing]
+  for (const [id, record] of hoisted) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    merged.push(record)
+  }
+  records.set(MEDIA_ENTITY, merged)
+
+  if (!edges.has(MEDIA_ENTITY)) edges.set(MEDIA_ENTITY, new Set<string>())
+  if (entities.includes(MEDIA_ENTITY)) return entities
+  return [MEDIA_ENTITY, ...entities]
 }

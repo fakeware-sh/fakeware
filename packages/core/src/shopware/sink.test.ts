@@ -30,8 +30,24 @@ function recordingClient(impl?: () => Promise<unknown>): {
       calls.push({ action, args })
       return impl ? await impl() : { data: {} }
     },
+    getSessionData: () => ({ accessToken: 'test-token' }),
   } as unknown as ShopwareClient
   return { client, calls }
+}
+
+interface FetchCapture {
+  url: string
+  init: RequestInit
+}
+
+function stubFetch(response: Response): { restore: () => void; calls: FetchCapture[] } {
+  const original = globalThis.fetch
+  const calls: FetchCapture[] = []
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(input), init: init ?? {} })
+    return response
+  }) as typeof fetch
+  return { restore: () => (globalThis.fetch = original), calls }
 }
 
 interface SyncArgs {
@@ -173,33 +189,66 @@ describe('createSyncSink — uploadMedia', () => {
     expect(args.body.url).toBe('https://x.test/a.png')
   })
 
-  test('uploads a local file as octet-stream bytes', async () => {
+  test('uploads a local file as raw octet-stream bytes via a direct fetch', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
     const file = join(dir, 'sticker.png')
     writeFileSync(file, Buffer.from('PNG-BYTES'))
-    const { client, calls } = recordingClient(async () => ({ data: {} }))
-    const sink = createSyncSink(connection, { client })
-    await sink.uploadMedia?.([{ id: 'm2', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
-    const args = (calls[0] as Invocation).args as {
-      headers: Record<string, string>
-      body: Blob
+    const { client } = recordingClient(async () => ({ data: {} }))
+    const fetchStub = stubFetch(new Response(null, { status: 204 }))
+    try {
+      const sink = createSyncSink(connection, { client })
+      await sink.uploadMedia?.([{ id: 'm2', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
+      expect(fetchStub.calls).toHaveLength(1)
+      const call = fetchStub.calls[0] as FetchCapture
+      expect(call.url).toContain('/_action/media/m2/upload')
+      expect(call.url).toContain('extension=png')
+      const headers = call.init.headers as Record<string, string>
+      expect(headers['Content-Type']).toBe('application/octet-stream')
+      expect(headers.Authorization).toBe('Bearer test-token')
+      const body = call.init.body as Uint8Array
+      expect(Buffer.from(body).toString()).toBe('PNG-BYTES')
+    } finally {
+      fetchStub.restore()
     }
-    expect(args.headers['content-type']).toBe('application/octet-stream')
-    expect(args.body).toBeInstanceOf(Blob)
-    expect(await args.body.text()).toBe('PNG-BYTES')
   })
 
   test('resolves a relative file against projectRoot', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
     writeFileSync(join(dir, 'rel.png'), Buffer.from('REL'))
-    const { client, calls } = recordingClient(async () => ({ data: {} }))
-    const sink = createSyncSink(connection, { client })
-    await sink.uploadMedia?.(
-      [{ id: 'm3', [MEDIA_UPLOAD_KEY]: uploadSpec({ file: './rel.png' }, 'png') }],
-      { projectRoot: dir },
-    )
-    const args = (calls[0] as Invocation).args as { body: Blob }
-    expect(await args.body.text()).toBe('REL')
+    const { client } = recordingClient(async () => ({ data: {} }))
+    const fetchStub = stubFetch(new Response(null, { status: 204 }))
+    try {
+      const sink = createSyncSink(connection, { client })
+      await sink.uploadMedia?.(
+        [{ id: 'm3', [MEDIA_UPLOAD_KEY]: uploadSpec({ file: './rel.png' }, 'png') }],
+        { projectRoot: dir },
+      )
+      const body = (fetchStub.calls[0] as FetchCapture).init.body as Uint8Array
+      expect(Buffer.from(body).toString()).toBe('REL')
+    } finally {
+      fetchStub.restore()
+    }
+  })
+
+  test('maps a non-ok file upload response to a ShopwareApiError', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
+    const file = join(dir, 'bad.png')
+    writeFileSync(file, Buffer.from('X'))
+    const { client } = recordingClient(async () => ({ data: {} }))
+    const fetchStub = stubFetch(new Response('malformed', { status: 400 }))
+    let caught: unknown
+    try {
+      const sink = createSyncSink(connection, { client, retry: noSleep })
+      await sink
+        .uploadMedia?.([{ id: 'm4', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
+        .catch((e) => {
+          caught = e
+        })
+    } finally {
+      fetchStub.restore()
+    }
+    expect(caught).toBeInstanceOf(ShopwareApiError)
+    expect((caught as ShopwareApiError).status).toBe(400)
   })
 
   test('ignores records without an upload spec', async () => {

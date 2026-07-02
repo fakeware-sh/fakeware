@@ -1,4 +1,5 @@
 import type { Schemas } from '@shopware/api-client/admin-api-types'
+import type { MediaRecord } from '../shopware/media'
 import type { Ctx } from './ctx'
 import type { AnyToken } from './tokens'
 
@@ -76,8 +77,19 @@ type Producible<T> = Field<T> | ((ctx: Ctx) => Field<T>)
 
 type ExtensionsKey = keyof RecordExtensions extends never ? never : 'extensions'
 
-type RecordShape<E extends EntityName> = {
-  [K in WritableKeys<SchemaOf<E>> | '$key' | ExtensionsKey]?: K extends '$key'
+type MediaAuthored = MediaRecord | AnyToken
+type MediaAuthoring = {
+  cover?: Producible<MediaAuthored>
+  gallery?: Producible<MediaAuthored[]>
+}
+type MediaAuthoringKey = 'cover' | 'gallery'
+type HasCover<E extends EntityName> = 'coverId' extends keyof SchemaOf<E> ? true : false
+
+type BaseRecordShape<E extends EntityName> = {
+  [K in
+    | Exclude<WritableKeys<SchemaOf<E>>, MediaAuthoringKey>
+    | '$key'
+    | ExtensionsKey]?: K extends '$key'
     ? string
     : K extends 'extensions'
       ? RecordExtensionsField
@@ -85,6 +97,9 @@ type RecordShape<E extends EntityName> = {
         ? Producible<SchemaOf<E>[K]>
         : never
 }
+
+type RecordShape<E extends EntityName> =
+  HasCover<E> extends true ? BaseRecordShape<E> & MediaAuthoring : BaseRecordShape<E>
 
 export type DefineRecord<E extends EntityName> = RecordShape<E> | ((ctx: Ctx) => RecordShape<E>)
 

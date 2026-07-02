@@ -206,15 +206,15 @@ describe('runUp — media & covers', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  const MEDIA = `import { define, media } from '${coreIndex}'
-define('media', [media({ $key: 'hero', url: 'https://x.test/hero.png', alt: 'Hero' })])
-`
-  const PRODUCT_WITH_COVER = `import { cover, define, many, ref } from '${coreIndex}'
-define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, ...cover(ref('media').key('hero'), ctx) })))
+  const PRODUCT_WITH_COVER = `import { define, media } from '${coreIndex}'
+define('product', [
+  { $key: 'p0', name: 'p0', cover: media({ url: 'https://x.test/hero.png', alt: 'Hero' }) },
+  { $key: 'p1', name: 'p1', cover: media({ url: 'https://x.test/hero2.png', alt: 'Hero 2' }) },
+])
 `
 
-  test('writes media before product, uploads bytes, and sets a product_media coverId', async () => {
-    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+  test('writes hoisted media before product, uploads bytes, and sets a product_media coverId', async () => {
+    const dir = await scaffoldProject(root, { 'product.ts': PRODUCT_WITH_COVER })
     const sink = createInMemorySink()
     await up({ loaded: loadedFor(dir), sink, now: 'T', fakewareVersion: '1' })
 
@@ -223,7 +223,7 @@ define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, ...cover(ref('media
 
     const uploads = sink.calls.filter((c) => c.op === 'upload')
     expect(uploads).toHaveLength(1)
-    expect(uploads[0]?.ids).toHaveLength(1)
+    expect(uploads[0]?.ids).toHaveLength(2)
 
     const product = [...(sink.snapshot().get('product')?.values() ?? [])][0] as Record<
       string,
@@ -235,7 +235,7 @@ define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, ...cover(ref('media
   })
 
   test('a second up uploads nothing (media idempotent)', async () => {
-    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+    const dir = await scaffoldProject(root, { 'product.ts': PRODUCT_WITH_COVER })
     const loaded = loadedFor(dir)
     await up({ loaded, sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
 
@@ -246,7 +246,7 @@ define('product', many(2, (ctx) => ({ name: 'p' + ctx.index, ...cover(ref('media
   })
 
   test('an upload failure stops the run without confirming media in the manifest', async () => {
-    const dir = await scaffoldProject(root, { 'media.ts': MEDIA, 'product.ts': PRODUCT_WITH_COVER })
+    const dir = await scaffoldProject(root, { 'product.ts': PRODUCT_WITH_COVER })
     const loaded = loadedFor(dir)
     const sink = createInMemorySink({ failUploadOn: 'media' })
     await expect(up({ loaded, sink, now: 'T', fakewareVersion: '1' })).rejects.toBeInstanceOf(

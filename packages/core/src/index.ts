@@ -8,12 +8,10 @@ export type {
   OrderBuilders,
   OrderInput,
   PaymentInput,
-  ProductCover,
   ProductLineInput,
-  ProductMediaRecord,
   TransactionRecord,
 } from './authoring'
-export { assocIds, builders, cover, gallery } from './authoring'
+export { assocIds, builders } from './authoring'
 export type {
   AnyToken,
   Ctx,

@@ -90,13 +90,39 @@ export function createSyncSink(
       ? spec.source.file
       : resolvePath(projectRoot ?? process.cwd(), spec.source.file)
     const bytes = await readFile(path)
-    const blob = new Blob([bytes], { type: 'application/octet-stream' })
-    await client.invoke('upload post /_action/media/{mediaId}/upload', {
-      pathParams: { mediaId: record.id },
-      query,
-      headers: { 'content-type': 'application/octet-stream' },
-      body: blob,
-    } as never)
+    await uploadBytes(record.id, query, bytes)
+  }
+
+  async function uploadBytes(
+    mediaId: string,
+    query: { extension: string; fileName: string },
+    bytes: Uint8Array,
+  ): Promise<void> {
+    const base = `${connection.url.replace(/\/$/, '')}/api`
+    const params = new URLSearchParams({ extension: query.extension, fileName: query.fileName })
+    const url = `${base}/_action/media/${mediaId}/upload?${params.toString()}`
+    const token = client.getSessionData().accessToken
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/octet-stream',
+      },
+      body: bytes,
+    })
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      throw new ShopwareApiError(
+        `Uploading media ${mediaId} failed (HTTP ${response.status}).${detail ? ` ${detail}` : ''}`,
+        {
+          status: response.status,
+          entity: 'media',
+          errors: [],
+          retryable: response.status >= 500 || response.status === 429,
+          cause: null,
+        },
+      )
+    }
   }
 
   return {
