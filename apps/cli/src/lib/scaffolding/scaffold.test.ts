@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseModule } from 'magicast'
@@ -63,17 +63,16 @@ describe('scaffoldProject', () => {
     expect(gitignore.split('\n')).toContain('.fakeware/')
   })
 
-  test('creates a git-ignored plugins folder for local plugin development', async () => {
+  test('does not scaffold a plugins folder', async () => {
     const dir = tmp()
     const created = await scaffoldProject({ dir, force: false, values })
 
     const names = created.map((f) => f.path.split('/').slice(-2).join('/'))
-    expect(names).toContain('plugins/.keep')
-    expect(readFileSync(join(dir, 'plugins', '.keep'), 'utf8')).toBe('')
+    expect(names).not.toContain('plugins/.keep')
+    expect(existsSync(join(dir, 'plugins'))).toBe(false)
 
-    const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8').split('\n')
-    expect(gitignore).toContain('plugins/*')
-    expect(gitignore).toContain('!plugins/.keep')
+    const gitignore = readFileSync(join(dir, '.gitignore'), 'utf8')
+    expect(gitignore).not.toContain('plugins/')
   })
 
   test('writes .gitignore before .env so the secret is never unignored on disk', async () => {

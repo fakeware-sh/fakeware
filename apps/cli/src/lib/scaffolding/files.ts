@@ -66,7 +66,7 @@ function envTemplate(values: ScaffoldValues): string {
 }
 
 function mergeGitignore(existing: string | undefined, values: ScaffoldValues): MergeResult | null {
-  const wanted = ['node_modules/', '.fakeware/', 'plugins/*', '!plugins/.keep']
+  const wanted = ['node_modules/', '.fakeware/']
   if (needsEnv(values)) wanted.unshift('.env')
 
   if (existing === undefined) {
@@ -109,13 +109,6 @@ export const FILE_SPECS: FileSpec[] = [
     include: () => true,
     strategy: 'merge',
     merge: mergeGitignore,
-  },
-  {
-    name: 'plugins/.keep',
-    include: () => true,
-    strategy: 'fresh',
-    build: () => '',
-    note: () => 'clone plugin repos here for local development',
   },
   {
     name: '.env',
