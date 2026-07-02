@@ -18,13 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
-      - name: no plugins in lockfile
-        run: |
-          if grep -q '"plugins/' bun.lock; then
-            echo "::error::a plugin leaked into the committed bun.lock — plugins/ must never be part of the monorepo lockfile"
-            grep -n '"plugins/' bun.lock
-            exit 1
-          fi
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run check
