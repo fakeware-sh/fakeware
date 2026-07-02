@@ -48,6 +48,12 @@ type IsWritable<T, K extends keyof T> = Equal<{ [Q in K]: T[K] }, { -readonly [Q
 
 type NoiseField = 'extensions' | 'translated' | 'customFields' | `${string}Ro`
 
+export interface RecordExtensions {}
+
+type RecordExtensionsField = {
+  [K in keyof RecordExtensions]?: Producible<RecordExtensions[K]>
+}
+
 type WritableKeys<T> = {
   [K in keyof T]-?: K extends NoiseField ? never : IsWritable<T, K> extends true ? K : never
 }[keyof T]
@@ -68,8 +74,16 @@ type Field<T> = T extends (infer U)[]
 
 type Producible<T> = Field<T> | ((ctx: Ctx) => Field<T>)
 
-type RecordShape<E extends EntityName> = { $key?: string } & {
-  [K in WritableKeys<SchemaOf<E>>]?: Producible<SchemaOf<E>[K]>
+type ExtensionsKey = keyof RecordExtensions extends never ? never : 'extensions'
+
+type RecordShape<E extends EntityName> = {
+  [K in WritableKeys<SchemaOf<E>> | '$key' | ExtensionsKey]?: K extends '$key'
+    ? string
+    : K extends 'extensions'
+      ? RecordExtensionsField
+      : K extends WritableKeys<SchemaOf<E>>
+        ? Producible<SchemaOf<E>[K]>
+        : never
 }
 
 export type DefineRecord<E extends EntityName> = RecordShape<E> | ((ctx: Ctx) => RecordShape<E>)

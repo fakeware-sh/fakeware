@@ -10,6 +10,7 @@ export type {
   DefineRecord,
   EntityName,
   EntityRegistry,
+  RecordExtensions,
   RecordFor,
   RefPath,
   RegistryEntityName,
