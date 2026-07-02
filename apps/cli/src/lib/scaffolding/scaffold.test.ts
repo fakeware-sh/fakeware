@@ -22,6 +22,7 @@ const values: ScaffoldValues = {
   clientId: 'id',
   clientSecret: 'secret',
   secrets: 'env',
+  plugins: [],
 }
 
 describe('scaffoldProject', () => {
@@ -99,7 +100,7 @@ describe('scaffoldProject', () => {
     const created = await scaffoldProject({
       dir,
       force: false,
-      values: { projectName: 'my-plugin', secrets: 'env' },
+      values: { projectName: 'my-plugin', secrets: 'env', plugins: [] },
     })
     const names = created.map((f) => f.path.split('/').pop())
     expect(names).toContain('package.json')

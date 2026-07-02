@@ -6,6 +6,7 @@ import { Command } from 'commander'
 import pc from 'picocolors'
 import terminalLink from 'terminal-link'
 import { detectPackageManager, type PackageManager, runInstall } from '../lib/package-manager'
+import { type OfficialPlugin, resolvePluginFlag } from '../lib/plugins'
 import {
   ScaffoldError,
   type SecretsDest,
@@ -27,6 +28,7 @@ import {
   promptConnectNow,
   promptExistingDir,
   promptPackageManager,
+  promptPlugins,
   promptProjectLocation,
   promptShopConnection,
   type ShopConnectionPrefill,
@@ -44,6 +46,7 @@ interface InitFlags {
   output?: string
   secrets: SecretsDest
   packageManager?: PackageManager
+  plugins?: string | false
   install: boolean
   force: boolean
   yes?: boolean
@@ -56,6 +59,7 @@ interface InitInputs {
   clientId?: string
   clientSecret?: string
   packageManager: PackageManager
+  plugins: OfficialPlugin[]
   dirStrategy: 'remove' | 'ignore' | 'fresh'
 }
 
@@ -68,6 +72,8 @@ export function initCommand(): Command {
     .option('--output <path>', 'Directory to scaffold into (default: cwd)')
     .option('--secrets <dest>', 'env | inline', 'env')
     .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
+    .option('--plugins <list>', 'Official plugin ids to add (comma-separated), or "all" | "none"')
+    .option('--no-plugins', 'Do not add any official plugins')
     .option('--no-install', 'Write files but skip dependency install')
     .option('--force', 'Overwrite existing files', false)
     .option('--dry-run', 'Preview the files that would be written without writing them', false)
@@ -82,6 +88,7 @@ export function initCommand(): Command {
         packageManager: opts.packageManager
           ? assertOneOf(opts.packageManager, PACKAGE_MANAGERS, '--package-manager')
           : undefined,
+        plugins: opts.plugins,
         install: opts.install,
         force: opts.force,
         dryRun: opts.dryRun,
@@ -160,6 +167,15 @@ async function gatherConnection(
   }
 }
 
+async function resolvePlugins(
+  flags: InitFlags,
+  fallback: () => Promise<OfficialPlugin[]>,
+): Promise<OfficialPlugin[]> {
+  if (flags.plugins === false) return []
+  if (typeof flags.plugins === 'string') return resolvePluginFlag(flags.plugins)
+  return fallback()
+}
+
 async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
   if (isNonInteractive(flags)) {
     const location = flags.output ?? '.'
@@ -171,6 +187,7 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
       clientSecret: flags.clientSecret,
       packageManager:
         flags.packageManager ?? (await detectPackageManager(resolveTargetDir(location))),
+      plugins: await resolvePlugins(flags, async () => []),
       dirStrategy: 'fresh',
     }
   }
@@ -186,7 +203,9 @@ async function gatherInputs(flags: InitFlags): Promise<InitInputs> {
 
   const connection = await gatherConnection(flags)
 
-  return { location, ...connection, packageManager, dirStrategy }
+  const plugins = await resolvePlugins(flags, promptPlugins)
+
+  return { location, ...connection, packageManager, plugins, dirStrategy }
 }
 
 function buildSummaryRows(
@@ -202,6 +221,10 @@ function buildSummaryRows(
     { label: 'Package manager', value: inputs.packageManager },
     { label: 'Install', value: flags.dryRun ? 'dry run' : flags.install ? 'yes' : 'skip' },
     { label: 'Shop', value: connected ? (inputs.url ?? '') : 'not configured' },
+    {
+      label: 'Plugins',
+      value: inputs.plugins.length ? inputs.plugins.map((plugin) => plugin.id).join(', ') : 'none',
+    },
     { label: 'Secrets', value: flags.secrets },
   ]
 }
@@ -247,6 +270,7 @@ async function runInit(flags: InitFlags): Promise<void> {
               clientId: inputs.clientId,
               clientSecret: inputs.clientSecret,
               secrets: flags.secrets,
+              plugins: inputs.plugins,
             },
           })
           const names = created.map((f) => pc.cyan(basename(f.path))).join(', ')

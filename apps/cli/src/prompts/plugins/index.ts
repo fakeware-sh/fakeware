@@ -1,0 +1,1 @@
+export { promptPlugins } from './plugins'

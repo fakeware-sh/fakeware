@@ -1,3 +1,5 @@
+import type { OfficialPlugin } from '../plugins'
+
 export const CONFIG_FILE_NAME = 'fakeware.config.ts'
 
 export type SecretsDest = 'env' | 'inline'
@@ -8,6 +10,7 @@ export interface ScaffoldValues {
   clientId?: string
   clientSecret?: string
   secrets: SecretsDest
+  plugins: OfficialPlugin[]
 }
 
 export function hasShopConnection(values: ScaffoldValues): boolean {

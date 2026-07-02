@@ -1,4 +1,11 @@
-import { generateCode, loadFile, type ProxifiedModule, parseModule, writeFile } from 'magicast'
+import {
+  builders,
+  generateCode,
+  loadFile,
+  type ProxifiedModule,
+  parseModule,
+  writeFile,
+} from 'magicast'
 import { credentialValues, hasShopConnection, type ScaffoldValues } from './values'
 
 const SEED =
@@ -17,16 +24,26 @@ function configArg(mod: ProxifiedModule): ConfigObject {
   return def.$args[0] as ConfigObject
 }
 
-export function applyConfig(cfg: ConfigObject, values: ScaffoldValues): void {
+function applyPlugins(mod: ProxifiedModule, cfg: ConfigObject, values: ScaffoldValues): void {
+  const plugins = values.plugins ?? []
+  if (plugins.length === 0) return
+  for (const plugin of plugins) {
+    mod.imports.$append({ imported: plugin.importName, from: plugin.packageName })
+  }
+  cfg.plugins = plugins.map((plugin) => builders.functionCall(plugin.importName))
+}
+
+export function applyConfig(mod: ProxifiedModule, cfg: ConfigObject, values: ScaffoldValues): void {
   if (hasShopConnection(values)) {
     const c = credentialValues(values)
     cfg.shopware = { url: c.url, clientId: c.clientId, clientSecret: c.clientSecret }
   }
+  applyPlugins(mod, cfg, values)
 }
 
 export function buildConfigFile(values: ScaffoldValues): string {
   const mod = parseModule(SEED)
-  applyConfig(configArg(mod), values)
+  applyConfig(mod, configArg(mod), values)
   let { code } = generateCode(mod, GENERATE_OPTIONS)
   code = code.replace(/\n\n(?=\s)/g, '\n')
   return code.endsWith('\n') ? code : `${code}\n`
