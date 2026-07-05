@@ -34,45 +34,6 @@ Like database migrations, but for demo data. Fill your Shopware shop by describi
 
 #default
 :::code-group{class="hero-code-group"}
-```ts [products.ts]
-import { define, many } from '@fakeware/core'
-
-define(
-  'product',
-  many(20, (ctx) => ({
-    name: `Demo product ${ctx.index + 1}`,
-    productNumber: `SW-${10000 + ctx.index}`,
-    stock: 100,
-  })),
-)
-```
-
-```ts [catalog.ts]
-import { define, ref } from '@fakeware/core'
-
-define('tax', { $key: 'standard', name: 'Standard rate', taxRate: 19 })
-
-define('product', {
-  name: 'Referenced product',
-  taxId: ref('tax').key('standard'),
-  categories: ref('category').pick(2),
-})
-```
-
-```ts [pricing.ts]
-import { define, shop } from '@fakeware/core'
-
-define('product', {
-  name: 'Priced product',
-  price: [{
-    currencyId: shop.defaultCurrency,
-    gross: 19.99,
-    net: 16.8,
-    linked: true,
-  }],
-})
-```
-
   ::::fake-terminal
   ---
   label: Terminal
@@ -145,6 +106,45 @@ define('product', {
     - command: clear
   ---
   ::::
+
+```ts [products.ts]
+import { define, many } from '@fakeware/core'
+
+define(
+  'product',
+  many(20, (ctx) => ({
+    name: `Demo product ${ctx.index + 1}`,
+    productNumber: `SW-${10000 + ctx.index}`,
+    stock: 100,
+  })),
+)
+```
+
+```ts [catalog.ts]
+import { define, ref } from '@fakeware/core'
+
+define('tax', { $key: 'standard', name: 'Standard rate', taxRate: 19 })
+
+define('product', {
+  name: 'Referenced product',
+  taxId: ref('tax').key('standard'),
+  categories: ref('category').pick(2),
+})
+```
+
+```ts [pricing.ts]
+import { define, shop } from '@fakeware/core'
+
+define('product', {
+  name: 'Priced product',
+  price: [{
+    currencyId: shop.defaultCurrency,
+    gross: 19.99,
+    net: 16.8,
+    linked: true,
+  }],
+})
+```
 :::
 ::
 
