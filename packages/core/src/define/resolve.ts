@@ -11,7 +11,7 @@ export interface ResolveScope {
   shop: ShopContext
   seed: number
   onEntityRef?(entity: string): void
-  onKeyRef?(entity: string, key: string): void
+  onRefId?(entity: string, id: string): void
 }
 
 function slotFor(
@@ -47,13 +47,14 @@ function resolveReference(
   token: AnyToken,
   scope: ResolveScope,
 ): string | string[] | { id: string }[] {
-  scope.onEntityRef?.((token as { entity: string }).entity)
+  const entity = (token as { entity: string }).entity
+  scope.onEntityRef?.(entity)
   switch (token[TOKEN]) {
     case 'ref': {
-      scope.onKeyRef?.(token.entity, token.key)
       const id = slotFor(scope, token.entity).byKey.get(token.key)
       if (!id)
         throw new RefError(`ref('${token.entity}').key('${token.key}') does not match any record.`)
+      scope.onRefId?.(entity, id)
       return id
     }
     case 'ref-index': {
@@ -64,19 +65,27 @@ function resolveReference(
           `ref('${token.entity}', ${token.index}) is out of range — ${token.entity} has ${all.length} records.`,
         )
       }
+      scope.onRefId?.(entity, id)
       return id
     }
-    case 'refs':
-      return [...slotFor(scope, token.entity).all]
+    case 'refs': {
+      const all = slotFor(scope, token.entity).all
+      for (const id of all) scope.onRefId?.(entity, id)
+      return [...all]
+    }
     case 'pick': {
       const all = slotFor(scope, token.entity).all
       if (all.length === 0) {
         throw new RefError(`ref('${token.entity}').pick() has no records to choose from.`)
       }
       if (token.count !== null) {
-        return seededSample(scope.seed, all, token.count).map((id) => ({ id }))
+        const sampled = seededSample(scope.seed, all, token.count)
+        for (const id of sampled) scope.onRefId?.(entity, id)
+        return sampled.map((id) => ({ id }))
       }
-      return all[seededIndex(scope.seed, all.length)] as string
+      const id = all[seededIndex(scope.seed, all.length)] as string
+      scope.onRefId?.(entity, id)
+      return id
     }
     default:
       return ''

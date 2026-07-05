@@ -54,25 +54,15 @@ function topoSort(entities: string[], edges: Map<string, Set<string>>): string[]
 function sortIntraEntity(
   entity: string,
   out: PlanRecord[],
-  keys: (string | undefined)[],
-  intraEdges: Map<string, Set<string>>,
+  intraEdges: Map<number, Set<number>>,
 ): PlanRecord[] {
   if (intraEdges.size === 0) return out
-
-  const indexByKey = new Map<string, number>()
-  keys.forEach((key, i) => {
-    if (key !== undefined) indexByKey.set(key, i)
-  })
 
   const n = out.length
   const indegree = new Array(n).fill(0)
   const dependents: number[][] = Array.from({ length: n }, () => [])
-  for (const [key, deps] of intraEdges) {
-    const to = indexByKey.get(key)
-    if (to === undefined) continue
-    for (const dep of deps) {
-      const from = indexByKey.get(dep)
-      if (from === undefined) continue
+  for (const [to, deps] of intraEdges) {
+    for (const from of deps) {
       indegree[to]++
       dependents[from]?.push(to)
     }
@@ -119,9 +109,14 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
   try {
     for (const { entity, entries } of drained) {
       const out: PlanRecord[] = []
-      const keyOfRecord: (string | undefined)[] = []
-      const intraEdges = new Map<string, Set<string>>()
+      const indexById = new Map<string, number>()
+      const entityIds = refIndex.byEntity.get(entity)?.all ?? []
+      for (let i = 0; i < entityIds.length; i++) {
+        indexById.set(entityIds[i] as string, i)
+      }
+      const intraEdges = new Map<number, Set<number>>()
       entries.forEach((entry, i) => {
+        const ownerId = ids.get(entry) as string
         const ctx: Ctx = {
           index: i,
           count: entries.length,
@@ -135,15 +130,16 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
           onEntityRef: (dep) => {
             if (dep !== entity) edges.get(entity)?.add(dep)
           },
-          onKeyRef: (dep, key) => {
-            if (dep === entity && entry.key && key !== entry.key) {
-              let deps = intraEdges.get(entry.key)
-              if (!deps) {
-                deps = new Set()
-                intraEdges.set(entry.key, deps)
-              }
-              deps.add(key)
+          onRefId: (dep, id) => {
+            if (dep !== entity || id === ownerId) return
+            const from = indexById.get(id)
+            if (from === undefined) return
+            let deps = intraEdges.get(i)
+            if (!deps) {
+              deps = new Set()
+              intraEdges.set(i, deps)
             }
+            deps.add(from)
           },
         }
         const resolved = resolveRecord(entry.value, ctx, scope) as {
@@ -163,14 +159,12 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
           edges.get(entity)?.add(MEDIA_ENTITY)
         }
 
-        const id = ids.get(entry) as string
         out.push({
-          record: { ...resolved.value, id },
-          hash: hashOf({ ...resolved.canonical, id }),
+          record: { ...resolved.value, id: ownerId },
+          hash: hashOf({ ...resolved.canonical, id: ownerId }),
         })
-        keyOfRecord.push(entry.key)
       })
-      records.set(entity, sortIntraEntity(entity, out, keyOfRecord, intraEdges))
+      records.set(entity, sortIntraEntity(entity, out, intraEdges))
     }
   } finally {
     setActiveShopContext(undefined)

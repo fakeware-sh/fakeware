@@ -7,7 +7,6 @@ export type MaybePromise<T> = T | Promise<T>
 
 export type PluginPhase =
   | 'configResolved'
-  | 'fetch'
   | 'contextReady'
   | 'beforeApply'
   | 'afterApply'

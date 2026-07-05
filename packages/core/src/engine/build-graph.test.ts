@@ -114,4 +114,30 @@ describe('buildWritePlan', () => {
     const taxIds = plan.records.get('tax')?.map((r) => r.record.id) ?? []
     expect(plan.records.get('product')?.[0]?.record.taxId).toBe(taxIds[1])
   })
+
+  test('orders a parent before its child within the same entity via .at()', () => {
+    define('category', [{ $key: 'child', parentId: ref('category').at(1) }, { $key: 'root' }])
+    const plan = buildWritePlan(drain(), shopContext)
+    const written = plan.records.get('category') ?? []
+    const rootIdx = written.findIndex((r) => r.record.id === deterministicId('category', 'root'))
+    const childIdx = written.findIndex((r) => r.record.id === deterministicId('category', 'child'))
+    expect(rootIdx).toBeLessThan(childIdx)
+  })
+
+  test('orders an unkeyed child after the keyed parent it references via .at()', () => {
+    define('category', [{ parentId: ref('category').at(1) }, { $key: 'root' }])
+    const plan = buildWritePlan(drain(), shopContext)
+    const written = plan.records.get('category') ?? []
+    const rootIdx = written.findIndex((r) => r.record.id === deterministicId('category', 'root'))
+    const childIdx = written.findIndex((r) => r.record.id === deterministicId('category', '0'))
+    expect(rootIdx).toBeLessThan(childIdx)
+  })
+
+  test('throws GraphError on an intra-entity cycle expressed via .at()', () => {
+    define('category', [
+      { $key: 'a', parentId: ref('category').at(1) },
+      { $key: 'b', parentId: ref('category').at(0) },
+    ])
+    expect(() => buildWritePlan(drain(), shopContext)).toThrow(GraphError)
+  })
 })

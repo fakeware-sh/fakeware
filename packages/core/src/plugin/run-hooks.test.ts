@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { ConfigContext, FakewarePlugin } from './define'
-import { createPluginLogger, silentLogSink } from './logger'
+import { createPluginLogger, type LogEntry, type LogSink, silentLogSink } from './logger'
 import { dispatchOnError, PluginError, runPluginHook, runPluginResultHook } from './run-hooks'
 
 function ctxFor(plugin: FakewarePlugin): ConfigContext {
@@ -11,6 +11,16 @@ function ctxFor(plugin: FakewarePlugin): ConfigContext {
     mode: 'test',
     logger: createPluginLogger(plugin.name, silentLogSink),
   }
+}
+
+function capturingCtxFor(entries: LogEntry[]): (plugin: FakewarePlugin) => ConfigContext {
+  const sink: LogSink = {
+    write: (entry) => entries.push(entry),
+  }
+  return (plugin) => ({
+    ...ctxFor(plugin),
+    logger: createPluginLogger(plugin.name, sink),
+  })
 }
 
 describe('runPluginHook', () => {
@@ -127,5 +137,24 @@ describe('dispatchOnError', () => {
     await expect(
       dispatchOnError(plugins, 'contextReady', new Error('primary'), ctxFor),
     ).resolves.toBeUndefined()
+  })
+
+  test('warns when a plugin onError handler throws', async () => {
+    const entries: LogEntry[] = []
+    const plugins: FakewarePlugin[] = [
+      {
+        name: 'a',
+        hooks: {
+          onError: () => {
+            throw new Error('secondary')
+          },
+        },
+      },
+    ]
+    await dispatchOnError(plugins, 'contextReady', new Error('primary'), capturingCtxFor(entries))
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ plugin: 'a', level: 'warn' })
+    expect(entries[0]?.message).toContain('contextReady')
+    expect(entries[0]?.message).toContain('secondary')
   })
 })

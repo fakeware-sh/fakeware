@@ -78,6 +78,9 @@ export async function dispatchOnError(
     }
     try {
       await onError(ctx)
-    } catch {}
+    } catch (handlerError) {
+      const reason = handlerError instanceof Error ? handlerError.message : String(handlerError)
+      base.logger.warn(`onError handler threw during "${phase}": ${reason}`)
+    }
   }
 }

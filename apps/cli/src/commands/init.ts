@@ -39,7 +39,7 @@ import {
 const SECRETS: readonly SecretsDest[] = ['env', 'inline']
 const PACKAGE_MANAGERS: readonly PackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
 
-interface InitFlags {
+export interface InitFlags {
   url?: string
   clientId?: string
   clientSecret?: string
@@ -101,8 +101,11 @@ export function isInteractive(isTTY: boolean | undefined = process.stdin.isTTY):
   return Boolean(isTTY)
 }
 
-function isNonInteractive(flags: InitFlags): boolean {
-  if (!isInteractive()) return true
+export function isNonInteractive(
+  flags: InitFlags,
+  interactive: boolean = isInteractive(),
+): boolean {
+  if (!interactive) return true
   return Boolean(flags.yes || (flags.url && flags.clientId && flags.clientSecret))
 }
 
@@ -167,7 +170,7 @@ async function gatherConnection(
   }
 }
 
-async function resolvePlugins(
+export async function resolvePlugins(
   flags: InitFlags,
   fallback: () => Promise<OfficialPlugin[]>,
 ): Promise<OfficialPlugin[]> {
