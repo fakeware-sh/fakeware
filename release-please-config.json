@@ -9,6 +9,7 @@
   "packages": {
     "packages/core": {},
     "apps/cli": {},
-    "apps/create-fakeware": {}
+    "apps/create-fakeware": {},
+    "docs": {}
   }
 }
