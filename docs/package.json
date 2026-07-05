@@ -8,6 +8,7 @@
     "prepare": "nuxt prepare"
   },
   "dependencies": {
+    "@nuxtjs/sitemap": "^7.6.0",
     "docus": "latest",
     "better-sqlite3": "^12.11.1",
     "nuxt": "^4.4.8"

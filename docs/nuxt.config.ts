@@ -1,7 +1,15 @@
 export default defineNuxtConfig({
   extends: ['docus'],
+  modules: ['@nuxtjs/sitemap'],
   site: {
     name: 'Fakeware',
+    url: 'https://fakeware.sh',
+  },
+  sitemap: {
+    sources: ['/__sitemap__/content'],
+  },
+  llms: {
+    domain: 'https://fakeware.sh',
   },
   content: {
     database: {

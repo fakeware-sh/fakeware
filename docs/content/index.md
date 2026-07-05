@@ -1,7 +1,7 @@
 ---
 seo:
-  title: 'Fakeware: demo data for Shopware 6'
-  description: Fill your Shopware shop with realistic demo data from typed, deterministic definitions. Declare products, categories and orders in TypeScript, then apply and revert them with a single command.
+  title: 'Demo data for Shopware 6'
+  description: Fill your Shopware 6 shop with realistic demo data from typed, deterministic TypeScript definitions — then apply and revert it all with a single command.
 ---
 
 ::u-page-hero
