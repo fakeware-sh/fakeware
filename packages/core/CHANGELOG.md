@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.11](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.10...core-v0.0.11) (2026-07-05)
+
+
+### Features
+
+* add media upload and cover/gallery support ([4b9b119](https://github.com/fakeware-sh/fakeware/commit/4b9b1196942412cc0aace75a1e97edb1883d386a))
+* add RecordExtensions support and tests ([ff51f1c](https://github.com/fakeware-sh/fakeware/commit/ff51f1ce7e1ebce39eaf805313f8d7ab84eae583))
+* add ShopValueToken and deferred tax support ([ebb6672](https://github.com/fakeware-sh/fakeware/commit/ebb66729572f0b9cea51ec8c45aef2dde07d88b4))
+
 ## [0.0.10](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.9...core-v0.0.10) (2026-07-01)
 
 
