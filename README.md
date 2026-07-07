@@ -60,4 +60,4 @@ Then follow the [guide](https://fakeware.sh/docs/usage/guide/introduction) to po
 
 ## Documentation
 
-Guides, concepts and the full API reference live at **[fakeware.sh](https://docs.fakeware.sh)**.
+Guides, concepts and the full API reference live at **[fakeware.sh](https://fakeware.sh)**.
