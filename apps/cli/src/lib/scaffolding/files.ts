@@ -1,11 +1,12 @@
 import { buildConfigFile } from './config-file'
-import { pluginReadme, pluginSource, pluginTest } from './plugin-template'
+import { pluginReadme, pluginSource, pluginTest, projectData } from './render'
 import {
   CONFIG_FILE_NAME,
   hasShopConnection,
   isPluginTemplate,
   isProjectTemplate,
   type ScaffoldValues,
+  wantsExampleData,
 } from './values'
 import {
   BUN_TYPES_VERSION,
@@ -162,6 +163,13 @@ export const FILE_SPECS: FileSpec[] = [
     strategy: 'fresh',
     build: buildConfigFile,
     note: () => 'typed via @fakeware/core/config',
+  },
+  {
+    name: 'data/products.ts',
+    include: wantsExampleData,
+    strategy: 'fresh',
+    build: projectData,
+    note: () => 'example data — edit or delete',
   },
   {
     name: 'src/index.ts',

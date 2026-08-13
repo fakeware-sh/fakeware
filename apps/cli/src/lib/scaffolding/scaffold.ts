@@ -16,7 +16,14 @@ export interface WrittenFile {
   note: string
 }
 
-export class ScaffoldError extends Error {}
+export class ScaffoldError extends Error {
+  readonly written: WrittenFile[]
+
+  constructor(message: string, written: WrittenFile[] = []) {
+    super(message)
+    this.written = written
+  }
+}
 
 export async function scaffoldProject(options: ScaffoldOptions): Promise<WrittenFile[]> {
   const { dir, force, values, dryRun = false } = options
@@ -28,7 +35,10 @@ export async function scaffoldProject(options: ScaffoldOptions): Promise<Written
 
     if (spec.strategy === 'fresh') {
       if (!force && !dryRun && (await fileExists(path))) {
-        throw new ScaffoldError(`${spec.name} already exists. Re-run with --force to overwrite.`)
+        throw new ScaffoldError(
+          `${spec.name} already exists. Re-run with --force to overwrite.`,
+          created,
+        )
       }
       const contents = spec.build?.(values) ?? ''
       if (!dryRun) {

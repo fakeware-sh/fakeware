@@ -143,6 +143,31 @@ describe('scaffoldProject', () => {
     expect(occurrences).toBe(1)
   })
 
+  test('scaffolds the example data file by default', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({ dir, force: false, values })
+    const paths = created.map((f) => f.path.slice(dir.length + 1))
+
+    expect(paths).toContain('data/products.ts')
+    const data = readFileSync(join(dir, 'data/products.ts'), 'utf8')
+    expect(data).toContain("define('tax'")
+    expect(data).toContain("define(\n  'product'")
+  })
+
+  test('exampleData: false omits the data file entirely', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({
+      dir,
+      force: false,
+      values: { ...values, exampleData: false },
+    })
+    const paths = created.map((f) => f.path.slice(dir.length + 1))
+
+    expect(paths).not.toContain('data/products.ts')
+    expect(existsSync(join(dir, 'data'))).toBe(false)
+    expect(paths).toContain('fakeware.config.ts')
+  })
+
   test('dry run reports files without writing them', async () => {
     const dir = tmp()
     const created = await scaffoldProject({ dir, force: false, values, dryRun: true })
@@ -173,6 +198,16 @@ describe('scaffoldProject — plugin template', () => {
     expect(paths).not.toContain('fakeware.config.ts')
     expect(existsSync(join(dir, 'fakeware.config.ts'))).toBe(false)
     expect(existsSync(join(dir, '.env'))).toBe(false)
+  })
+
+  test('never scaffolds project example data, even when exampleData is set', async () => {
+    const dir = tmp()
+    await scaffoldProject({
+      dir,
+      force: false,
+      values: { ...pluginValues, exampleData: true },
+    })
+    expect(existsSync(join(dir, 'data'))).toBe(false)
   })
 
   test('package.json declares a bounded core peer range and no private flag', async () => {

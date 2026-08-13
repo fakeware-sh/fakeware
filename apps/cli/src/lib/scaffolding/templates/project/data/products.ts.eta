@@ -1,0 +1,16 @@
+import { define, many, ref, shop } from '@fakeware/core'
+import { price } from '@fakeware/core/shopware'
+
+define('tax', [{ $key: 'standard', name: 'Standard rate', taxRate: 19, position: 1 }])
+
+define(
+  'product',
+  many(10, (ctx) => ({
+    name: `Demo product ${ctx.index + 1}`,
+    productNumber: `DEMO-${1000 + ctx.index}`,
+    stock: 100,
+    active: true,
+    taxId: ref('tax').key('standard'),
+    price: [price.gross(19.99, { tax: shop.defaultTaxRate })],
+  })),
+)

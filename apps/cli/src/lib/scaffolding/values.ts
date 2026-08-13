@@ -16,6 +16,7 @@ export interface ScaffoldValues {
   secrets: SecretsDest
   plugins: OfficialPlugin[]
   template?: ScaffoldTemplate
+  exampleData?: boolean
 }
 
 export function templateOf(values: ScaffoldValues): ScaffoldTemplate {
@@ -28,6 +29,10 @@ export function isPluginTemplate(values: ScaffoldValues): boolean {
 
 export function isProjectTemplate(values: ScaffoldValues): boolean {
   return templateOf(values) === 'project'
+}
+
+export function wantsExampleData(values: ScaffoldValues): boolean {
+  return isProjectTemplate(values) && values.exampleData !== false
 }
 
 export function hasShopConnection(values: ScaffoldValues): boolean {

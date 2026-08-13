@@ -1,5 +1,10 @@
 import { Eta } from 'eta'
-import { pluginReadmeTemplate, pluginSourceTemplate, pluginTestTemplate } from './templates'
+import {
+  pluginReadmeTemplate,
+  pluginSourceTemplate,
+  pluginTestTemplate,
+  projectDataTemplate,
+} from './templates'
 import type { ScaffoldValues } from './values'
 
 const eta = new Eta({ autoEscape: false, autoTrim: false, rmWhitespace: false })
@@ -22,4 +27,8 @@ export function pluginTest(values: ScaffoldValues): string {
 
 export function pluginReadme(): string {
   return pluginReadmeTemplate
+}
+
+export function projectData(): string {
+  return projectDataTemplate
 }
