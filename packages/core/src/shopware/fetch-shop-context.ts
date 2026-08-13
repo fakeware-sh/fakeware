@@ -1,6 +1,6 @@
 import type { ShopContext } from '../contract/shop-context'
 import type { OwnedFetcher } from '../plugin'
-import { builtInFetchers, rowsOf, totalOf } from './built-in-fetchers'
+import { BUILT_IN_FETCHERS } from './built-in-fetchers'
 import { createShopwareClient, type ShopwareClient } from './client'
 import { emptyData, toShopContext } from './context-build'
 import { ShopwareConnectionError } from './errors'
@@ -8,36 +8,7 @@ import { toConnectionError } from './operations'
 import { withRetry } from './retry'
 import type { ShopwareConnection } from './types'
 
-const SEARCH_LIMIT = 500
 const FETCH_CONCURRENCY = 4
-
-async function fetchAllPages(
-  client: ShopwareClient,
-  operation: string,
-  body: Record<string, unknown>,
-): Promise<{ data: unknown[] }> {
-  const collected: unknown[] = []
-  let page = 1
-  for (;;) {
-    const raw = await client.invoke(
-      operation as never,
-      {
-        body: { ...body, page, limit: SEARCH_LIMIT, 'total-count-mode': 1 },
-      } as never,
-    )
-    const rows = rowsOf(raw)
-    const pageRows = Array.isArray(rows) ? rows : []
-    collected.push(...pageRows)
-    const total = totalOf(raw)
-    if (pageRows.length === 0) break
-    if (total !== undefined && collected.length >= total) break
-    if (total === undefined && pageRows.length < SEARCH_LIMIT) break
-    page += 1
-  }
-  return { data: collected }
-}
-
-const BUILT_IN_FETCHERS = builtInFetchers(fetchAllPages)
 
 async function mapWithConcurrency<T, R>(
   items: readonly T[],

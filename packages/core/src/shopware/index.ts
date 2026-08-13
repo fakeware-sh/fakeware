@@ -48,5 +48,13 @@ export {
   price,
 } from './price'
 export { type RetryOptions, withRetry } from './retry'
+export {
+  type AdminInvokeOptions,
+  type AdminSearchResult,
+  invokeAdmin,
+  searchAll,
+  unwrapRows,
+  unwrapTotal,
+} from './search'
 export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
 export { LIVE_VERSION_ID, type ShopwareConnection } from './types'
