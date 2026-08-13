@@ -7,7 +7,7 @@ export default defineConfig({
   minify: true,
   sourcemap: true,
   clean: true,
-  target: 'node20',
+  target: 'node22',
   publint: true,
   onSuccess: 'bun install',
 })
