@@ -28,8 +28,9 @@ async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path)
     return true
-  } catch {
-    return false
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+    throw error
   }
 }
 
@@ -52,12 +53,17 @@ async function readEnvFile(projectRoot: string): Promise<Record<string, string>>
   if (!(await fileExists(path))) return {}
   const out: Record<string, string> = {}
   const contents = await readFile(path, 'utf8')
-  for (const raw of contents.split('\n')) {
-    const line = raw.trim()
+  for (const [index, raw] of contents.split('\n').entries()) {
+    let line = raw.trim()
     if (!line || line.startsWith('#')) continue
+    if (line.startsWith('export ')) line = line.slice('export '.length).trim()
     const eq = line.indexOf('=')
-    if (eq === -1) continue
-    const key = line.slice(0, eq).trim()
+    const key = eq === -1 ? '' : line.slice(0, eq).trim()
+    if (!key) {
+      throw new ConfigError(
+        `Malformed line ${index + 1} in ${path}: "${line}" (expected KEY=value).`,
+      )
+    }
     let val = line.slice(eq + 1).trim()
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1)
@@ -94,7 +100,8 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
   const configEnv: ConfigEnv = { env, mode: opts.mode ?? 'development' }
   const raw = isConfigFn(exported) ? exported(configEnv) : (exported as FakewareUserConfig)
 
-  const interpolated = interpolate(raw, env)
+  const { plugins: rawPlugins, ...rest } = raw
+  const interpolated = { ...interpolate(rest, env), plugins: rawPlugins }
 
   const parsed = fakewareConfigSchema.safeParse(interpolated)
   if (!parsed.success) {
@@ -108,7 +115,7 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
     )
   }
 
-  const plugins = loadPlugins(raw.plugins)
+  const plugins = loadPlugins(parsed.data.plugins)
 
   return {
     config: parsed.data,

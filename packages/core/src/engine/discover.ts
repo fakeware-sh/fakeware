@@ -12,8 +12,9 @@ export async function discoverDataFiles(projectRoot: string): Promise<string[]> 
   let names: string[]
   try {
     names = await readdir(root, { recursive: true })
-  } catch {
-    return []
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+    throw error
   }
   return names
     .filter(isDataFile)

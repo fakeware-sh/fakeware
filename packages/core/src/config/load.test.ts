@@ -17,9 +17,17 @@ describe('interpolate', () => {
     expect(interpolate({ a: ['$SHOPWARE_URL'] }, env)).toEqual({ a: ['https://shop.test'] })
   })
 
+  test('replaces embedded $VAR references inside strings', () => {
+    expect(interpolate('prefix-$SHOPWARE_URL/api', env)).toBe('prefix-https://shop.test/api')
+  })
+
+  test('replaces braced env references', () => {
+    expect(interpolate(`\${SHOPWARE_URL}/api`, env)).toBe('https://shop.test/api')
+  })
+
   test('leaves non-matching strings untouched', () => {
     expect(interpolate('plain', env)).toBe('plain')
-    expect(interpolate('prefix-$SHOPWARE_URL', env)).toBe('prefix-$SHOPWARE_URL')
+    expect(interpolate('price in $$ or $cents', env)).toBe('price in $$ or $cents')
   })
 
   test('leaves non-string scalars untouched', () => {
@@ -28,6 +36,7 @@ describe('interpolate', () => {
 
   test('throws on an undefined variable', () => {
     expect(() => interpolate('$MISSING', env)).toThrow(ConfigError)
+    expect(() => interpolate('url is $MISSING here', env)).toThrow(ConfigError)
   })
 })
 
@@ -65,6 +74,25 @@ describe('loadConfig', () => {
     const loaded = await loadConfig({ cwd: dir })
     expect(loaded.connection.url).toBe('https://env.test')
     expect(loaded.connection.clientId).toBe('id')
+  })
+
+  test('accepts export-prefixed lines in .env', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `export default defineConfig({ shopware: { url: '$SHOPWARE_URL', clientId: 'i', clientSecret: 's' } })\n`,
+      'export SHOPWARE_URL=https://exported.test\n',
+    )
+    const loaded = await loadConfig({ cwd: dir })
+    expect(loaded.connection.url).toBe('https://exported.test')
+  })
+
+  test('throws ConfigError with the line number on a malformed .env line', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+      '# comment\nTHIS IS NOT AN ASSIGNMENT\n',
+    )
+    await expect(loadConfig({ cwd: dir })).rejects.toThrow('Malformed line 2')
   })
 
   test('supports the function form with env + mode', async () => {
