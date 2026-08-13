@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import cliPkg from '../../cli/package.json' with { type: 'json' }
+import cliPkg from '@fakeware/cli/package.json' with { type: 'json' }
 import pkg from '../package.json' with { type: 'json' }
 
 test('exposes the create-fakeware bin', () => {

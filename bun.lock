@@ -31,8 +31,10 @@
         "terminal-link": "5.0.0",
       },
       "devDependencies": {
+        "@fakeware/plugin-pickware": "workspace:*",
         "@types/bun": "1.3.14",
         "@types/node": "22.20.0",
+        "typescript": "^6.0.3",
       },
     },
     "apps/create-fakeware": {

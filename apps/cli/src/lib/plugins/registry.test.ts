@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import pickwarePkg from '../../../../../plugins/plugin-pickware/package.json' with { type: 'json' }
+import pickwarePkg from '@fakeware/plugin-pickware/package.json' with { type: 'json' }
 import { findPlugins, OFFICIAL_PLUGINS, resolvePluginFlag } from './registry'
 
 describe('OFFICIAL_PLUGINS', () => {

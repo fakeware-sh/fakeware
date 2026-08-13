@@ -1,4 +1,4 @@
-import type { ShopContext, ShopContextData } from '../contract/shop-context'
+import type { ShopContext, ShopContextData } from '../contract'
 import { toShopContext } from '../shopware/context-build'
 
 const EMPTY: ShopContextData = {

@@ -7,7 +7,7 @@ import {
   refIndexToken,
   refsToken,
   refToken,
-} from '../contract/tokens'
+} from '../contract'
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
 import { defineRecords, type RecordValue, staticKey } from './registry'

@@ -1,8 +1,8 @@
-import { ShopContextError, shop } from '../contract/shop-context'
-import type { AnyToken } from '../contract/tokens'
-import type { Ctx } from '../define/ctx'
-import type { CalculatedPrice } from '../shopware/price'
-import { price } from '../shopware/price'
+import type { AnyToken } from '../contract'
+import { ShopContextError, shop } from '../contract'
+import type { Ctx } from '../define'
+import type { CalculatedPrice } from '../shopware'
+import { price } from '../shopware'
 import { type AssocIds, assocIds } from './local-ids'
 
 type Id = string | AnyToken

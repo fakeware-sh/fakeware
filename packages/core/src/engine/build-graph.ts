@@ -1,4 +1,4 @@
-import { type ShopContext, shop, withActiveShopContext } from '../contract/shop-context'
+import { type ShopContext, shop, withActiveShopContext } from '../contract'
 import {
   buildRefIndex,
   type Ctx,

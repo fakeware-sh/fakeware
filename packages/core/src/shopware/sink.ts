@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
-import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from '../contract/media'
+import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from '../contract'
 import type { MediaUploadRecord, ShopwareSink, SinkRecord } from '../domain'
 import {
   adminBaseUrl,

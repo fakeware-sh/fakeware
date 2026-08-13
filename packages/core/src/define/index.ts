@@ -1,5 +1,3 @@
-export { deterministicId, hashOf } from '../contract/ids'
-export { isPlainObject } from '../contract/is-plain-object'
 export type {
   AnyToken,
   PickToken,
@@ -9,15 +7,18 @@ export type {
   RefToken,
   ShopToken,
   ShopValueToken,
-} from '../contract/tokens'
+} from '../contract'
 export {
+  deterministicId,
+  hashOf,
+  isPlainObject,
   isReferenceToken,
   isShopToken,
   isShopValueToken,
   isToken,
   shopToken,
   shopValueToken,
-} from '../contract/tokens'
+} from '../contract'
 export type { Ctx } from './ctx'
 export { define, type KeyMap, keyed, many, type RefBuilder, ref } from './define'
 export { RefError } from './errors'

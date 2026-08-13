@@ -1,13 +1,13 @@
-import { isPlainObject } from '../contract/is-plain-object'
-import { MEDIA_UPLOAD_KEY } from '../contract/media'
-import type { ShopContext } from '../contract/shop-context'
+import type { ShopContext } from '../contract'
 import {
   type AnyToken,
+  isPlainObject,
   isReferenceToken,
   isShopToken,
   isShopValueToken,
+  MEDIA_UPLOAD_KEY,
   TOKEN,
-} from '../contract/tokens'
+} from '../contract'
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
 import type { RefIndex } from './registry'

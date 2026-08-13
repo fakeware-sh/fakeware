@@ -1,6 +1,5 @@
 import type { Schemas } from '@shopware/api-client/admin-api-types'
-import type { MediaRecord } from '../contract/media'
-import type { AnyToken } from '../contract/tokens'
+import type { AnyToken, MediaRecord } from '../contract'
 import type { Ctx } from './ctx'
 
 type Words<

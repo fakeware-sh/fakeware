@@ -1,4 +1,4 @@
-import type { ShopContext } from '../contract/shop-context'
+import type { ShopContext } from '../contract'
 import type { OwnedFetcher } from '../plugin'
 import { BUILT_IN_FETCHERS } from './built-in-fetchers'
 import { createShopwareClient, type ShopwareClient } from './client'

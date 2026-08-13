@@ -2,8 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import corePkg from '@fakeware/core/package.json' with { type: 'json' }
 import { parseModule } from 'magicast'
-import corePkg from '../../../../../packages/core/package.json' with { type: 'json' }
 import cliPkg from '../../../package.json' with { type: 'json' }
 import { ScaffoldError, scaffoldProject } from './scaffold'
 import type { ScaffoldValues } from './values'

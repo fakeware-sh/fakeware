@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { ShopContext } from '../contract/shop-context'
-import { isShopToken, isShopValueToken, shopValueToken } from '../contract/tokens'
+import type { ShopContext } from '../contract'
+import { isShopToken, isShopValueToken, shopValueToken } from '../contract'
 import { price } from './price'
 
 const rate = (n: number) => shopValueToken('test-rate', () => n)

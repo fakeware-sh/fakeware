@@ -7,8 +7,6 @@ export {
   type MediaUploadSpec,
   type MediaUrlSource,
   media,
-} from '../contract/media'
-export {
   type Shop,
   type ShopContext,
   type ShopContextCountry,
@@ -27,7 +25,7 @@ export {
   type ShopContextStateMachineState,
   type ShopContextTax,
   shop,
-} from '../contract/shop-context'
+} from '../contract'
 export type { ShopContextFetcher } from './built-in-fetchers'
 export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
 export { buildShopContextIndex, toShopContext } from './context-build'

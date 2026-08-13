@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import corePkg from '../../../../../packages/core/package.json' with { type: 'json' }
+import corePkg from '@fakeware/core/package.json' with { type: 'json' }
 import cliPkg from '../../../package.json' with { type: 'json' }
 import { SCAFFOLD_DEPENDENCIES } from './versions'
 

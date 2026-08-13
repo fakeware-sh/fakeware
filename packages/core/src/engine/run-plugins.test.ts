@@ -7,8 +7,7 @@ import type { FakewarePlugin, LogEntry } from '../plugin'
 import { PluginError } from '../plugin'
 import type { ShopwareClient } from '../shopware'
 import { ShopwareApiError, ShopwareConnectionError } from '../shopware'
-import { fakeShopContext } from '../testing/fake-shop-context'
-import { createInMemorySink } from '../testing/in-memory-sink'
+import { createInMemorySink, fakeShopContext } from '../testing'
 import { ApplyStopped } from './errors'
 
 const RESPONSES: Record<string, unknown> = {

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { deterministicId } from '../contract/ids'
+import { deterministicId } from '../contract'
 import type { Ctx } from './ctx'
 
 type RecordObject = Record<string, unknown>

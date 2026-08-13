@@ -1,4 +1,4 @@
-import type { Shop } from '../contract/shop-context'
+import type { Shop } from '../contract'
 
 export interface Ctx {
   index: number

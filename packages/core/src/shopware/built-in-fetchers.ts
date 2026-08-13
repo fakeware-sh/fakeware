@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ShopContextData } from '../contract/shop-context'
+import type { ShopContextData } from '../contract'
 import type { ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
 import { searchAll, unwrapRows } from './search'

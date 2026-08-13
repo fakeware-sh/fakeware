@@ -1,4 +1,4 @@
-import type { ShopContext, ShopContextData, ShopContextIndex } from '../contract/shop-context'
+import type { ShopContext, ShopContextData, ShopContextIndex } from '../contract'
 import { ShopwareConnectionError } from './errors'
 
 export function emptyData(): ShopContextData {

@@ -1,11 +1,10 @@
 import corePkg from '@fakeware/core/package.json' with { type: 'json' }
-import rootPkg from '../../../../../package.json' with { type: 'json' }
 import cliPkg from '../../../package.json' with { type: 'json' }
 import type { OfficialPlugin } from '../plugins'
 
-export const BUN_TYPES_VERSION: string = rootPkg.devDependencies['@types/bun']
+export const BUN_TYPES_VERSION: string = cliPkg.devDependencies['@types/bun']
 
-export const TYPESCRIPT_VERSION: string = rootPkg.devDependencies.typescript
+export const TYPESCRIPT_VERSION: string = cliPkg.devDependencies.typescript
 
 const caret = (version: string): string => `^${version}`
 
