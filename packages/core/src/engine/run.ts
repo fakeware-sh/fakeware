@@ -4,9 +4,11 @@ import {
   type ConfigContext,
   collectFetchers,
   createPluginLogger,
+  dispatchOnError,
   type FakewarePlugin,
   type LogEntry,
   type PluginContext,
+  PluginError,
   runPluginHook,
   runPluginResultHook,
 } from '../plugin'
@@ -15,6 +17,7 @@ import {
   type ShopContext,
   ShopwareApiError,
   type ShopwareClient,
+  toApiError,
 } from '../shopware'
 import { buildWritePlan, type PlanRecord } from './build-graph'
 import { discoverDataFiles } from './discover'
@@ -152,29 +155,36 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
     configContextFor(opts, plugin),
   )
 
-  const shopContext =
-    opts.shopContext ??
-    (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client))
+  try {
+    const shopContext =
+      opts.shopContext ??
+      (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client))
 
-  await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
-    pluginContextFor(opts, plugin, shopContext),
-  )
-  await runPluginHook(plugins, 'beforeApply', 'beforeApply', (plugin) => ({
-    ...pluginContextFor(opts, plugin, shopContext),
-    dryRun,
-  }))
+    await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
+      pluginContextFor(opts, plugin, shopContext),
+    )
+    await runPluginHook(plugins, 'beforeApply', 'beforeApply', (plugin) => ({
+      ...pluginContextFor(opts, plugin, shopContext),
+      dryRun,
+    }))
 
-  const result = await applyPlan(opts, shopContext)
+    const result = await applyPlan(opts, shopContext)
 
-  await runPluginResultHook(
-    plugins,
-    'afterApply',
-    'afterApply',
-    (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
-    result,
-  )
+    await runPluginResultHook(
+      plugins,
+      'afterApply',
+      'afterApply',
+      (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
+      result,
+    )
 
-  return result
+    return result
+  } catch (error) {
+    if (!(error instanceof PluginError) && !(error instanceof ApplyStopped)) {
+      await dispatchOnError(plugins, 'apply', error, (plugin) => configContextFor(opts, plugin))
+    }
+    throw error
+  }
 }
 
 async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<UpResult> {
@@ -230,12 +240,17 @@ async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<Up
         await sink.uploadMedia(w.toWrite, { projectRoot: loaded.projectRoot })
       }
     } catch (error) {
+      const failure =
+        error instanceof ShopwareApiError ? error : toApiError(w.entity, w.toWrite, error)
       reporter?.failed?.({
         entity: w.entity,
         committed: ledger.map((l) => l.entity),
-        error: error as ShopwareApiError,
+        error: failure,
       })
       await persist(ledger)
+      await dispatchOnError(loaded.plugins, 'apply', failure, (plugin) =>
+        pluginContextFor(opts, plugin, shopContext),
+      )
       throw new ApplyStopped()
     }
     ledger.push(confirmed)
@@ -256,41 +271,48 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
     configContextFor(opts, plugin),
   )
 
-  const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
-  if (!manifest) return { steps: [], reverted: false, failures: [] }
+  try {
+    const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
+    if (!manifest) return { steps: [], reverted: false, failures: [] }
 
-  const needsContext = plugins.some(
-    (plugin) =>
-      plugin.hooks?.contextReady || plugin.hooks?.beforeRevert || plugin.hooks?.afterRevert,
-  )
-  const shopContext = needsContext
-    ? (opts.shopContext ??
-      (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client)))
-    : opts.shopContext
-
-  if (shopContext) {
-    await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
-      pluginContextFor(opts, plugin, shopContext),
+    const needsContext = plugins.some(
+      (plugin) =>
+        plugin.hooks?.contextReady || plugin.hooks?.beforeRevert || plugin.hooks?.afterRevert,
     )
-    await runPluginHook(plugins, 'beforeRevert', 'beforeRevert', (plugin) => ({
-      ...pluginContextFor(opts, plugin, shopContext),
-      dryRun,
-    }))
+    const shopContext = needsContext
+      ? (opts.shopContext ??
+        (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client)))
+      : opts.shopContext
+
+    if (shopContext) {
+      await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
+        pluginContextFor(opts, plugin, shopContext),
+      )
+      await runPluginHook(plugins, 'beforeRevert', 'beforeRevert', (plugin) => ({
+        ...pluginContextFor(opts, plugin, shopContext),
+        dryRun,
+      }))
+    }
+
+    const result = await revertManifest(opts, manifest)
+
+    if (shopContext) {
+      await runPluginResultHook(
+        plugins,
+        'afterRevert',
+        'afterRevert',
+        (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
+        result,
+      )
+    }
+
+    return result
+  } catch (error) {
+    if (!(error instanceof PluginError)) {
+      await dispatchOnError(plugins, 'revert', error, (plugin) => configContextFor(opts, plugin))
+    }
+    throw error
   }
-
-  const result = await revertManifest(opts, manifest)
-
-  if (shopContext) {
-    await runPluginResultHook(
-      plugins,
-      'afterRevert',
-      'afterRevert',
-      (plugin) => ({ ...pluginContextFor(opts, plugin, shopContext), dryRun }),
-      result,
-    )
-  }
-
-  return result
 }
 
 async function revertManifest(opts: RunOptions, manifest: Manifest): Promise<DownResult> {

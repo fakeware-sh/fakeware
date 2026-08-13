@@ -9,8 +9,10 @@ export type PluginPhase =
   | 'configResolved'
   | 'contextReady'
   | 'beforeApply'
+  | 'apply'
   | 'afterApply'
   | 'beforeRevert'
+  | 'revert'
   | 'afterRevert'
 
 export interface ConfigContext {

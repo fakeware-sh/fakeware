@@ -7,7 +7,9 @@ import { createInMemorySink } from '../domain'
 import type { FakewarePlugin } from '../plugin'
 import { PluginError } from '../plugin'
 import type { ShopwareClient } from '../shopware'
+import { ShopwareApiError, ShopwareConnectionError } from '../shopware'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { ApplyStopped } from './errors'
 
 const RESPONSES: Record<string, unknown> = {
   '/search/currency': {
@@ -197,6 +199,61 @@ describe('runUp with plugins', () => {
     })
     await expect(run).rejects.toBeInstanceOf(PluginError)
     expect(errorPhase).toBe('beforeApply')
+  })
+
+  test('a sink failure dispatches onError with the normalized api error', async () => {
+    let seenPhase: string | undefined
+    let seenError: unknown
+    const plugin: FakewarePlugin = {
+      name: 'observer',
+      hooks: {
+        onError: ({ phase, error }) => {
+          seenPhase = phase
+          seenError = error
+        },
+      },
+    }
+    const TAX = `import { define } from '${join(import.meta.dir, '..', 'index.ts')}'\ndefine('tax', [{ $key: 'standard', taxRate: 19 }])\n`
+    await Bun.write(join(dir, 'data', 'tax.ts'), TAX)
+    const sink = {
+      ...createInMemorySink(),
+      write: async () => {
+        throw new Error('disk on fire')
+      },
+    }
+    const run = runUp({
+      loaded: loadedFor(dir, [plugin]),
+      sink,
+      shopContext: fakeShopContext(),
+    })
+    await expect(run).rejects.toBeInstanceOf(ApplyStopped)
+    expect(seenPhase).toBe('apply')
+    expect(seenError).toBeInstanceOf(ShopwareApiError)
+    expect((seenError as ShopwareApiError).entity).toBe('tax')
+  })
+
+  test('a failing shop-context fetch dispatches onError before rethrowing', async () => {
+    let seenPhase: string | undefined
+    const plugin: FakewarePlugin = {
+      name: 'boom',
+      fetchers: [
+        {
+          entity: 'depots',
+          fetch: async () => {
+            throw new Error('unreachable')
+          },
+          merge: () => {},
+        },
+      ],
+      hooks: {
+        onError: ({ phase }) => {
+          seenPhase = phase
+        },
+      },
+    }
+    const run = runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
+    await expect(run).rejects.toBeInstanceOf(ShopwareConnectionError)
+    expect(seenPhase).toBe('apply')
   })
 })
 
