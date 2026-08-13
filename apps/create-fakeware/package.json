@@ -1,6 +1,6 @@
 {
   "name": "create-fakeware",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Scaffold a Fakeware project",
   "type": "module",
   "license": "MIT",
@@ -29,7 +29,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@fakeware/cli": "^0.0.12"
+    "@fakeware/cli": "^0.1.0"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",
