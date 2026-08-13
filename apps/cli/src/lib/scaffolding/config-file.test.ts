@@ -72,6 +72,32 @@ describe('buildConfigFile', () => {
     expect(Object.keys(cfg)).toEqual([])
   })
 
+  test('emits exactly this text (magicast formatting drift guard)', () => {
+    const code = buildConfigFile({
+      ...base,
+      url: 'x',
+      clientId: 'y',
+      clientSecret: 'z',
+      plugins: [pickware],
+    })
+
+    expect(code).toBe(
+      `import { defineConfig } from '@fakeware/core/config'
+
+import { pickware } from '@fakeware/plugin-pickware'
+
+export default defineConfig({
+  shopware: {
+    url: '$SHOPWARE_URL',
+    clientId: '$SHOPWARE_CLIENT_ID',
+    clientSecret: '$SHOPWARE_CLIENT_SECRET',
+  },
+  plugins: [pickware()],
+})
+`,
+    )
+  })
+
   test('output re-parses to a stable shape (magicast drift guard)', () => {
     const cfg = configObject(
       buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }),

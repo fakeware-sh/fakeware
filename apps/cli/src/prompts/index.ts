@@ -17,5 +17,5 @@ export {
   promptShopConnection,
   type ShopConnectionPrefill,
 } from './shop'
-export { validateWithSpinner, withSpinner } from './spinner'
+export { validateWithSpinner } from './spinner'
 export { promptConfirmSummary, type SummaryRow } from './summary'

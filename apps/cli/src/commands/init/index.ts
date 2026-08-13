@@ -3,7 +3,7 @@ import * as p from '@clack/prompts'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
-import type { PackageManager } from '../../lib/package-manager'
+import { PACKAGE_MANAGERS } from '../../lib/package-manager'
 import { SCAFFOLD_TEMPLATES, ScaffoldError, type SecretsDest } from '../../lib/scaffolding'
 import { assertOneOf, resolveTargetDir, toValidPackageName } from '../../lib/utils'
 import { promptConfirmSummary, type SummaryRow } from '../../prompts'
@@ -13,7 +13,6 @@ import { abortUnconfirmed, gatherInputs, type InitInputs, isNonInteractive } fro
 import { outroFor } from './outro'
 
 const SECRETS: readonly SecretsDest[] = ['env', 'inline']
-const PACKAGE_MANAGERS: readonly PackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
 
 export function initCommand(): Command {
   return new Command('init')

@@ -1,8 +1,6 @@
 import * as p from '@clack/prompts'
-import type { PackageManager } from '../../lib/package-manager'
+import { PACKAGE_MANAGERS, type PackageManager } from '../../lib/package-manager'
 import { cancelable } from '../cancel'
-
-const PACKAGE_MANAGERS: PackageManager[] = ['bun', 'npm', 'pnpm', 'yarn']
 
 export async function promptPackageManager(preselected: PackageManager): Promise<PackageManager> {
   return cancelable(

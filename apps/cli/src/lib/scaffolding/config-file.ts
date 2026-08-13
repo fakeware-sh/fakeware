@@ -46,6 +46,7 @@ export function buildConfigFile(values: ScaffoldValues): string {
   applyConfig(mod, configArg(mod), values)
   let { code } = generateCode(mod, GENERATE_OPTIONS)
   code = code.replace(/\n\n(?=\s)/g, '\n')
+  code = code.replace(/^import \{(\S[^}]*\S)} from ('[^']+');$/gm, 'import { $1 } from $2')
   return code.endsWith('\n') ? code : `${code}\n`
 }
 
