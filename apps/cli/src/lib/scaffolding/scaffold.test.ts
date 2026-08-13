@@ -151,3 +151,72 @@ describe('scaffoldProject', () => {
     expect(() => readFileSync(join(dir, 'package.json'), 'utf8')).toThrow()
   })
 })
+
+const pluginValues: ScaffoldValues = {
+  projectName: 'fakeware-plugin-warehouse',
+  secrets: 'inline',
+  plugins: [],
+  template: 'plugin',
+}
+
+describe('scaffoldProject — plugin template', () => {
+  test('writes the plugin sources instead of a project config', async () => {
+    const dir = tmp()
+    const created = await scaffoldProject({ dir, force: false, values: pluginValues })
+    const paths = created.map((f) => f.path.slice(dir.length + 1))
+
+    expect(paths).toContain('package.json')
+    expect(paths).toContain('tsconfig.json')
+    expect(paths).toContain('src/index.ts')
+    expect(paths).toContain('src/index.test.ts')
+    expect(paths).toContain('README.md')
+    expect(paths).not.toContain('fakeware.config.ts')
+    expect(existsSync(join(dir, 'fakeware.config.ts'))).toBe(false)
+    expect(existsSync(join(dir, '.env'))).toBe(false)
+  })
+
+  test('package.json declares a bounded core peer range and no private flag', async () => {
+    const dir = tmp()
+    await scaffoldProject({ dir, force: false, values: pluginValues })
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+
+    expect(pkg.name).toBe('fakeware-plugin-warehouse')
+    expect(pkg.private).toBeUndefined()
+    expect(pkg.peerDependencies['@fakeware/core']).toBe(
+      `>=${corePkg.version} <0.${Number(corePkg.version.split('.')[1]) + 1}.0`,
+    )
+    expect(pkg.devDependencies['@fakeware/core']).toBe(`^${corePkg.version}`)
+    expect(pkg.scripts.test).toBe('bun test')
+  })
+
+  test('tsconfig pulls in bun types so the scaffolded test typechecks', async () => {
+    const dir = tmp()
+    await scaffoldProject({ dir, force: false, values: pluginValues })
+    const tsconfig = JSON.parse(readFileSync(join(dir, 'tsconfig.json'), 'utf8'))
+
+    expect(tsconfig.compilerOptions.types).toEqual(['bun'])
+    expect(tsconfig.compilerOptions.strict).toBe(true)
+    expect(tsconfig.include).toEqual(['src'])
+
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+    expect(pkg.devDependencies['@types/bun']).toBeString()
+    expect(pkg.devDependencies.typescript).toBeString()
+  })
+
+  test('the scaffolded plugin uses definePlugin and the core helpers', async () => {
+    const dir = tmp()
+    await scaffoldProject({ dir, force: false, values: pluginValues })
+
+    const source = readFileSync(join(dir, 'src/index.ts'), 'utf8')
+    expect(source).toContain(
+      "import { definePlugin, type ShopContextFetcher } from '@fakeware/core'",
+    )
+    expect(source).toContain("import { searchAll, unwrapRows } from '@fakeware/core/shopware'")
+    expect(source).toContain("name: 'fakeware-plugin-warehouse'")
+
+    const spec = readFileSync(join(dir, 'src/index.test.ts'), 'utf8')
+    expect(spec).toContain('createTestClient')
+    expect(spec).toContain('createTestPluginContext')
+    expect(spec).toContain("from '@fakeware/core/testing'")
+  })
+})

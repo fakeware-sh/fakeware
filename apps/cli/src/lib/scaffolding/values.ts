@@ -4,6 +4,10 @@ export const CONFIG_FILE_NAME = 'fakeware.config.ts'
 
 export type SecretsDest = 'env' | 'inline'
 
+export type ScaffoldTemplate = 'project' | 'plugin'
+
+export const SCAFFOLD_TEMPLATES: ScaffoldTemplate[] = ['project', 'plugin']
+
 export interface ScaffoldValues {
   projectName: string
   url?: string
@@ -11,6 +15,19 @@ export interface ScaffoldValues {
   clientSecret?: string
   secrets: SecretsDest
   plugins: OfficialPlugin[]
+  template?: ScaffoldTemplate
+}
+
+export function templateOf(values: ScaffoldValues): ScaffoldTemplate {
+  return values.template ?? 'project'
+}
+
+export function isPluginTemplate(values: ScaffoldValues): boolean {
+  return templateOf(values) === 'plugin'
+}
+
+export function isProjectTemplate(values: ScaffoldValues): boolean {
+  return templateOf(values) === 'project'
 }
 
 export function hasShopConnection(values: ScaffoldValues): boolean {

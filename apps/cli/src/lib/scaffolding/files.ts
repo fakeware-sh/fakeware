@@ -1,6 +1,19 @@
 import { buildConfigFile } from './config-file'
-import { CONFIG_FILE_NAME, hasShopConnection, type ScaffoldValues } from './values'
-import { scaffoldDependencies } from './versions'
+import { pluginReadme, pluginSource, pluginTest } from './plugin-template'
+import {
+  CONFIG_FILE_NAME,
+  hasShopConnection,
+  isPluginTemplate,
+  isProjectTemplate,
+  type ScaffoldValues,
+} from './values'
+import {
+  BUN_TYPES_VERSION,
+  corePeerRange,
+  SCAFFOLD_DEPENDENCIES,
+  scaffoldDependencies,
+  TYPESCRIPT_VERSION,
+} from './versions'
 
 export type WriteStrategy = 'fresh' | 'merge'
 
@@ -31,6 +44,29 @@ function packageJsonTemplate(values: ScaffoldValues): string {
   return `${JSON.stringify(pkg, null, 2)}\n`
 }
 
+function pluginPackageJsonTemplate(values: ScaffoldValues): string {
+  const pkg = {
+    name: values.projectName,
+    version: '0.0.0',
+    type: 'module',
+    main: './src/index.ts',
+    files: ['src'],
+    scripts: {
+      test: 'bun test',
+      typecheck: 'tsc --noEmit',
+    },
+    peerDependencies: {
+      '@fakeware/core': corePeerRange(),
+    },
+    devDependencies: {
+      '@fakeware/core': SCAFFOLD_DEPENDENCIES['@fakeware/core'],
+      '@types/bun': BUN_TYPES_VERSION,
+      typescript: TYPESCRIPT_VERSION,
+    },
+  }
+  return `${JSON.stringify(pkg, null, 2)}\n`
+}
+
 const TSCONFIG = {
   $schema: 'https://json.schemastore.org/tsconfig',
   compilerOptions: {
@@ -54,6 +90,15 @@ const TSCONFIG = {
 
 function tsconfigTemplate(): string {
   return `${JSON.stringify(TSCONFIG, null, 2)}\n`
+}
+
+function pluginTsconfigTemplate(): string {
+  const config = {
+    ...TSCONFIG,
+    compilerOptions: { ...TSCONFIG.compilerOptions, types: ['bun'] },
+    include: ['src'],
+  }
+  return `${JSON.stringify(config, null, 2)}\n`
 }
 
 function envTemplate(values: ScaffoldValues): string {
@@ -85,24 +130,59 @@ function mergeGitignore(existing: string | undefined, values: ScaffoldValues): M
 export const FILE_SPECS: FileSpec[] = [
   {
     name: 'package.json',
-    include: () => true,
+    include: isProjectTemplate,
     strategy: 'fresh',
     build: packageJsonTemplate,
     note: () => 'devDependency: @fakeware/core',
   },
   {
+    name: 'package.json',
+    include: isPluginTemplate,
+    strategy: 'fresh',
+    build: pluginPackageJsonTemplate,
+    note: () => 'peerDependency: @fakeware/core',
+  },
+  {
     name: 'tsconfig.json',
-    include: () => true,
+    include: isProjectTemplate,
     strategy: 'fresh',
     build: tsconfigTemplate,
     note: () => 'editor IntelliSense + type checking',
   },
   {
+    name: 'tsconfig.json',
+    include: isPluginTemplate,
+    strategy: 'fresh',
+    build: pluginTsconfigTemplate,
+    note: () => 'strict type checking with bun types',
+  },
+  {
     name: CONFIG_FILE_NAME,
-    include: () => true,
+    include: isProjectTemplate,
     strategy: 'fresh',
     build: buildConfigFile,
     note: () => 'typed via @fakeware/core/config',
+  },
+  {
+    name: 'src/index.ts',
+    include: isPluginTemplate,
+    strategy: 'fresh',
+    build: pluginSource,
+    note: () => 'definePlugin + example fetcher',
+  },
+  {
+    name: 'src/index.test.ts',
+    include: isPluginTemplate,
+    strategy: 'fresh',
+    build: pluginTest,
+    note: () => 'createTestClient + createTestPluginContext',
+  },
+  {
+    name: 'README.md',
+    include: isPluginTemplate,
+    strategy: 'fresh',
+    build: pluginReadme,
+    note: () => 'usage + publishing checklist',
   },
   {
     name: '.gitignore',
