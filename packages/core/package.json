@@ -45,7 +45,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@shopware/api-client": "1.5.0",
+    "@shopware/api-client": "1.5.1",
     "jiti": "2.7.0",
     "slugify": "^1.6.9",
     "zod": "4.4.3"
