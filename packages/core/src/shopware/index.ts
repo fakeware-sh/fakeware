@@ -26,7 +26,6 @@ export {
   type ShopContextShippingMethod,
   type ShopContextStateMachineState,
   type ShopContextTax,
-  setActiveShopContext,
   shop,
 } from '../contract/shop-context'
 export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'

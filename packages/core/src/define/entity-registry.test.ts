@@ -1,6 +1,6 @@
-import { afterEach, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import { define } from './define'
-import { resetRegistry } from './registry'
+import { createRegistry, runWithRegistry } from './registry'
 import type { EntityName, RecordFor, RegistryEntityName } from './schema'
 
 interface DemoWarehouseRecord {
@@ -28,14 +28,12 @@ type _missingRequired = Expect<
   Extends<{ name: string }, RecordFor<'demo_warehouse'>> extends true ? false : true
 >
 
-afterEach(() => {
-  resetRegistry()
-})
-
-test('a registered plugin entity is accepted with the authored shape', () => {
-  define('demo_warehouse', { $key: 'main', name: 'Main', code: 'WH-01' })
-  define('demo_warehouse', { name: 'Annex', code: 'WH-02', active: true })
-  define('demo_warehouse', (ctx) => ({ name: `wh-${ctx.index}`, code: 'WH-X' }))
-  define('tax', [{ $key: 'standard', taxRate: 19 }])
-  expect(true).toBe(true)
+test('a registered plugin entity is accepted with the authored shape', async () => {
+  await runWithRegistry(createRegistry(), async () => {
+    define('demo_warehouse', { $key: 'main', name: 'Main', code: 'WH-01' })
+    define('demo_warehouse', { name: 'Annex', code: 'WH-02', active: true })
+    define('demo_warehouse', (ctx) => ({ name: `wh-${ctx.index}`, code: 'WH-X' }))
+    define('tax', [{ $key: 'standard', taxRate: 19 }])
+    expect(true).toBe(true)
+  })
 })

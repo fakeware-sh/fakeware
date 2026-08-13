@@ -191,8 +191,14 @@ const tokens = {
 
 let activeContext: ShopContext | undefined
 
-export function setActiveShopContext(ctx: ShopContext | undefined): void {
+export function withActiveShopContext<T>(ctx: ShopContext, fn: () => T): T {
+  const previous = activeContext
   activeContext = ctx
+  try {
+    return fn()
+  } finally {
+    activeContext = previous
+  }
 }
 
 function requireActiveContext(): ShopContext {

@@ -1,10 +1,15 @@
-import { type DrainedEntries, drain, resetRegistry } from '../define'
-import { loadModule } from '../runtime'
+import { type DrainedEntries, drain, type Registry, runWithRegistry } from '../define'
+import type { ModuleLoader } from '../runtime'
 
-export async function evaluateDataFiles(files: string[]): Promise<DrainedEntries> {
-  resetRegistry()
-  for (const file of files) {
-    await loadModule(file)
-  }
-  return drain()
+export async function evaluateDataFiles(
+  files: string[],
+  registry: Registry,
+  loader: ModuleLoader,
+): Promise<DrainedEntries> {
+  return runWithRegistry(registry, async () => {
+    for (const file of files) {
+      await loader.import(file)
+    }
+    return drain(registry)
+  })
 }

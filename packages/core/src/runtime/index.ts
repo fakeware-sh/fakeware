@@ -1,1 +1,1 @@
-export { LoadModuleError, loadModule } from './load-module'
+export { createModuleLoader, LoadModuleError, type ModuleLoader } from './load-module'

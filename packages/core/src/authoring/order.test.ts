@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { ShopContextError, setActiveShopContext } from '../contract/shop-context'
+import { describe, expect, test } from 'bun:test'
+import { ShopContextError, withActiveShopContext } from '../contract/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { assocIds } from './local-ids'
 import { builders } from './order'
@@ -44,78 +44,86 @@ describe('builders — shared counter', () => {
 })
 
 describe('order builder', () => {
-  beforeEach(() => {
-    setActiveShopContext(
-      fakeShopContext({
-        taxes: [
-          { id: 'tax-reduced', name: 'Reduced', taxRate: 7 },
-          { id: 'tax-standard', name: 'Standard', taxRate: 19 },
-        ],
-      }),
-    )
-  })
-  afterEach(() => {
-    setActiveShopContext(undefined)
+  const defaultContext = fakeShopContext({
+    taxes: [
+      { id: 'tax-reduced', name: 'Reduced', taxRate: 7 },
+      { id: 'tax-standard', name: 'Standard', taxRate: 19 },
+    ],
   })
 
+  function withShop<T>(fn: () => T, ctx = defaultContext): T {
+    return withActiveShopContext(ctx, fn)
+  }
+
   test('resolves the default tax rate from the shop context', () => {
-    setActiveShopContext(
+    withShop(
+      () => {
+        const b = builders({ seed: 5 })
+        const [item] = b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 120 }])
+        expect(item?.price.calculatedTaxes[0]?.taxRate).toBe(20)
+      },
       fakeShopContext({ taxes: [{ id: 'tax-standard', name: 'Standard', taxRate: 20 }] }),
     )
-    const b = builders({ seed: 5 })
-    const [item] = b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 120 }])
-    expect(item?.price.calculatedTaxes[0]?.taxRate).toBe(20)
   })
 
   test('throws when the shop has no taxes and no explicit rate is given', () => {
-    setActiveShopContext(fakeShopContext({ taxes: [] }))
-    const b = builders({ seed: 5 })
-    expect(() => b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 10 }])).toThrow(
-      ShopContextError,
+    withShop(
+      () => {
+        const b = builders({ seed: 5 })
+        expect(() => b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 10 }])).toThrow(
+          ShopContextError,
+        )
+      },
+      fakeShopContext({ taxes: [] }),
     )
   })
 
   test('an explicit tax rate needs no shop context', () => {
-    setActiveShopContext(undefined)
     const b = builders({ seed: 5 })
     const [item] = b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 10 }], 7)
     expect(item?.price.calculatedTaxes[0]?.taxRate).toBe(7)
   })
 
   test('billing expands into billingAddressId and addresses[]', () => {
-    const b = builders({ seed: 5 })
-    const addr = b.address({ firstName: 'Jane', countryId: 'de' })
-    const out = b.order({
-      orderNumber: '10001',
-      billing: addr,
-      lineItems: b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 100 }]),
+    withShop(() => {
+      const b = builders({ seed: 5 })
+      const addr = b.address({ firstName: 'Jane', countryId: 'de' })
+      const out = b.order({
+        orderNumber: '10001',
+        billing: addr,
+        lineItems: b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 100 }]),
+      })
+      expect(out.billingAddressId).toBe(addr.id)
+      expect(out.addresses).toEqual([addr])
     })
-    expect(out.billingAddressId).toBe(addr.id)
-    expect(out.addresses).toEqual([addr])
   })
 
   test('delivery reuses the billing content but gets its own distinct address id', () => {
-    const b = builders({ seed: 5 })
-    const addr = b.address({ firstName: 'Jane' })
-    const delivery = b.delivery({ ship: addr, method: 'm1' })
-    expect(delivery.shippingOrderAddress.firstName).toBe('Jane')
-    expect(delivery.shippingOrderAddress.id).not.toBe(addr.id)
+    withShop(() => {
+      const b = builders({ seed: 5 })
+      const addr = b.address({ firstName: 'Jane' })
+      const delivery = b.delivery({ ship: addr, method: 'm1' })
+      expect(delivery.shippingOrderAddress.firstName).toBe('Jane')
+      expect(delivery.shippingOrderAddress.id).not.toBe(addr.id)
+    })
   })
 
   test('is fully deterministic across two identical builds', () => {
-    const build = () => {
-      const b = builders({ seed: 123 })
-      const addr = b.address({ firstName: 'Jane', countryId: 'de' })
-      return b.order({
-        orderNumber: '10001',
-        billing: addr,
-        lineItems: b.lineItems.products([
-          { product: 'p1', label: 'X', unitPrice: 100, quantity: 2 },
-        ]),
-        deliveries: [b.delivery({ ship: addr, method: 'm1', cost: 4.99 })],
-        payment: b.payment({ method: 'pay1', amount: 204.99 }),
-      })
-    }
-    expect(JSON.stringify(build())).toBe(JSON.stringify(build()))
+    withShop(() => {
+      const build = () => {
+        const b = builders({ seed: 123 })
+        const addr = b.address({ firstName: 'Jane', countryId: 'de' })
+        return b.order({
+          orderNumber: '10001',
+          billing: addr,
+          lineItems: b.lineItems.products([
+            { product: 'p1', label: 'X', unitPrice: 100, quantity: 2 },
+          ]),
+          deliveries: [b.delivery({ ship: addr, method: 'm1', cost: 4.99 })],
+          payment: b.payment({ method: 'pay1', amount: 204.99 }),
+        })
+      }
+      expect(JSON.stringify(build())).toBe(JSON.stringify(build()))
+    })
   })
 })

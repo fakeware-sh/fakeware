@@ -1,6 +1,6 @@
-import { afterEach, expect, test } from 'bun:test'
+import { expect, test } from 'bun:test'
 import { define } from './define'
-import { resetRegistry } from './registry'
+import { createRegistry, runWithRegistry } from './registry'
 import type { RecordExtensions, RecordFor } from './schema'
 
 interface DemoSupplierConfig {
@@ -23,17 +23,15 @@ type _extensionsSlotExists = Expect<
   Extends<{ extensions?: { demoSupplierConfigs?: DemoSupplierConfig[] } }, RecordFor<'product'>>
 >
 
-afterEach(() => {
-  resetRegistry()
-})
-
-test('an augmented extensions key is accepted inline on a core record', () => {
-  const map = define('product', {
-    $key: 'demo',
-    name: 'Demo',
-    extensions: {
-      demoSupplierConfigs: [{ id: 'x', supplierId: 's', purchase: 1 }],
-    },
+test('an augmented extensions key is accepted inline on a core record', async () => {
+  await runWithRegistry(createRegistry(), async () => {
+    const map = define('product', {
+      $key: 'demo',
+      name: 'Demo',
+      extensions: {
+        demoSupplierConfigs: [{ id: 'x', supplierId: 's', purchase: 1 }],
+      },
+    })
+    expect(map.demo).toBeDefined()
   })
-  expect(map.demo).toBeDefined()
 })

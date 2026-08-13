@@ -3,10 +3,12 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LoadedConfig } from '../config'
+import { createRegistry } from '../define'
 import { createInMemorySink } from '../domain'
+import { createModuleLoader } from '../runtime'
 import { ShopwareApiError } from '../shopware'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
-import { buildWritePlan } from './build-graph'
+import { buildWritePlan, type WritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
 import { ApplyStopped } from './errors'
 import { evaluateDataFiles } from './evaluate'
@@ -18,6 +20,12 @@ const shopContext = fakeShopContext()
 
 function up(opts: Omit<RunOptions, 'shopContext'>): ReturnType<typeof runUp> {
   return runUp({ shopContext, ...opts })
+}
+
+async function planFor(dir: string): Promise<WritePlan> {
+  const files = await discoverDataFiles(dir)
+  const drained = await evaluateDataFiles(files, createRegistry(), createModuleLoader())
+  return buildWritePlan(drained, shopContext)
 }
 
 let counter = 0
@@ -392,10 +400,7 @@ describe('runUp failure handling', () => {
 
   test('re-running resumes: entities already in the manifest (by hash) are skipped, the rest are written', async () => {
     const hashDir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
-    const hashPlan = buildWritePlan(
-      await evaluateDataFiles(await discoverDataFiles(hashDir)),
-      shopContext,
-    )
+    const hashPlan = await planFor(hashDir)
     const taxRecords = (hashPlan.records.get('tax') ?? []).map((r) => ({
       id: r.record.id,
       hash: r.hash,
@@ -498,10 +503,7 @@ describe('manifest write-ahead (crash safety)', () => {
 
   test('a pending entity left by a crash is re-sent on the next up (not trusted)', async () => {
     const hashDir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
-    const hashPlan = buildWritePlan(
-      await evaluateDataFiles(await discoverDataFiles(hashDir)),
-      shopContext,
-    )
+    const hashPlan = await planFor(hashDir)
     const taxRecords = (hashPlan.records.get('tax') ?? []).map((r) => ({
       id: r.record.id,
       hash: r.hash,

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { deterministicId } from '../contract/ids'
 import type { Ctx } from './ctx'
 
@@ -16,10 +17,45 @@ export interface RefIndex {
   byEntity: Map<string, { byKey: Map<string, string>; all: string[] }>
 }
 
-let entries: RawEntry[] = []
+export interface Registry {
+  entries: RawEntry[]
+}
 
-export function resetRegistry(): void {
-  entries = []
+export function createRegistry(): Registry {
+  return { entries: [] }
+}
+
+interface RegistryState {
+  storage: AsyncLocalStorage<Registry>
+  fallback: Registry
+}
+
+const STATE_KEY = Symbol.for('fakeware.registryState')
+
+function registryState(): RegistryState {
+  const host = globalThis as typeof globalThis & { [STATE_KEY]?: RegistryState }
+  let state = host[STATE_KEY]
+  if (!state) {
+    state = { storage: new AsyncLocalStorage<Registry>(), fallback: createRegistry() }
+    host[STATE_KEY] = state
+  }
+  return state
+}
+
+function activeRegistry(): Registry {
+  const { storage, fallback } = registryState()
+  return storage.getStore() ?? fallback
+}
+
+export async function runWithRegistry<T>(registry: Registry, fn: () => Promise<T>): Promise<T> {
+  const state = registryState()
+  const previous = state.fallback
+  state.fallback = registry
+  try {
+    return await state.storage.run(registry, fn)
+  } finally {
+    state.fallback = previous
+  }
 }
 
 export function staticKey(value: RecordValue): string | undefined {
@@ -32,12 +68,14 @@ export function staticKey(value: RecordValue): string | undefined {
 
 export function defineRecords(entity: string, recordOrRecords: RecordValue | RecordValue[]): void {
   const list = Array.isArray(recordOrRecords) ? recordOrRecords : [recordOrRecords]
+  const { entries } = activeRegistry()
   for (const value of list) {
     entries.push({ entity, key: staticKey(value), value })
   }
 }
 
-export function drain(): DrainedEntries {
+export function drain(registry?: Registry): DrainedEntries {
+  const { entries } = registry ?? activeRegistry()
   const order: string[] = []
   const byEntity = new Map<string, RawEntry[]>()
   for (const e of entries) {

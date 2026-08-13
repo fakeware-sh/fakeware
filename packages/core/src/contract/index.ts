@@ -28,8 +28,8 @@ export {
   type ShopContextShippingMethod,
   type ShopContextStateMachineState,
   type ShopContextTax,
-  setActiveShopContext,
   shop,
+  withActiveShopContext,
 } from './shop-context'
 export {
   type AnyToken,

@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
-import { type ShopContext, ShopContextError, setActiveShopContext, shop } from './shop-context'
+import { type ShopContext, ShopContextError, shop, withActiveShopContext } from './shop-context'
 
 const ctx = fakeShopContext({
   currencies: [
@@ -53,10 +53,6 @@ const ctx = fakeShopContext({
 function id(token: { resolve(s: ShopContext): string }): string {
   return token.resolve(ctx)
 }
-
-afterEach(() => {
-  setActiveShopContext(undefined)
-})
 
 describe('shop tokens', () => {
   test('resolve records by meaning', () => {
@@ -117,14 +113,25 @@ describe('shop tokens', () => {
 
 describe('eager context access', () => {
   test('context()/extensions throw before a context is active', () => {
-    setActiveShopContext(undefined)
     expect(() => shop.context()).toThrow(ShopContextError)
     expect(() => shop.extensions).toThrow(ShopContextError)
   })
 
   test('context()/extensions read the active context', () => {
-    setActiveShopContext(ctx)
-    expect(shop.context()).toBe(ctx)
-    expect(shop.extensions).toBe(ctx.extensions)
+    withActiveShopContext(ctx, () => {
+      expect(shop.context()).toBe(ctx)
+      expect(shop.extensions).toBe(ctx.extensions)
+    })
+  })
+
+  test('the previous context is restored after the scope ends', () => {
+    withActiveShopContext(ctx, () => {
+      const inner = fakeShopContext({})
+      withActiveShopContext(inner, () => {
+        expect(shop.context()).toBe(inner)
+      })
+      expect(shop.context()).toBe(ctx)
+    })
+    expect(() => shop.context()).toThrow(ShopContextError)
   })
 })

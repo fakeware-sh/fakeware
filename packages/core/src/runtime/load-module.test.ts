@@ -2,10 +2,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { drain, resetRegistry } from '../define'
-import { LoadModuleError, loadModule } from './load-module'
+import { createRegistry, drain, runWithRegistry } from '../define'
+import { createModuleLoader, LoadModuleError } from './load-module'
 
-describe('loadModule', () => {
+describe('createModuleLoader', () => {
   let dir: string
 
   beforeAll(async () => {
@@ -20,7 +20,9 @@ describe('loadModule', () => {
     const file = join(dir, 'mod.ts')
     await writeFile(file, 'export const answer: number = 42\nexport default { ok: true }\n')
 
-    const mod = await loadModule<{ answer: number; default: { ok: boolean } }>(file)
+    const mod = await createModuleLoader().import<{ answer: number; default: { ok: boolean } }>(
+      file,
+    )
 
     expect(mod.answer).toBe(42)
     expect(mod.default.ok).toBe(true)
@@ -31,28 +33,55 @@ describe('loadModule', () => {
     const file = join(dir, 'uses-shared.ts')
     await writeFile(file, "import { SHARED } from './shared'\nexport default SHARED * 2\n")
 
-    const mod = await loadModule<{ default: number }>(file)
+    const mod = await createModuleLoader().import<{ default: number }>(file)
     expect(mod.default).toBe(14)
   })
 
   test('throws LoadModuleError for a missing file', async () => {
-    await expect(loadModule(join(dir, 'does-not-exist.ts'))).rejects.toBeInstanceOf(LoadModuleError)
+    await expect(
+      createModuleLoader().import(join(dir, 'does-not-exist.ts')),
+    ).rejects.toBeInstanceOf(LoadModuleError)
   })
 
-  test("define() from '@fakeware/core' lands in this process's registry", async () => {
-    resetRegistry()
+  test("define() from '@fakeware/core' lands in the active registry", async () => {
     const file = join(dir, 'seed.ts')
     await writeFile(
       file,
       "import { define } from '@fakeware/core'\ndefine('tax', [{ $key: 'standard', taxRate: 19 }])\n",
     )
 
-    await loadModule(file)
+    const registry = createRegistry()
+    const drained = await runWithRegistry(registry, async () => {
+      await createModuleLoader().import(file)
+      return drain(registry)
+    })
 
-    const drained = drain()
     expect(drained).toHaveLength(1)
     expect(drained[0]?.entity).toBe('tax')
     expect(drained[0]?.entries).toHaveLength(1)
-    resetRegistry()
+  })
+
+  test('each run drains only what its own files defined', async () => {
+    const first = join(dir, 'seed-first.ts')
+    const second = join(dir, 'seed-second.ts')
+    await writeFile(
+      first,
+      "import { define } from '@fakeware/core'\ndefine('tax', [{ $key: 'reduced', taxRate: 7 }])\n",
+    )
+    await writeFile(
+      second,
+      "import { define } from '@fakeware/core'\ndefine('currency', [{ $key: 'eur' }])\n",
+    )
+
+    const load = async (file: string) => {
+      const registry = createRegistry()
+      return runWithRegistry(registry, async () => {
+        await createModuleLoader().import(file)
+        return drain(registry)
+      })
+    }
+
+    expect((await load(first)).map((d) => d.entity)).toEqual(['tax'])
+    expect((await load(second)).map((d) => d.entity)).toEqual(['currency'])
   })
 })

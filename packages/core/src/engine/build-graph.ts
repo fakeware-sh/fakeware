@@ -1,4 +1,4 @@
-import { type ShopContext, setActiveShopContext, shop } from '../contract/shop-context'
+import { type ShopContext, shop, withActiveShopContext } from '../contract/shop-context'
 import {
   buildRefIndex,
   type Ctx,
@@ -91,8 +91,7 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
   const edges = new Map<string, Set<string>>(entities.map((e) => [e, new Set<string>()]))
   const hoistedMedia = new Map<string, PlanRecord>()
 
-  setActiveShopContext(shopContext)
-  try {
+  withActiveShopContext(shopContext, () => {
     for (const { entity, entries } of drained) {
       const out: PlanRecord[] = []
       const indexById = new Map<string, number>()
@@ -152,9 +151,7 @@ export function buildWritePlan(drained: DrainedEntries, shopContext: ShopContext
       })
       records.set(entity, sortIntraEntity(entity, out, intraEdges))
     }
-  } finally {
-    setActiveShopContext(undefined)
-  }
+  })
 
   const planEntities = mergeHoistedMedia(entities, records, edges, hoistedMedia)
 

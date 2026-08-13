@@ -1,4 +1,5 @@
 import { DEFAULT_MODE, type LoadedConfig } from '../config'
+import { createRegistry } from '../define'
 import type { ShopwareSink, SinkRecord } from '../domain'
 import {
   type ConfigContext,
@@ -11,6 +12,7 @@ import {
   PluginError,
   runPluginHook,
 } from '../plugin'
+import { createModuleLoader } from '../runtime'
 import {
   apiError,
   fetchShopContext,
@@ -190,7 +192,7 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
 async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
   const files = await discoverDataFiles(loaded.projectRoot)
-  const drained = await evaluateDataFiles(files)
+  const drained = await evaluateDataFiles(files, createRegistry(), createModuleLoader())
   const plan = buildWritePlan(drained, shopContext)
 
   const prior = priorHashes(await readManifest(loaded.projectRoot, loaded.connection.url))

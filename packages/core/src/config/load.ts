@@ -1,7 +1,7 @@
 import { access, readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { type FakewarePlugin, loadPlugins } from '../plugin'
-import { loadModule } from '../runtime'
+import { createModuleLoader, type ModuleLoader } from '../runtime'
 import type { ShopwareConnection } from '../shopware'
 import type { ConfigEnv, FakewareConfigFn } from './define'
 import { ConfigError } from './errors'
@@ -16,6 +16,7 @@ export interface LoadConfigOptions {
   cwd?: string
   configFile?: string
   mode?: string
+  loader?: ModuleLoader
 }
 
 export interface LoadedConfig {
@@ -93,7 +94,8 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
     ...(await readEnvFile(projectRoot)),
   }
 
-  const mod = await loadModule<{ default?: unknown }>(configPath)
+  const loader = opts.loader ?? createModuleLoader()
+  const mod = await loader.import<{ default?: unknown }>(configPath)
   const exported = mod.default
   if (exported === undefined) {
     throw new ConfigError(`${configPath} must \`export default defineConfig(...)\`.`)
