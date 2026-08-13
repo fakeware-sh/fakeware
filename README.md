@@ -41,14 +41,14 @@ fakeware down           # remove exactly what fakeware created
 
 ## Features
 
-| Feature | What it means |
-|---------|---------------|
-| **Typed, declarative data** | Describe entities as plain objects with a tiny `define` / `ref` / `shop` language, with full TypeScript inference and no boilerplate. |
-| **Deterministic by design** | Stable UUIDs and content hashing mean the same definitions always produce the same records, so re-running changes nothing. |
-| **Apply and revert** | `fakeware up` syncs only what changed. `fakeware down` removes exactly what it created, tracked in a per-shop manifest. |
-| **Shop-aware references** | Resolve currencies, taxes, countries, salutations and states from the live shop, so your data lands valid every time. |
-| **Relationships that just work** | Reference other entities by key, index or a seeded random pick, and Fakeware orders the writes for you. |
-| **Safe to re-run** | Idempotent syncs, crash-safe manifest writes and resilient teardown make Fakeware safe in scripts and CI. |
+| Feature                          | What it means                                                                                                                         |
+|----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| **Typed, declarative data**      | Describe entities as plain objects with a tiny `define` / `ref` / `shop` language, with full TypeScript inference and no boilerplate. |
+| **Deterministic by design**      | Stable UUIDs and content hashing mean the same definitions always produce the same records, so re-running changes nothing.            |
+| **Apply and revert**             | `fakeware up` syncs only what changed. `fakeware down` removes exactly what it created, tracked in a per-shop manifest.               |
+| **Shop-aware references**        | Resolve currencies, taxes, countries, salutations and states from the live shop, so your data lands valid every time.                 |
+| **Relationships that just work** | Reference other entities by key, index or a seeded random pick, and Fakeware orders the writes for you.                               |
+| **Safe to re-run**               | Idempotent syncs, crash-safe manifest writes and resilient teardown make Fakeware safe in scripts and CI.                             |
 
 ## Get started
 
@@ -58,6 +58,36 @@ bun create fakeware my-seed
 
 Then follow the [guide](https://fakeware.sh/docs/usage/guide/introduction) to point it at your Shopware shop and seed your first data.
 
+## Compatibility
+
+Fakeware talks to the **Shopware 6 Admin API** through [`@shopware/api-client`](https://www.npmjs.com/package/@shopware/api-client), using an integration's client ID and secret. It uses standard sync and search endpoints rather than version-specific ones, so it works against current Shopware 6 releases.
+
+Requires **Node.js 22.6 or newer** (or Bun).
+
+## Plugins
+
+Plugins teach Fakeware about entities that ship with Shopware extensions rather than the core, adding shop-context fetchers and lifecycle hooks.
+
+| Plugin                                                                                 | Covers                                                            |
+|----------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| [`@fakeware/plugin-pickware`](https://www.npmjs.com/package/@fakeware/plugin-pickware) | Pickware ERP: warehouses, bin locations, stock and return orders. |
+
+Add one when you scaffold, or at any time:
+
+```bash
+fakeware init --plugins pickware
+```
+
+Writing your own is a first-class workflow: `fakeware init --template plugin` scaffolds a typed plugin package with a fetcher, a hook and a test. See the [plugin development guide](https://fakeware.sh/docs/development/plugins/overview).
+
 ## Documentation
 
 Guides, concepts and the full API reference live at **[fakeware.sh](https://fakeware.sh)**.
+
+## Contributing
+
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the repo layout, the development workflow and the release process.
+
+## License
+
+[MIT](./LICENSE) © Sebastian Stepper

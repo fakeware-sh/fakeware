@@ -11,9 +11,15 @@
 ```
 fakeware/
 ├── apps/
-│   └── cli/                  # @fakeware/cli - the 'fakeware' command
+│   ├── cli/                  # @fakeware/cli - the 'fakeware' command
+│   └── create-fakeware/      # npm create fakeware
 ├── packages/
 │   └── core/                 # @fakeware/core - library used by the CLI
+├── plugins/
+│   └── plugin-pickware/      # @fakeware/plugin-pickware
+├── docs/                     # documentation site (fakeware.sh)
+├── scripts/                  # dev + release tooling
+├── .changeset/               # pending release notes
 ├── package.json              # workspace root + scripts
 └── biome.json                # lint + format config
 ```
@@ -79,7 +85,39 @@ bun run test
 
 Place tests next to the source they cover as `*.test.ts`.
 
+### Manual end-to-end runs
+
+To exercise the CLI against a real shop, scaffold a throwaway project somewhere outside the repo and point it at a disposable shop (the Docker one above works). Copy `.env.example` for the variables it needs:
+
+```
+SHOPWARE_URL=
+SHOPWARE_CLIENT_ID=
+SHOPWARE_CLIENT_SECRET=
+```
+
+Then, after `bun run build`:
+
+```bash
+fakeware validate
+fakeware status
+fakeware up --dry-run --verbose
+fakeware down --dry-run
+```
+
+Never point this at a shop whose data you care about. `up` writes and `down` deletes.
+
 ## Commits and pull requests
 
-- Use [Conventional Commits](https://www.conventionalcommits.org/)
-- The repo automates releases with [release-please](https://github.com/googleapis/release-please)
+Releases run on [Changesets](https://github.com/changesets/changesets). Add one in any PR that changes published behavior:
+
+```bash
+bun run changeset
+```
+
+Pick the affected packages and bump levels, then commit the generated `.changeset/*.md` file alongside your change. Docs-only or internal changes that ship nothing to npm don't need a changeset.
+
+Merging to `main` opens a **Version PR** that applies the pending changesets, bumping versions, rewriting changelogs, and syncing the lockfile. Merging that PR publishes to npm and pushes tags. Never bump a version or edit a `CHANGELOG.md` by hand.
+
+Version PRs are created by `GITHUB_TOKEN`, which does not trigger CI. Close and reopen one if you need checks to run on it.
+
+Write commit messages with [Conventional Commits](https://www.conventionalcommits.org/) prefixes. Versioning comes from changesets, not from the commit type.
