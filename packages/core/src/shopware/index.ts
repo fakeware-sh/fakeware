@@ -28,19 +28,16 @@ export {
   type ShopContextTax,
   shop,
 } from '../contract/shop-context'
+export type { ShopContextFetcher } from './built-in-fetchers'
 export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
+export { buildShopContextIndex, toShopContext } from './context-build'
 export {
   apiError,
   type ParsedApiError,
   ShopwareApiError,
   ShopwareConnectionError,
 } from './errors'
-export {
-  buildShopContextIndex,
-  fetchShopContext,
-  type ShopContextFetcher,
-  toShopContext,
-} from './fetch-shop-context'
+export { fetchShopContext } from './fetch-shop-context'
 export { toApiError, toConnectionError, validateConnection } from './operations'
 export {
   type CalculatedPrice,

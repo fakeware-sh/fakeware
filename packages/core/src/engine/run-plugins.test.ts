@@ -50,7 +50,8 @@ mock.module('../shopware/client', () => ({
     ({ invoke: (action: string) => respondTo(action) }) as unknown as ShopwareClient,
 }))
 
-const { runUp, runDown } = await import('./run')
+const { runDown } = await import('./run-down')
+const { runUp } = await import('./run-up')
 
 function loadedFor(dir: string, plugins: FakewarePlugin[]): LoadedConfig {
   return {

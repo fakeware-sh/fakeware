@@ -94,4 +94,4 @@ export {
   ShopwareApiError,
   ShopwareConnectionError,
 } from './shopware'
-export type { ShopContextFetcher } from './shopware/fetch-shop-context'
+export type { ShopContextFetcher } from './shopware/built-in-fetchers'

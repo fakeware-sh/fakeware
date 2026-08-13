@@ -1,6 +1,6 @@
 import { createInMemorySink } from '../domain'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
-import { runUp } from './run'
+import { runUp } from './run-up'
 
 const projectRoot = process.argv[2]
 if (!projectRoot) throw new Error('run-once.fixture: missing projectRoot argv')

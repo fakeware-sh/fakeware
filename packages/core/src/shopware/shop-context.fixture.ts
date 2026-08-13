@@ -1,5 +1,5 @@
 import type { ShopContext, ShopContextData } from '../contract/shop-context'
-import { toShopContext } from './fetch-shop-context'
+import { toShopContext } from './context-build'
 
 const EMPTY: ShopContextData = {
   currencies: [{ id: 'currency-eur', name: 'Euro', isoCode: 'EUR', isSystemDefault: true }],

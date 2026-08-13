@@ -11,6 +11,8 @@ export {
   removeManifest,
   writeManifest,
 } from './manifest'
+export { runDown } from './run-down'
+export { runUp } from './run-up'
 export type {
   ApplyFailure,
   DownResult,
@@ -18,5 +20,4 @@ export type {
   ReportStep,
   RunOptions,
   UpResult,
-} from './run'
-export { runDown, runUp } from './run'
+} from './types'

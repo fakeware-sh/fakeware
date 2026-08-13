@@ -1,7 +1,7 @@
 import type { ShopContextData } from '../contract/shop-context'
 import { createInMemorySink } from '../domain'
-import { toShopContext } from '../shopware/fetch-shop-context'
-import { runUp } from './run'
+import { toShopContext } from '../shopware/context-build'
+import { runUp } from './run-up'
 
 const projectRoot = process.argv[2]
 if (!projectRoot) throw new Error('run-once-orders.fixture: missing projectRoot argv')
