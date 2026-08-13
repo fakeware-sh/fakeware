@@ -1,7 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
 import type { MediaUploadRecord, ShopwareSink, SinkRecord } from '../domain'
-import { createShopwareClient, type ShopwareClient } from './client'
+import {
+  adminBaseUrl,
+  createShopwareClient,
+  REQUEST_TIMEOUT_MS,
+  type ShopwareClient,
+} from './client'
 import { ShopwareApiError } from './errors'
 import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from './media'
 import { toApiError } from './operations'
@@ -93,23 +98,35 @@ export function createSyncSink(
     await uploadBytes(record.id, query, bytes)
   }
 
-  async function uploadBytes(
-    mediaId: string,
-    query: { extension: string; fileName: string },
-    bytes: Uint8Array,
-  ): Promise<void> {
-    const base = `${connection.url.replace(/\/$/, '')}/api`
-    const params = new URLSearchParams({ extension: query.extension, fileName: query.fileName })
-    const url = `${base}/_action/media/${mediaId}/upload?${params.toString()}`
-    const token = client.getSessionData().accessToken
-    const response = await fetch(url, {
+  function postBytes(url: string, token: string, bytes: Uint8Array): Promise<Response> {
+    return fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/octet-stream',
       },
       body: bytes,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
+  }
+
+  async function refreshedToken(): Promise<string> {
+    client.setSessionData({ accessToken: '', expirationTime: 0 })
+    await client.invoke('infoShopwareVersion get /_info/version')
+    return client.getSessionData().accessToken
+  }
+
+  async function uploadBytes(
+    mediaId: string,
+    query: { extension: string; fileName: string },
+    bytes: Uint8Array,
+  ): Promise<void> {
+    const params = new URLSearchParams({ extension: query.extension, fileName: query.fileName })
+    const url = `${adminBaseUrl(connection)}/_action/media/${mediaId}/upload?${params.toString()}`
+    let response = await postBytes(url, client.getSessionData().accessToken, bytes)
+    if (response.status === 401) {
+      response = await postBytes(url, await refreshedToken(), bytes)
+    }
     if (!response.ok) {
       const detail = await response.text().catch(() => '')
       throw new ShopwareApiError(

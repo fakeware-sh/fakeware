@@ -1,4 +1,4 @@
-export { createShopwareClient, type ShopwareClient } from './client'
+export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
 export {
   type ParsedApiError,
   ShopwareApiError,

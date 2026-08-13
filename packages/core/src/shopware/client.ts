@@ -6,9 +6,13 @@ export type ShopwareClient = ReturnType<typeof createAdminAPIClient<operations>>
 
 export const REQUEST_TIMEOUT_MS = 120_000
 
+export function adminBaseUrl(connection: ShopwareConnection): string {
+  return `${connection.url.replace(/\/$/, '')}/api`
+}
+
 export function createShopwareClient(connection: ShopwareConnection): ShopwareClient {
   return createAdminAPIClient<operations>({
-    baseURL: `${connection.url.replace(/\/$/, '')}/api`,
+    baseURL: adminBaseUrl(connection),
     credentials: {
       grant_type: 'client_credentials',
       client_id: connection.clientId,

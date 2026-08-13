@@ -41,13 +41,36 @@ interface FetchCapture {
 }
 
 function stubFetch(response: Response): { restore: () => void; calls: FetchCapture[] } {
+  return stubFetchSequence([response])
+}
+
+function stubFetchSequence(responses: Response[]): { restore: () => void; calls: FetchCapture[] } {
   const original = globalThis.fetch
   const calls: FetchCapture[] = []
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(input), init: init ?? {} })
-    return response
+    return responses[Math.min(calls.length - 1, responses.length - 1)] as Response
   }) as typeof fetch
   return { restore: () => (globalThis.fetch = original), calls }
+}
+
+function refreshingClient(): {
+  client: ShopwareClient
+  state: { token: string; refreshes: number }
+} {
+  const state = { token: 'stale-token', refreshes: 0 }
+  const client = {
+    invoke: async (action: string) => {
+      if (action.startsWith('infoShopwareVersion')) {
+        state.refreshes += 1
+        state.token = 'fresh-token'
+      }
+      return { data: {} }
+    },
+    getSessionData: () => ({ accessToken: state.token, expirationTime: 0 }),
+    setSessionData: (data: unknown) => data,
+  } as unknown as ShopwareClient
+  return { client, state }
 }
 
 interface SyncArgs {
@@ -249,6 +272,65 @@ describe('createSyncSink — uploadMedia', () => {
     }
     expect(caught).toBeInstanceOf(ShopwareApiError)
     expect((caught as ShopwareApiError).status).toBe(400)
+  })
+
+  test('sends byte uploads with a timeout signal', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
+    const file = join(dir, 'timed.png')
+    writeFileSync(file, Buffer.from('T'))
+    const { client } = recordingClient(async () => ({ data: {} }))
+    const fetchStub = stubFetch(new Response(null, { status: 204 }))
+    try {
+      const sink = createSyncSink(connection, { client })
+      await sink.uploadMedia?.([{ id: 'm5', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
+      expect((fetchStub.calls[0] as FetchCapture).init.signal).toBeInstanceOf(AbortSignal)
+    } finally {
+      fetchStub.restore()
+    }
+  })
+
+  test('refreshes the token and retries once after a 401 byte upload', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
+    const file = join(dir, 'stale.png')
+    writeFileSync(file, Buffer.from('S'))
+    const { client, state } = refreshingClient()
+    const fetchStub = stubFetchSequence([
+      new Response(null, { status: 401 }),
+      new Response(null, { status: 204 }),
+    ])
+    try {
+      const sink = createSyncSink(connection, { client, retry: noSleep })
+      await sink.uploadMedia?.([{ id: 'm6', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
+      expect(fetchStub.calls).toHaveLength(2)
+      expect(state.refreshes).toBe(1)
+      const headers = (fetchStub.calls[1] as FetchCapture).init.headers as Record<string, string>
+      expect(headers.Authorization).toBe('Bearer fresh-token')
+    } finally {
+      fetchStub.restore()
+    }
+  })
+
+  test('surfaces a 401 that persists after the refresh retry', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fakeware-media-'))
+    const file = join(dir, 'denied.png')
+    writeFileSync(file, Buffer.from('D'))
+    const { client, state } = refreshingClient()
+    const fetchStub = stubFetch(new Response(null, { status: 401 }))
+    let caught: unknown
+    try {
+      const sink = createSyncSink(connection, { client, retry: noSleep })
+      await sink
+        .uploadMedia?.([{ id: 'm7', [MEDIA_UPLOAD_KEY]: uploadSpec({ file }, 'png') }])
+        .catch((e) => {
+          caught = e
+        })
+    } finally {
+      fetchStub.restore()
+    }
+    expect(fetchStub.calls).toHaveLength(2)
+    expect(state.refreshes).toBe(1)
+    expect(caught).toBeInstanceOf(ShopwareApiError)
+    expect((caught as ShopwareApiError).status).toBe(401)
   })
 
   test('ignores records without an upload spec', async () => {
