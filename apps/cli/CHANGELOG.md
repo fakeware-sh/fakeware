@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.1.0
+
+### Minor Changes
+
+- [`fec04b8`](https://github.com/fakeware-sh/fakeware/commit/fec04b86c79177d6ba0f813adfb22bc3b05f3bf9) Thanks [@aiomayo](https://github.com/aiomayo)! - Add `fakeware init --template project|plugin` and an opt-out example data file.
+  
+  The plugin scaffold was implemented but unreachable, with no flag wired to it. `--template plugin` now scaffolds a plugin package; `--template project` (the default) scaffolds a data project.
+  
+  Project scaffolds now include an example `data/products.ts` so the first `fakeware up` does something instead of reporting an empty plan. Opt out with `--no-example-data`, or answer the new "Include an example data file?" prompt.
+  
+  `init` is split into `commands/init/{index,flags,gather,execute,outro}.ts`. Cancels and failures now use the shared exit codes, an implicit non-interactive run warns instead of being silent, a non-interactive run with no plugin flag says so, `--dry-run` warns when the target directory is not empty, and a failed scaffold rolls back the files it already wrote.
+
+- [`1eb139b`](https://github.com/fakeware-sh/fakeware/commit/1eb139b8b61a00c3af4109d2757dfde61ac22867) Thanks [@aiomayo](https://github.com/aiomayo)! - Add `fakeware status`, an offline view of what fakeware has applied to a shop.
+  
+  It reads the local manifest without touching the network: shop URL, config path, active plugins, when the data was applied and by which fakeware version, plus a per-entity record-count table. Entities left unconfirmed by an interrupted run are flagged as pending, with a note that the next `fakeware up` re-applies them.
+  
+  `--json` prints the same report as machine-readable JSON on stdout with no decoration, so it pipes into `jq`. A missing manifest is reported as `null` rather than being omitted, and exits 0; a corrupt manifest exits 1.
+
+- [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064) Thanks [@aiomayo](https://github.com/aiomayo)! - Add `fakeware validate` and the `validateProject` API behind it.
+  
+  `validateProject(loaded)` runs the whole pipeline offline: it discovers data files, evaluates them, and builds the write plan without contacting the shop. Failures are classified per check (`dataFiles`, `definitions`, `references`, `graph`) instead of surfacing as a raw throw.
+  
+  Shop tokens resolve against a placeholder context, so `shop.tax(19)` and friends never fail validation for want of a live shop. This also means a shop lookup can no longer mask a real reference or graph error later in the same project.
+  
+  Data files that read live shop values (`shop.context()`, `shop.extensions`) can still throw during planning. That is reported as `shopDependent` rather than as a failure: the CLI marks the reference and graph checks as needing the shop and exits 0, because those definitions are only checkable on `fakeware up`.
+  
+  The CLI prints a per-check checklist and exits 1 with the offending message when something is genuinely broken.
+
+### Patch Changes
+
+- [`f74b953`](https://github.com/fakeware-sh/fakeware/commit/f74b953d59c3fe40a0a2cae74c79a56895388381) Thanks [@aiomayo](https://github.com/aiomayo)! - Normalise scaffolded config imports to match the rest of the generated file, share a single package manager list, and drop the unused `withSpinner` helper.
+
+- [`9e27c71`](https://github.com/fakeware-sh/fakeware/commit/9e27c714568694736b4e7a31d4bc355962a3cfdb) Thanks [@aiomayo](https://github.com/aiomayo)! - Raise the Node.js floor to 22.6, build for the node22 target, and move @fakeware/plugin-pickware into the fakeware monorepo
+
+- [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064) Thanks [@aiomayo](https://github.com/aiomayo)! - Reword CLI and error messages to drop em dashes in favour of plain sentences.
+  
+  Affects `up`, `down`, `init`, the shop prompts, the scaffolded plugin README and the `ref(...)` out-of-range error. Wording only, no behaviour change.
+
+- [`f7376db`](https://github.com/fakeware-sh/fakeware/commit/f7376db00e77c3ef1206e1bae91174e4ccc954a0) Thanks [@aiomayo](https://github.com/aiomayo)! - Scaffold plugin projects with `fakeware init`.
+  
+  `ScaffoldValues` accepts `template: 'plugin'`, which writes a publishable plugin package instead of the project config and `.env`: a `package.json` with a bounded `@fakeware/core` peer range, a `tsconfig.json` wired to bun types so the generated test typechecks, `src/index.ts` with `definePlugin` and an example `ShopContextFetcher` built on `searchAll`/`unwrapRows`, `src/index.test.ts` using `createTestClient` and `createTestPluginContext`, and a README with a publishing checklist.
+
+- [`e6b1520`](https://github.com/fakeware-sh/fakeware/commit/e6b15209d76fa54f97339db6bd599ba6665527b6) Thanks [@aiomayo](https://github.com/aiomayo)! - Derive the official plugin registry version from the plugin's own package.json so a scaffolded project can never pin a version that was never published.
+- Updated dependencies [[`226d96d`](https://github.com/fakeware-sh/fakeware/commit/226d96db6dbb73c4e3fd6348551dad70a96972d4), [`f7376db`](https://github.com/fakeware-sh/fakeware/commit/f7376db00e77c3ef1206e1bae91174e4ccc954a0), [`9e27c71`](https://github.com/fakeware-sh/fakeware/commit/9e27c714568694736b4e7a31d4bc355962a3cfdb), [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064), [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064)]:
+  - @fakeware/core@0.1.0
+
 ## [0.0.12](https://github.com/fakeware-sh/fakeware/compare/cli-v0.0.11...cli-v0.0.12) (2026-07-05)
 
 

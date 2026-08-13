@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.1.0
+
+### Minor Changes
+
+- [`226d96d`](https://github.com/fakeware-sh/fakeware/commit/226d96db6dbb73c4e3fd6348551dad70a96972d4) Thanks [@aiomayo](https://github.com/aiomayo)! - Harden the core sync engine and shrink its internals: shop-context fetchers now paginate past 500 rows with retry and bounded concurrency, rate-limit `Retry-After` headers are honored, plugin `onError` hooks fire on real sync failures, `plugins` are validated by the config schema, media byte uploads get a request timeout plus a one-shot token refresh on 401, manifests are shape-validated with clear errors and failed writes clean up their temp files, `$VAR`/`${VAR}` interpolation works inside strings, the `.env` parser accepts `export` prefixes and reports malformed lines, and non-ENOENT filesystem errors surface instead of being swallowed. Order builders now resolve their default tax rate from the shop context instead of a hardcoded 19%. Orders that relied on the implicit German default and run against a shop whose highest tax rate differs will now use the shop's rate; pass an explicit `tax` to keep the old value. New exports: `LIVE_VERSION_ID` and `adminBaseUrl` from `@fakeware/core/shopware`, `DEFAULT_MODE` from `@fakeware/core/config`.
+
+- [`f7376db`](https://github.com/fakeware-sh/fakeware/commit/f7376db00e77c3ef1206e1bae91174e4ccc954a0) Thanks [@aiomayo](https://github.com/aiomayo)! - Curate the public API surface and add a plugin dev kit.
+  
+  The root `@fakeware/core` barrel now exports only the authoring, engine and plugin-authoring surface. Internal token machinery (`PickToken`, `RefIndexToken`, `RefsToken`, `RefToken`, `ReferenceToken`), the unused `RefPath` type, and the sink types (`ShopwareSink`, `SinkRecord`, `MediaUploadRecord`) are no longer exported from the root. The sink types moved to `@fakeware/core/shopware`. `price` is promoted to the root alongside `media`, and `isShopToken`/`isShopValueToken` are exported so plugin authors can narrow tokens without hand-rolled guards. `setActiveShopContext` and `shop` are gone from `@fakeware/core/shopware`.
+  
+  New in `@fakeware/core/shopware`: `invokeAdmin`, `searchAll`, `unwrapRows`, `unwrapTotal` and `SEARCH_LIMIT`. `invokeAdmin` is the single sanctioned home for the untyped casts against `@shopware/api-client`, and `searchAll` pages an admin search endpoint to completion, so plugin fetchers no longer need their own pagination loops or casts.
+  
+  `@fakeware/core/testing` grows into a real plugin dev kit: `createTestClient` (canned admin responses matched by operation substring, with call recording), `fakeShopContext` and `createInMemorySink` now live here instead of shipping inside the production entrypoints.
+
+- [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064) Thanks [@aiomayo](https://github.com/aiomayo)! - Add `fakeware validate` and the `validateProject` API behind it.
+  
+  `validateProject(loaded)` runs the whole pipeline offline: it discovers data files, evaluates them, and builds the write plan without contacting the shop. Failures are classified per check (`dataFiles`, `definitions`, `references`, `graph`) instead of surfacing as a raw throw.
+  
+  Shop tokens resolve against a placeholder context, so `shop.tax(19)` and friends never fail validation for want of a live shop. This also means a shop lookup can no longer mask a real reference or graph error later in the same project.
+  
+  Data files that read live shop values (`shop.context()`, `shop.extensions`) can still throw during planning. That is reported as `shopDependent` rather than as a failure: the CLI marks the reference and graph checks as needing the shop and exits 0, because those definitions are only checkable on `fakeware up`.
+  
+  The CLI prints a per-check checklist and exits 1 with the offending message when something is genuinely broken.
+
+### Patch Changes
+
+- [`9e27c71`](https://github.com/fakeware-sh/fakeware/commit/9e27c714568694736b4e7a31d4bc355962a3cfdb) Thanks [@aiomayo](https://github.com/aiomayo)! - Raise the Node.js floor to 22.6, build for the node22 target, and move @fakeware/plugin-pickware into the fakeware monorepo
+
+- [`18dc845`](https://github.com/fakeware-sh/fakeware/commit/18dc845728d1e63f73340e87fe7ed4220ad05064) Thanks [@aiomayo](https://github.com/aiomayo)! - Reword CLI and error messages to drop em dashes in favour of plain sentences.
+  
+  Affects `up`, `down`, `init`, the shop prompts, the scaffolded plugin README and the `ref(...)` out-of-range error. Wording only, no behaviour change.
+
 ## [0.0.11](https://github.com/fakeware-sh/fakeware/compare/core-v0.0.10...core-v0.0.11) (2026-07-05)
 
 
