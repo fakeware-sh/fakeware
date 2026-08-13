@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { z } from 'zod'
 import { ConfigError } from '../config'
 
 const MANIFEST_DIR = '.fakeware'
@@ -10,25 +11,31 @@ function shopKey(shopwareUrl: string): string {
   return createHash('sha256').update(shopwareUrl).digest('hex').slice(0, 16)
 }
 
-export interface ManifestRecord {
-  id: string
-  hash: string
-}
+const manifestRecordSchema = z.object({
+  id: z.string(),
+  hash: z.string(),
+})
 
-export interface ManifestEntity {
-  entity: string
-  records: ManifestRecord[]
-  pending?: boolean
-}
+const manifestEntitySchema = z.object({
+  entity: z.string(),
+  records: z.array(manifestRecordSchema),
+  pending: z.boolean().optional(),
+})
 
-export interface Manifest {
-  version: 2
-  fakewareVersion: string
-  createdAt: string
-  shopwareUrl: string
-  entities: ManifestEntity[]
-  checksum: string
-}
+const manifestSchema = z.object({
+  version: z.literal(CURRENT_VERSION),
+  fakewareVersion: z.string(),
+  createdAt: z.string(),
+  shopwareUrl: z.string(),
+  entities: z.array(manifestEntitySchema),
+  checksum: z.string(),
+})
+
+export type ManifestRecord = z.output<typeof manifestRecordSchema>
+
+export type ManifestEntity = z.output<typeof manifestEntitySchema>
+
+export type Manifest = z.output<typeof manifestSchema>
 
 export function manifestPath(projectRoot: string, shopwareUrl: string): string {
   return join(projectRoot, MANIFEST_DIR, `${shopKey(shopwareUrl)}.json`)
@@ -70,23 +77,34 @@ export async function readManifest(
   let contents: string
   try {
     contents = await readFile(path, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
+  let raw: unknown
+  try {
+    raw = JSON.parse(contents)
   } catch {
-    return null
+    throw new ConfigError(`Manifest at ${path} is not valid JSON.`)
   }
-  const parsed = JSON.parse(contents) as { version?: number }
-  switch (parsed.version) {
-    case CURRENT_VERSION: {
-      const manifest = parsed as Manifest
-      if (checksumOf(manifest.entities) !== manifest.checksum) {
-        throw new ConfigError(`Manifest at ${path} is corrupt (checksum mismatch).`)
-      }
-      return manifest
-    }
-    default:
-      throw new ConfigError(
-        `Manifest at ${path} uses version ${parsed.version}, but this fakeware reads version ${CURRENT_VERSION}.`,
-      )
+  if (typeof raw !== 'object' || raw === null) {
+    throw new ConfigError(`Manifest at ${path} is not a JSON object.`)
   }
+  const { version } = raw as { version?: unknown }
+  if (version !== CURRENT_VERSION) {
+    throw new ConfigError(
+      `Manifest at ${path} uses version ${version}, but this fakeware reads version ${CURRENT_VERSION}.`,
+    )
+  }
+  const parsed = manifestSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new ConfigError(`Manifest at ${path} has an unexpected shape: ${parsed.error.message}`)
+  }
+  const manifest = parsed.data
+  if (checksumOf(manifest.entities) !== manifest.checksum) {
+    throw new ConfigError(`Manifest at ${path} is corrupt (checksum mismatch).`)
+  }
+  return manifest
 }
 
 export async function writeManifest(projectRoot: string, manifest: Manifest): Promise<void> {
@@ -94,7 +112,12 @@ export async function writeManifest(projectRoot: string, manifest: Manifest): Pr
   await mkdir(dirname(path), { recursive: true })
   const tmp = `${path}.${process.pid}.tmp`
   await writeFile(tmp, `${JSON.stringify(manifest, null, 2)}\n`)
-  await rename(tmp, path)
+  try {
+    await rename(tmp, path)
+  } catch (error) {
+    await rm(tmp, { force: true })
+    throw error
+  }
 }
 
 export async function removeManifest(projectRoot: string, shopwareUrl: string): Promise<void> {

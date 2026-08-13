@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { ConfigError } from '../config'
 import {
   buildManifest,
@@ -77,5 +77,41 @@ describe('manifest', () => {
       JSON.stringify({ version: 99, entities: [] }),
     )
     await expect(readManifest(dir, input.shopwareUrl)).rejects.toBeInstanceOf(ConfigError)
+  })
+
+  test('rejects a manifest that is not valid JSON', async () => {
+    await writeManifest(dir, buildManifest(input))
+    await writeFile(manifestPath(dir, input.shopwareUrl), '{not json')
+    await expect(readManifest(dir, input.shopwareUrl)).rejects.toThrow('not valid JSON')
+  })
+
+  test('rejects a manifest with a malformed shape', async () => {
+    await writeManifest(dir, buildManifest(input))
+    const broken = {
+      ...buildManifest(input),
+      entities: [{ entity: 'tax', records: [{ id: 'a' }] }],
+    }
+    await writeFile(manifestPath(dir, input.shopwareUrl), JSON.stringify(broken))
+    await expect(readManifest(dir, input.shopwareUrl)).rejects.toThrow('unexpected shape')
+  })
+
+  test('rethrows non-ENOENT read errors instead of treating them as missing', async () => {
+    await writeManifest(dir, buildManifest(input))
+    const manifestDir = dirname(manifestPath(dir, input.shopwareUrl))
+    await chmod(manifestDir, 0o000)
+    try {
+      await expect(readManifest(dir, input.shopwareUrl)).rejects.toThrow()
+    } finally {
+      await chmod(manifestDir, 0o755)
+    }
+  })
+
+  test('cleans up the tmp file when the final rename fails', async () => {
+    const manifest = buildManifest(input)
+    const path = manifestPath(dir, input.shopwareUrl)
+    await mkdir(path, { recursive: true })
+    await expect(writeManifest(dir, manifest)).rejects.toThrow()
+    const leftovers = (await readdir(dirname(path))).filter((name) => name.endsWith('.tmp'))
+    expect(leftovers).toEqual([])
   })
 })
