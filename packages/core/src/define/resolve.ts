@@ -68,7 +68,7 @@ function resolveReference(
       const id = all[token.index]
       if (id === undefined) {
         throw new RefError(
-          `ref('${token.entity}', ${token.index}) is out of range — ${token.entity} has ${all.length} records.`,
+          `ref('${token.entity}', ${token.index}) is out of range. ${token.entity} has ${all.length} records.`,
         )
       }
       scope.onRefId?.(entity, id)

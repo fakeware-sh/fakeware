@@ -29,6 +29,7 @@ const PUBLIC_API = [
   'shop',
   'shopToken',
   'silentLogSink',
+  'validateProject',
 ]
 
 describe('public API surface', () => {

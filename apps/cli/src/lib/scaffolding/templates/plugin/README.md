@@ -16,8 +16,8 @@ bun test
 bun run typecheck
 ```
 
-- `src/index.ts` — the plugin: a fetcher that loads rows into `shopContext.extensions`, plus a `contextReady` hook.
-- `src/index.test.ts` — tests using `createTestClient` and `createTestPluginContext`.
+- `src/index.ts`: the plugin, a fetcher that loads rows into `shopContext.extensions`, plus a `contextReady` hook.
+- `src/index.test.ts`: tests using `createTestClient` and `createTestPluginContext`.
 
 ## Publishing
 

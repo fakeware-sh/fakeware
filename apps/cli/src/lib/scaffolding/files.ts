@@ -169,7 +169,7 @@ export const FILE_SPECS: FileSpec[] = [
     include: wantsExampleData,
     strategy: 'fresh',
     build: projectData,
-    note: () => 'example data — edit or delete',
+    note: () => 'example data, edit or delete',
   },
   {
     name: 'src/index.ts',

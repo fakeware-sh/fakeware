@@ -178,7 +178,7 @@ describe('outroFor', () => {
       { path: '/tmp/x/tsconfig.json', note: '' },
     ])
     expect(out).toContain('2 files')
-    expect(out).toContain('Nothing was created')
+    expect(out).toContain('nothing was created')
   })
 
   test('a project run points at fakeware up', () => {

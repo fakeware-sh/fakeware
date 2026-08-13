@@ -15,7 +15,7 @@ export async function withSpinner<T>(
   } catch (error) {
     if (error instanceof ShopwareConnectionError) {
       s.error(error.message)
-      p.cancel('Setup aborted — fix the issue above and run init again.')
+      p.cancel('Setup aborted. Fix the issue above and run init again.')
       process.exit(1)
     }
     s.error('Unexpected error.')

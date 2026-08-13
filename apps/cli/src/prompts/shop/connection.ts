@@ -38,7 +38,7 @@ export async function promptShopConnection(
           message: 'Which protocol does it use?',
           initialValue: prefill.protocol ?? 'https',
           options: [
-            { value: 'https', label: 'https', hint: 'recommended — TLS encrypted' },
+            { value: 'https', label: 'https', hint: 'recommended, TLS encrypted' },
             { value: 'http', label: 'http', hint: 'local or dev shops only' },
           ],
         })

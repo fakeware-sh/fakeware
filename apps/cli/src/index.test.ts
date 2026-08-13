@@ -23,6 +23,7 @@ describe('fakeware cli exit codes', () => {
     expect(await run('up', '--help')).toBe(EXIT_OK)
     expect(await run('down', '--help')).toBe(EXIT_OK)
     expect(await run('status', '--help')).toBe(EXIT_OK)
+    expect(await run('validate', '--help')).toBe(EXIT_OK)
   })
 
   it('exits 2 for an unknown command or flag', async () => {
@@ -34,6 +35,7 @@ describe('fakeware cli exit codes', () => {
     expect(await run('up', '--bogus')).toBe(EXIT_USAGE)
     expect(await run('down', '--bogus')).toBe(EXIT_USAGE)
     expect(await run('status', '--bogus')).toBe(EXIT_USAGE)
+    expect(await run('validate', '--bogus')).toBe(EXIT_USAGE)
   })
 
   it('exits 2 for an invalid flag value without a stack trace', async () => {

@@ -23,7 +23,7 @@ export function outroFor(
 ): string {
   if (flags.dryRun) {
     const count = created.length
-    return `Dry run complete — ${count} ${count === 1 ? 'file' : 'files'} would be written. Nothing was created.`
+    return `Dry run complete. ${count} ${count === 1 ? 'file' : 'files'} would be written, but nothing was created.`
   }
 
   const steps = [cdHint(dir), ...nextSteps(flags, exampleData)].filter((step): step is string =>

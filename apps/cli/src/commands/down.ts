@@ -28,7 +28,7 @@ export function downCommand(): Command {
 
         const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
         if (!manifest) {
-          p.outro('Nothing to revert — no fakeware manifest found.')
+          p.outro('Nothing to revert. No fakeware manifest found.')
           return
         }
         const count = manifest.entities.reduce((n, e) => n + e.records.length, 0)
@@ -36,7 +36,7 @@ export function downCommand(): Command {
         if (!opts.yes && !opts.dryRun) {
           const proceed = await promptConfirmDestroy(count, loaded.connection.url)
           if (!proceed) {
-            p.cancel('Aborted — nothing was deleted.')
+            p.cancel('Aborted. Nothing was deleted.')
             exit(EXIT_CANCELLED)
           }
         }
@@ -64,7 +64,7 @@ export function downCommand(): Command {
         const where = pc.cyan(loaded.connection.url)
         if (opts.dryRun) {
           p.outro(
-            `Dry run complete — would remove ${pc.green(String(deleted))} ${label} from ${where}.`,
+            `Dry run complete. Would remove ${pc.green(String(deleted))} ${label} from ${where}.`,
           )
           return
         }

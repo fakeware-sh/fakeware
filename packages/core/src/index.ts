@@ -48,8 +48,18 @@ export type {
   ReportStep,
   RunOptions,
   UpResult,
+  ValidateCheck,
+  ValidateIssue,
+  ValidateResult,
 } from './engine'
-export { ApplyStopped, GraphError, readManifest, runDown, runUp } from './engine'
+export {
+  ApplyStopped,
+  GraphError,
+  readManifest,
+  runDown,
+  runUp,
+  validateProject,
+} from './engine'
 export type {
   ApplyContext,
   ConfigContext,

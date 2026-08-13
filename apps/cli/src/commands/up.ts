@@ -46,16 +46,16 @@ export function upCommand(): Command {
 
         if (result.dataFiles === 0) {
           p.outro(
-            `No data files found in ${pc.cyan('./data')} — add one to describe what to create.`,
+            `No data files found in ${pc.cyan('./data')}. Add one to describe what to create.`,
           )
           return
         }
         if (opts.dryRun) {
-          p.outro('Dry run complete — nothing was written.')
+          p.outro('Dry run complete. Nothing was written.')
           return
         }
         if (result.committed === 0) {
-          p.outro('Already up to date — nothing changed.')
+          p.outro('Already up to date. Nothing changed.')
           return
         }
         const label = result.committed === 1 ? 'change' : 'changes'

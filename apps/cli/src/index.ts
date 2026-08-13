@@ -11,6 +11,7 @@ export async function buildProgram(): Promise<Command> {
   const { upCommand } = await import('./commands/up')
   const { downCommand } = await import('./commands/down')
   const { statusCommand } = await import('./commands/status')
+  const { validateCommand } = await import('./commands/validate')
 
   return new Command('fakeware')
     .description('Fill your Shopware shop with demo data.')
@@ -23,6 +24,7 @@ export async function buildProgram(): Promise<Command> {
     .addCommand(upCommand())
     .addCommand(downCommand())
     .addCommand(statusCommand())
+    .addCommand(validateCommand())
 }
 
 const program = await buildProgram()

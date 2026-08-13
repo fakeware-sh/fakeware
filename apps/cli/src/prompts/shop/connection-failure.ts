@@ -11,7 +11,7 @@ export async function promptConnectionFailure(): Promise<ConnectionFailureChoice
       options: [
         { value: 'retry', label: 'Retry', hint: 'try the same details again' },
         { value: 'edit', label: 'Re-enter connection details' },
-        { value: 'skip', label: 'Skip — connect later' },
+        { value: 'skip', label: 'Skip and connect later' },
         { value: 'cancel', label: 'Cancel' },
       ],
     }),

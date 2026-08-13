@@ -29,7 +29,7 @@ function print(report: StatusReport): void {
   p.log.message(renderSummary(report))
 
   if (!report.manifest) {
-    p.outro(`No data applied yet — run ${pc.cyan('fakeware up')} to create some.`)
+    p.outro(`No data applied yet. Run ${pc.cyan('fakeware up')} to create some.`)
     return
   }
 

@@ -28,7 +28,7 @@ function stackOf(error: unknown): string | undefined {
 
 export function reportError(error: unknown, verbose: boolean = isVerbose()): never {
   if (error instanceof ApplyStopped) {
-    p.cancel('Stopped — the shop rejected a write. Nothing further was applied.')
+    p.cancel('Stopped. The shop rejected a write, so nothing further was applied.')
     exit(EXIT_FAILURE)
   }
 
