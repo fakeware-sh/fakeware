@@ -1,9 +1,9 @@
 import { createJiti } from 'jiti'
 import * as authoring from '../authoring'
+import * as shopLookups from '../contract/shop-context'
 import * as define from '../define'
 import { definePlugin } from '../plugin'
 import * as shopware from '../shopware'
-import * as shopLookups from '../shopware/shop-context'
 
 export class LoadModuleError extends Error {}
 

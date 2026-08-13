@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
+import { ShopContextError, shop } from '../contract/shop-context'
 import { define, deterministicId, drain, ref, resetRegistry } from '../define'
-import { ShopContextError, shop } from '../shopware/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { buildWritePlan } from './build-graph'
 import { GraphError } from './errors'

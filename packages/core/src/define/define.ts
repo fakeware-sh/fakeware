@@ -1,7 +1,3 @@
-import type { Ctx } from './ctx'
-import { RefError } from './errors'
-import { defineRecords, type RecordValue, staticKey } from './registry'
-import type { EntityName, RecordFor, RegistryEntityName } from './schema'
 import {
   type PickToken,
   pickToken,
@@ -11,7 +7,11 @@ import {
   refIndexToken,
   refsToken,
   refToken,
-} from './tokens'
+} from '../contract/tokens'
+import type { Ctx } from './ctx'
+import { RefError } from './errors'
+import { defineRecords, type RecordValue, staticKey } from './registry'
+import type { EntityName, RecordFor, RegistryEntityName } from './schema'
 
 type AnyEntity = EntityName | RegistryEntityName
 

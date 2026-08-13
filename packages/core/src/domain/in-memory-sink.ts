@@ -1,5 +1,5 @@
+import { MEDIA_UPLOAD_KEY } from '../contract/media'
 import { apiError, type ShopwareApiError } from '../shopware/errors'
-import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 import type { ShopwareSink, SinkRecord } from './sink'
 
 export type SinkCall =

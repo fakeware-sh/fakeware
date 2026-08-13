@@ -1,5 +1,5 @@
+import { deterministicId } from '../contract/ids'
 import type { Ctx } from './ctx'
-import { deterministicId } from './ids'
 
 type RecordObject = Record<string, unknown>
 export type RecordValue = RecordObject | ((ctx: Ctx) => RecordObject)

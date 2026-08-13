@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { isShopToken } from '../define/tokens'
 import { MEDIA_UPLOAD_KEY, media } from './media'
+import { isShopToken } from './tokens'
 
 describe('media()', () => {
   test('requires exactly one of url or file', () => {

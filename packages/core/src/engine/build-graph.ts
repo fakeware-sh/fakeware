@@ -1,3 +1,4 @@
+import { type ShopContext, setActiveShopContext, shop } from '../contract/shop-context'
 import {
   buildRefIndex,
   type Ctx,
@@ -8,7 +9,6 @@ import {
   resolveRecord,
 } from '../define'
 import type { SinkRecord } from '../domain'
-import { type ShopContext, setActiveShopContext, shop } from '../shopware/shop-context'
 import { GraphError } from './errors'
 import { hoistMedia, MEDIA_ENTITY } from './hoist-media'
 

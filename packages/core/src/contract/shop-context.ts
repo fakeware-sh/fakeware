@@ -1,4 +1,4 @@
-import { type ShopToken, type ShopValueToken, shopToken, shopValueToken } from '../define/tokens'
+import { type ShopToken, type ShopValueToken, shopToken, shopValueToken } from './tokens'
 
 export interface ShopContextRecord {
   id: string

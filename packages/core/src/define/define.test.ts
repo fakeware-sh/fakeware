@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { shop } from '../shopware/shop-context'
+import { deterministicId } from '../contract/ids'
+import { shop } from '../contract/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import type { Ctx } from './ctx'
 import { define, keyed, many, ref } from './define'
 import { RefError } from './errors'
-import { deterministicId } from './ids'
 import { buildRefIndex, drain, resetRegistry } from './registry'
 import { type ResolveScope, resolveValue } from './resolve'
 

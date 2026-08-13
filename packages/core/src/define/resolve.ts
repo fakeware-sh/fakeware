@@ -1,10 +1,16 @@
-import { MEDIA_UPLOAD_KEY } from '../shopware/media'
-import type { ShopContext } from '../shopware/shop-context'
+import { isPlainObject } from '../contract/is-plain-object'
+import { MEDIA_UPLOAD_KEY } from '../contract/media'
+import type { ShopContext } from '../contract/shop-context'
+import {
+  type AnyToken,
+  isReferenceToken,
+  isShopToken,
+  isShopValueToken,
+  TOKEN,
+} from '../contract/tokens'
 import type { Ctx } from './ctx'
 import { RefError } from './errors'
-import { isPlainObject } from './is-plain-object'
 import type { RefIndex } from './registry'
-import { type AnyToken, isReferenceToken, isShopToken, isShopValueToken, TOKEN } from './tokens'
 
 export interface ResolveScope {
   refIndex: RefIndex

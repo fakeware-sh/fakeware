@@ -12,6 +12,7 @@ export type {
   TransactionRecord,
 } from './authoring'
 export { assocIds, builders } from './authoring'
+export { shop } from './contract/shop-context'
 export type {
   AnyToken,
   Ctx,
@@ -94,4 +95,3 @@ export {
   ShopwareConnectionError,
 } from './shopware'
 export type { ShopContextFetcher } from './shopware/fetch-shop-context'
-export { shop } from './shopware/shop-context'

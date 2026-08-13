@@ -1,4 +1,4 @@
-import type { ShopContext } from '../shopware/shop-context'
+import type { ShopContext } from './shop-context'
 
 export const TOKEN = Symbol.for('fakeware.token')
 

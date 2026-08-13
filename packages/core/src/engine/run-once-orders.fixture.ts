@@ -1,6 +1,6 @@
+import type { ShopContextData } from '../contract/shop-context'
 import { createInMemorySink } from '../domain'
 import { toShopContext } from '../shopware/fetch-shop-context'
-import type { ShopContextData } from '../shopware/shop-context'
 import { runUp } from './run'
 
 const projectRoot = process.argv[2]

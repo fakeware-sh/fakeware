@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { ShopContextError, setActiveShopContext } from '../shopware/shop-context'
+import { ShopContextError, setActiveShopContext } from '../contract/shop-context'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { assocIds } from './local-ids'
 import { builders } from './order'

@@ -1,4 +1,4 @@
-import { deterministicId } from '../define/ids'
+import { deterministicId } from '../contract/ids'
 
 const ASSOC_ENTITY = '__assoc__'
 

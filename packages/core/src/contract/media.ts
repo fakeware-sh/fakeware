@@ -1,7 +1,7 @@
 import slugify from 'slugify'
-import { deterministicId } from '../define/ids'
-import type { AnyToken } from '../define/tokens'
+import { deterministicId } from './ids'
 import { shop } from './shop-context'
+import type { AnyToken } from './tokens'
 
 export const MEDIA_UPLOAD_KEY = '__fakewareMedia'
 

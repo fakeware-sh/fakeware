@@ -1,4 +1,4 @@
-import type { Shop } from '../shopware/shop-context'
+import type { Shop } from '../contract/shop-context'
 
 export interface Ctx {
   index: number

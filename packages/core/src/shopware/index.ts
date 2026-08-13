@@ -1,16 +1,3 @@
-export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
-export {
-  apiError,
-  type ParsedApiError,
-  ShopwareApiError,
-  ShopwareConnectionError,
-} from './errors'
-export {
-  buildShopContextIndex,
-  fetchShopContext,
-  type ShopContextFetcher,
-  toShopContext,
-} from './fetch-shop-context'
 export {
   MEDIA_UPLOAD_KEY,
   type MediaFileSource,
@@ -20,17 +7,7 @@ export {
   type MediaUploadSpec,
   type MediaUrlSource,
   media,
-} from './media'
-export { toApiError, toConnectionError, validateConnection } from './operations'
-export {
-  type CalculatedPrice,
-  type CalculatedPriceOptions,
-  type CartPrice,
-  type GrossPrice,
-  type GrossPriceOptions,
-  price,
-} from './price'
-export { type RetryOptions, withRetry } from './retry'
+} from '../contract/media'
 export {
   type Shop,
   type ShopContext,
@@ -51,6 +28,29 @@ export {
   type ShopContextTax,
   setActiveShopContext,
   shop,
-} from './shop-context'
+} from '../contract/shop-context'
+export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
+export {
+  apiError,
+  type ParsedApiError,
+  ShopwareApiError,
+  ShopwareConnectionError,
+} from './errors'
+export {
+  buildShopContextIndex,
+  fetchShopContext,
+  type ShopContextFetcher,
+  toShopContext,
+} from './fetch-shop-context'
+export { toApiError, toConnectionError, validateConnection } from './operations'
+export {
+  type CalculatedPrice,
+  type CalculatedPriceOptions,
+  type CartPrice,
+  type GrossPrice,
+  type GrossPriceOptions,
+  price,
+} from './price'
+export { type RetryOptions, withRetry } from './retry'
 export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
 export { LIVE_VERSION_ID, type ShopwareConnection } from './types'

@@ -1,7 +1,7 @@
 import type { Schemas } from '@shopware/api-client/admin-api-types'
-import type { MediaRecord } from '../shopware/media'
+import type { MediaRecord } from '../contract/media'
+import type { AnyToken } from '../contract/tokens'
 import type { Ctx } from './ctx'
-import type { AnyToken } from './tokens'
 
 type Words<
   S extends string,

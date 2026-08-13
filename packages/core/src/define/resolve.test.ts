@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { shop } from '../shopware/shop-context'
+import { shop } from '../contract/shop-context'
+import { pickToken, refIndexToken, refsToken, refToken } from '../contract/tokens'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import type { Ctx } from './ctx'
 import { define } from './define'
 import { RefError } from './errors'
 import { buildRefIndex, drain, type RefIndex, resetRegistry } from './registry'
 import { type ResolveScope, resolveRecord, resolveValue } from './resolve'
-import { pickToken, refIndexToken, refsToken, refToken } from './tokens'
 
 const shopContext = fakeShopContext({
   currencies: [{ id: 'currency-eur', name: 'Euro', isoCode: 'EUR', isSystemDefault: true }],

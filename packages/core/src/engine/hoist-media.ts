@@ -1,7 +1,7 @@
-import { deterministicId } from '../define/ids'
-import { isPlainObject } from '../define/is-plain-object'
+import { deterministicId } from '../contract/ids'
+import { isPlainObject } from '../contract/is-plain-object'
+import { MEDIA_UPLOAD_KEY } from '../contract/media'
 import type { SinkRecord } from '../domain'
-import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 
 export const MEDIA_ENTITY = 'media'
 

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve as resolvePath } from 'node:path'
+import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from '../contract/media'
 import type { MediaUploadRecord, ShopwareSink, SinkRecord } from '../domain'
 import {
   adminBaseUrl,
@@ -8,7 +9,6 @@ import {
   type ShopwareClient,
 } from './client'
 import { apiError, ShopwareApiError } from './errors'
-import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from './media'
 import { toApiError } from './operations'
 import { type RetryOptions, withRetry } from './retry'
 import type { ShopwareConnection } from './types'

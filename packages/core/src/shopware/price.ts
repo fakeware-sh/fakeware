@@ -1,10 +1,10 @@
+import { shop } from '../contract/shop-context'
 import {
   isShopValueToken,
   type ShopToken,
   type ShopValueToken,
   shopValueToken,
-} from '../define/tokens'
-import { shop } from './shop-context'
+} from '../contract/tokens'
 
 export type TaxRate = number | ShopValueToken<number>
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
+import { MEDIA_UPLOAD_KEY, media } from '../contract/media'
 import { define, deterministicId, drain, ref, resetRegistry } from '../define'
-import { MEDIA_UPLOAD_KEY, media } from '../shopware/media'
 import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { buildWritePlan } from './build-graph'
 

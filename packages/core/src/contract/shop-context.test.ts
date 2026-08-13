@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
+import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { type ShopContext, ShopContextError, setActiveShopContext, shop } from './shop-context'
-import { fakeShopContext } from './shop-context.fixture'
 
 const ctx = fakeShopContext({
   currencies: [

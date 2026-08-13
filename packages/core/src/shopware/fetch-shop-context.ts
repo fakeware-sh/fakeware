@@ -1,10 +1,10 @@
 import { z } from 'zod'
+import type { ShopContext, ShopContextData, ShopContextIndex } from '../contract/shop-context'
 import type { OwnedFetcher } from '../plugin'
 import { createShopwareClient, type ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
 import { toConnectionError } from './operations'
 import { withRetry } from './retry'
-import type { ShopContext, ShopContextData, ShopContextIndex } from './shop-context'
 import type { ShopwareConnection } from './types'
 
 const SEARCH_LIMIT = 500

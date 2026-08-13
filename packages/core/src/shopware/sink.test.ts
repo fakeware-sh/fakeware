@@ -3,9 +3,9 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ApiClientError } from '@shopware/api-client'
+import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from '../contract/media'
 import type { ShopwareClient } from './client'
 import { ShopwareApiError } from './errors'
-import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from './media'
 import { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
 
 function uploadSpec(source: MediaUploadSpec['source'], extension = 'png'): MediaUploadSpec {
