@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./apps/cli" },
-    { "path": "./apps/create-fakeware" }
+    { "path": "./apps/create-fakeware" },
+    { "path": "./plugins/plugin-pickware" }
   ]
 }

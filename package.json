@@ -9,12 +9,13 @@
     "url": "git+https://github.com/fakeware-sh/fakeware.git"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=22.11",
     "bun": ">=1.3.14"
   },
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "plugins/*"
   ],
   "scripts": {
     "prepare": "lefthook install",

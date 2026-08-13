@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import pickwarePkg from '../../../../../plugins/plugin-pickware/package.json' with { type: 'json' }
 import { findPlugins, OFFICIAL_PLUGINS, resolvePluginFlag } from './registry'
 
 describe('OFFICIAL_PLUGINS', () => {
@@ -13,6 +14,12 @@ describe('OFFICIAL_PLUGINS', () => {
     for (const plugin of OFFICIAL_PLUGINS) {
       expect(plugin.version.startsWith('^')).toBe(true)
     }
+  })
+
+  test('pins pickware to its OWN workspace package version', () => {
+    const pickware = OFFICIAL_PLUGINS.find((plugin) => plugin.id === 'pickware')
+    const version: string | undefined = pickware?.version
+    expect(version).toBe(`^${pickwarePkg.version}`)
   })
 })
 

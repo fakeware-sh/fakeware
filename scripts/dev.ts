@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, lstatSync, mkdirSync, readlinkSync, rmSync, symlinkSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, relative, resolve } from 'node:path'
 import { Glob } from 'bun'
 
 const root = resolve(import.meta.dir, '..')
@@ -49,60 +48,6 @@ async function discoverTargets(): Promise<Target[]> {
     }
   }
   return found
-}
-
-async function monorepoPackages(): Promise<Map<string, string>> {
-  const registry = new Map<string, string>()
-  for (const pattern of ['packages/*/package.json', 'apps/*/package.json']) {
-    const glob = new Glob(pattern)
-    for await (const match of glob.scan({ cwd: root, dot: false })) {
-      const path = resolve(root, match)
-      const pkg = (await Bun.file(path).json()) as { name?: string }
-      if (pkg.name) registry.set(pkg.name, dirname(path))
-    }
-  }
-  return registry
-}
-
-function ensurePluginInstalled(cwd: string, label: string): void {
-  if (existsSync(join(cwd, 'node_modules'))) return
-  console.log(c.dim(`dev: installing ${label}…`))
-  const result = spawnSync('bun', ['install'], { cwd, stdio: 'inherit' })
-  if (result.status !== 0) {
-    console.error(c.red(`dev: bun install failed in ${label}`))
-    process.exit(1)
-  }
-}
-
-async function linkPlugin(cwd: string, registry: Map<string, string>): Promise<void> {
-  const pkg = (await Bun.file(join(cwd, 'package.json')).json()) as {
-    dependencies?: Record<string, string>
-    peerDependencies?: Record<string, string>
-    devDependencies?: Record<string, string>
-  }
-  const names = new Set([
-    ...Object.keys(pkg.dependencies ?? {}),
-    ...Object.keys(pkg.peerDependencies ?? {}),
-    ...Object.keys(pkg.devDependencies ?? {}),
-  ])
-  for (const name of names) {
-    const target = registry.get(name)
-    if (!target) continue
-    const linkPath = join(cwd, 'node_modules', name)
-    if (isSymlinkTo(linkPath, target)) continue
-    rmSync(linkPath, { recursive: true, force: true })
-    mkdirSync(dirname(linkPath), { recursive: true })
-    symlinkSync(target, linkPath, 'dir')
-  }
-}
-
-function isSymlinkTo(linkPath: string, target: string): boolean {
-  try {
-    if (!lstatSync(linkPath).isSymbolicLink()) return false
-    return resolve(dirname(linkPath), readlinkSync(linkPath)) === resolve(target)
-  } catch {
-    return false
-  }
 }
 
 function buildPackagesOnce(targets: Target[]): void {
@@ -183,15 +128,8 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  const plugins = targets.filter((t) => t.group === 'plugins')
-  if (plugins.length > 0) {
-    const registry = await monorepoPackages()
+  if (targets.some((t) => t.group === 'plugins')) {
     buildPackagesOnce(targets.filter((t) => t.group === 'packages'))
-    console.log(c.dim('dev: linking plugins…'))
-    for (const plugin of plugins) {
-      ensurePluginInstalled(plugin.cwd, plugin.label)
-      await linkPlugin(plugin.cwd, registry)
-    }
   }
 
   const interactive = process.stdout.isTTY === true && !verbose

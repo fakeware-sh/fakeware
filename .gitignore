@@ -8,9 +8,6 @@ dist/
 *.log
 .DS_Store
 *.local
+*.local.json
 /.idea
-apps/.test
 /.test
-/test
-/plugins/*
-!/plugins/.keep
