@@ -2,7 +2,7 @@ import type { Ctx } from '../define/ctx'
 import type { AnyToken } from '../define/tokens'
 import type { CalculatedPrice } from '../shopware/price'
 import { price } from '../shopware/price'
-import { shop } from '../shopware/shop-context'
+import { ShopContextError, shop } from '../shopware/shop-context'
 import { type AssocIds, assocIds } from './local-ids'
 
 type Id = string | AnyToken
@@ -93,7 +93,15 @@ export interface OrderInput {
   [key: string]: unknown
 }
 
-const DEFAULT_TAX = 19
+function defaultTaxRate(): number {
+  const tax = shop.context().index.taxDefault
+  if (!tax) {
+    throw new ShopContextError(
+      'The shop returned no taxes, so there is no default tax rate to use.',
+    )
+  }
+  return tax.taxRate
+}
 
 function makeBuilders(ids: AssocIds) {
   function address(input: AddressInput = {}): AddressRecord {
@@ -101,7 +109,7 @@ function makeBuilders(ids: AssocIds) {
   }
 
   const lineItems = {
-    products(items: ProductLineInput[], tax = DEFAULT_TAX): LineItemRecord[] {
+    products(items: ProductLineInput[], tax = defaultTaxRate()): LineItemRecord[] {
       return items.map((item, i) => {
         const quantity = item.quantity ?? 1
         return pruneUndefined({
@@ -126,7 +134,7 @@ function makeBuilders(ids: AssocIds) {
     },
   }
 
-  function delivery(input: DeliveryInput, tax = DEFAULT_TAX): DeliveryRecord {
+  function delivery(input: DeliveryInput, tax = defaultTaxRate()): DeliveryRecord {
     const cost = input.cost ?? 0
     return pruneUndefined({
       id: ids.next('delivery'),
@@ -139,7 +147,7 @@ function makeBuilders(ids: AssocIds) {
     })
   }
 
-  function payment(input: PaymentInput, tax = DEFAULT_TAX): TransactionRecord {
+  function payment(input: PaymentInput, tax = defaultTaxRate()): TransactionRecord {
     return pruneUndefined({
       id: ids.next('transaction'),
       stateId: input.stateId ?? shop.orderTransactionState('open'),
@@ -155,7 +163,7 @@ function makeBuilders(ids: AssocIds) {
       deliveries,
       payment: transaction,
       shippingCost,
-      tax = DEFAULT_TAX,
+      tax = defaultTaxRate(),
       ...rest
     } = input
     const positions = items.reduce((sum, li) => sum + li.price.totalPrice, 0)

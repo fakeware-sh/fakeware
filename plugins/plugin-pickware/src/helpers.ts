@@ -1,15 +1,15 @@
 import { deterministicId, type ShopValueToken, shop, shopToken } from '@fakeware/core'
-import {
-  type Id,
-  PICKWARE_LIVE_VERSION,
-  type PickwareBinLocationRecord,
-  type PickwarePrice,
-  type PickwareProductSupplierConfigurationInline,
-  type PickwareProductSupplierConfigurationRecord,
-  type PickwareReturnOrderLineItemRecord,
-  type PickwareReturnOrderRecord,
-  type PickwareReturnReason,
-  type PickwareSupplierRecord,
+import { LIVE_VERSION_ID } from '@fakeware/core/shopware'
+import type {
+  Id,
+  PickwareBinLocationRecord,
+  PickwarePrice,
+  PickwareProductSupplierConfigurationInline,
+  PickwareProductSupplierConfigurationRecord,
+  PickwareReturnOrderLineItemRecord,
+  PickwareReturnOrderRecord,
+  PickwareReturnReason,
+  PickwareSupplierRecord,
 } from './entities'
 import { warehouseIdByCode } from './fetchers'
 
@@ -27,10 +27,7 @@ export type PickwareReturnState =
 export const RETURN_ORDER_INITIAL_STATE: PickwareReturnState = 'requested'
 
 function pruneUndefined<T extends Record<string, unknown>>(record: T): T {
-  for (const key of Object.keys(record)) {
-    if (record[key] === undefined) delete record[key]
-  }
-  return record
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined)) as T
 }
 
 export interface BinLocationInput {
@@ -87,7 +84,7 @@ export function productSupplierConfig(
   return pruneUndefined({
     $key: input.$key,
     productId: input.productId,
-    productVersionId: PICKWARE_LIVE_VERSION,
+    productVersionId: LIVE_VERSION_ID,
     supplierId: input.supplierId,
     minPurchase: input.minPurchase ?? 1,
     purchaseSteps: input.purchaseSteps ?? 1,
@@ -110,7 +107,7 @@ export function productSupplierConfigExtension(
 ): PickwareProductSupplierConfigurationInline {
   return pruneUndefined({
     id: deterministicId('pickware_erp_product_supplier_configuration', input.key),
-    productVersionId: PICKWARE_LIVE_VERSION,
+    productVersionId: LIVE_VERSION_ID,
     supplierId: input.supplierId,
     minPurchase: input.minPurchase ?? 1,
     purchaseSteps: input.purchaseSteps ?? 1,
@@ -135,7 +132,7 @@ export interface ReturnOrderInput {
   number: string
   orderId: Id
   price: object
-  state?: PickwareReturnState
+  state?: PickwareReturnState | false
   internalComment?: string
   warehouseId?: Id
   lineItems: ReturnLineInput[]
@@ -143,7 +140,7 @@ export interface ReturnOrderInput {
 
 function returnLine(line: ReturnLineInput, index: number): PickwareReturnOrderLineItemRecord {
   return pruneUndefined({
-    versionId: PICKWARE_LIVE_VERSION,
+    versionId: LIVE_VERSION_ID,
     type: 'product',
     name: line.name,
     quantity: line.quantity,
@@ -152,23 +149,26 @@ function returnLine(line: ReturnLineInput, index: number): PickwareReturnOrderLi
     priceDefinition: line.priceDefinition,
     price: line.price,
     productId: line.productId,
-    productVersionId: line.productId ? PICKWARE_LIVE_VERSION : undefined,
+    productVersionId: line.productId ? LIVE_VERSION_ID : undefined,
     orderLineItemId: line.orderLineItemId,
-    orderLineItemVersionId: line.orderLineItemId ? PICKWARE_LIVE_VERSION : undefined,
+    orderLineItemVersionId: line.orderLineItemId ? LIVE_VERSION_ID : undefined,
   })
 }
 
 export function returnOrder(input: ReturnOrderInput): PickwareReturnOrderRecord {
   return pruneUndefined({
     $key: input.$key,
-    versionId: PICKWARE_LIVE_VERSION,
+    versionId: LIVE_VERSION_ID,
     number: input.number,
-    stateId: shop.stateMachineState(
-      RETURN_ORDER_STATE_MACHINE,
-      input.state ?? RETURN_ORDER_INITIAL_STATE,
-    ),
+    stateId:
+      input.state === false
+        ? undefined
+        : shop.stateMachineState(
+            RETURN_ORDER_STATE_MACHINE,
+            input.state ?? RETURN_ORDER_INITIAL_STATE,
+          ),
     orderId: input.orderId,
-    orderVersionId: PICKWARE_LIVE_VERSION,
+    orderVersionId: LIVE_VERSION_ID,
     price: input.price,
     internalComment: input.internalComment,
     warehouseId: input.warehouseId,

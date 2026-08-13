@@ -20,4 +20,4 @@ export {
   type PluginLogger,
   silentLogSink,
 } from './logger'
-export { dispatchOnError, PluginError, runPluginHook, runPluginResultHook } from './run-hooks'
+export { dispatchOnError, PluginError, runPluginHook } from './run-hooks'

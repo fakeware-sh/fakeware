@@ -7,7 +7,7 @@ import {
   REQUEST_TIMEOUT_MS,
   type ShopwareClient,
 } from './client'
-import { ShopwareApiError } from './errors'
+import { apiError, ShopwareApiError } from './errors'
 import { MEDIA_UPLOAD_KEY, type MediaUploadSpec } from './media'
 import { toApiError } from './operations'
 import { type RetryOptions, withRetry } from './retry'
@@ -43,9 +43,9 @@ function guardSize(entity: string, payload: Record<string, unknown>[]): void {
   if (bytes > ENTITY_REQUEST_BYTE_LIMIT) {
     const mb = (bytes / (1024 * 1024)).toFixed(1)
     const limit = (ENTITY_REQUEST_BYTE_LIMIT / (1024 * 1024)).toFixed(0)
-    throw new ShopwareApiError(
+    throw apiError(
       `${entity} is ${mb} MB, over the ${limit} MB single-request limit. Reduce the number of ${entity} records.`,
-      { status: null, entity, errors: [], retryable: false, cause: null },
+      { entity },
     )
   }
 }
@@ -129,14 +129,12 @@ export function createSyncSink(
     }
     if (!response.ok) {
       const detail = await response.text().catch(() => '')
-      throw new ShopwareApiError(
+      throw apiError(
         `Uploading media ${mediaId} failed (HTTP ${response.status}).${detail ? ` ${detail}` : ''}`,
         {
           status: response.status,
           entity: 'media',
-          errors: [],
           retryable: response.status >= 500 || response.status === 429,
-          cause: null,
         },
       )
     }

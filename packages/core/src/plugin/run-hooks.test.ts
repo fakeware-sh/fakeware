@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { ConfigContext, FakewarePlugin } from './define'
 import { createPluginLogger, type LogEntry, type LogSink, silentLogSink } from './logger'
-import { dispatchOnError, PluginError, runPluginHook, runPluginResultHook } from './run-hooks'
+import { dispatchOnError, PluginError, runPluginHook } from './run-hooks'
 
 function ctxFor(plugin: FakewarePlugin): ConfigContext {
   return {
@@ -103,7 +103,7 @@ describe('runPluginHook', () => {
   })
 })
 
-describe('runPluginResultHook', () => {
+describe('runPluginHook — result hooks', () => {
   test('merges the result into each plugin context', async () => {
     const seen: unknown[] = []
     const plugins: FakewarePlugin[] = [
@@ -117,7 +117,7 @@ describe('runPluginResultHook', () => {
       },
     ]
     const result = { mode: 'noop' }
-    await runPluginResultHook(plugins, 'afterApply', 'afterApply', ctxFor, result)
+    await runPluginHook(plugins, 'afterApply', 'afterApply', ctxFor, result)
     expect(seen).toEqual([result])
   })
 })

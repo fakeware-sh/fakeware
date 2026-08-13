@@ -1,7 +1,5 @@
 import type { AnyToken, ShopValueToken } from '@fakeware/core'
 
-export const PICKWARE_LIVE_VERSION = '0fa91ce3e96a4bc2be4bd9ce752c3425'
-
 export type Id = string | AnyToken
 
 export interface PickwareBinLocationRecord {

@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { ShopContext, ShopContextData, ShopToken } from '@fakeware/core'
 import { shop } from '@fakeware/core'
-import { toShopContext } from '@fakeware/core/shopware'
-import { PICKWARE_LIVE_VERSION } from './entities'
+import { LIVE_VERSION_ID, toShopContext } from '@fakeware/core/shopware'
 import { binLocation, productSupplierConfig, returnOrder, supplier } from './helpers'
 
 const PRICE = { net: 10, gross: 11.9, totalPrice: 11.9, taxStatus: 'gross' }
@@ -87,7 +86,7 @@ describe('productSupplierConfig()', () => {
     })
     expect(record.productId).toBe('prod-1')
     expect(record.supplierId).toBe('sup-1')
-    expect(record.productVersionId).toBe(PICKWARE_LIVE_VERSION)
+    expect(record.productVersionId).toBe(LIVE_VERSION_ID)
     expect(record.minPurchase).toBe(1)
     expect(record.purchaseSteps).toBe(1)
     expect(record.supplierIsDefault).toBe(true)
@@ -114,12 +113,12 @@ describe('returnOrder()', () => {
     })
     expect(id(record.stateId, ctx)).toBe('state-requested')
     expect(record.orderId).toBe('order-1')
-    expect(record.versionId).toBe(PICKWARE_LIVE_VERSION)
+    expect(record.versionId).toBe(LIVE_VERSION_ID)
     expect(record.lineItems[0]).toMatchObject({
       type: 'product',
       position: 1,
       reason: 'other',
-      versionId: PICKWARE_LIVE_VERSION,
+      versionId: LIVE_VERSION_ID,
     })
   })
 
@@ -153,10 +152,21 @@ describe('returnOrder()', () => {
     expect(id(record.stateId, ctx)).toBe('state-received')
     expect(record.lineItems[0]).toMatchObject({
       productId: 'prod-9',
-      productVersionId: PICKWARE_LIVE_VERSION,
+      productVersionId: LIVE_VERSION_ID,
       orderLineItemId: 'oli-9',
-      orderLineItemVersionId: PICKWARE_LIVE_VERSION,
+      orderLineItemVersionId: LIVE_VERSION_ID,
     })
+  })
+
+  test('omits stateId entirely when state is false', () => {
+    const record = returnOrder({
+      number: 'RET-3',
+      orderId: 'order-3',
+      price: PRICE,
+      state: false,
+      lineItems: [{ name: 'Item', quantity: 1, price: PRICE, priceDefinition: PRICE_DEF }],
+    })
+    expect('stateId' in record).toBe(false)
   })
 })
 

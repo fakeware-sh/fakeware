@@ -1,7 +1,7 @@
 export type { Ctx } from './ctx'
 export { define, type KeyMap, keyed, many, type RefBuilder, ref } from './define'
 export { RefError } from './errors'
-export { deterministicId, hashOf, recordHash } from './ids'
+export { deterministicId, hashOf } from './ids'
 export { isPlainObject } from './is-plain-object'
 export type { DrainedEntries, RawEntry, RecordValue, RefIndex } from './registry'
 export { buildRefIndex, drain, resetRegistry } from './registry'

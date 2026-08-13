@@ -34,3 +34,17 @@ export class ShopwareApiError extends Error {
     this.retryAfterMs = options.retryAfterMs ?? null
   }
 }
+
+export function apiError(
+  message: string,
+  options: Partial<ShopwareApiErrorOptions> = {},
+): ShopwareApiError {
+  return new ShopwareApiError(message, {
+    status: options.status ?? null,
+    entity: options.entity ?? null,
+    errors: options.errors ?? [],
+    retryable: options.retryable ?? false,
+    retryAfterMs: options.retryAfterMs ?? null,
+    cause: options.cause ?? null,
+  })
+}

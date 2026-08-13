@@ -1,4 +1,4 @@
-import type { LoadedConfig } from '../config'
+import { DEFAULT_MODE, type LoadedConfig } from '../config'
 import type { ShopwareSink, SinkRecord } from '../domain'
 import {
   type ConfigContext,
@@ -10,9 +10,9 @@ import {
   type PluginContext,
   PluginError,
   runPluginHook,
-  runPluginResultHook,
 } from '../plugin'
 import {
+  apiError,
   fetchShopContext,
   type ShopContext,
   ShopwareApiError,
@@ -108,7 +108,7 @@ function configContextFor(opts: RunOptions, plugin: FakewarePlugin): ConfigConte
     config: opts.loaded.config,
     connection: opts.loaded.connection,
     projectRoot: opts.loaded.projectRoot,
-    mode: opts.mode ?? 'development',
+    mode: opts.mode ?? DEFAULT_MODE,
     logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter)),
   }
 }
@@ -170,7 +170,7 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
 
     const result = await applyPlan(opts, shopContext)
 
-    await runPluginResultHook(
+    await runPluginHook(
       plugins,
       'afterApply',
       'afterApply',
@@ -297,7 +297,7 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
     const result = await revertManifest(opts, manifest)
 
     if (shopContext) {
-      await runPluginResultHook(
+      await runPluginHook(
         plugins,
         'afterRevert',
         'afterRevert',
@@ -397,13 +397,7 @@ async function revertManifest(opts: RunOptions, manifest: Manifest): Promise<Dow
   const failures: ApplyFailure[] = remaining.map((entity) => {
     const error =
       lastError.get(entity.entity) ??
-      new ShopwareApiError(`Could not delete ${entity.entity}.`, {
-        status: null,
-        entity: entity.entity,
-        errors: [],
-        retryable: false,
-        cause: null,
-      })
+      apiError(`Could not delete ${entity.entity}.`, { entity: entity.entity })
     reporter?.failed?.({ entity: entity.entity, committed, error })
     return { entity: entity.entity, committed, error }
   })

@@ -10,6 +10,8 @@ import { type FakewareConfig, type FakewareUserConfig, fakewareConfigSchema } fr
 
 export const DEFAULT_CONFIG_FILENAME = 'fakeware.config.ts'
 
+export const DEFAULT_MODE = 'development'
+
 export interface LoadConfigOptions {
   cwd?: string
   configFile?: string
@@ -97,7 +99,7 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
     throw new ConfigError(`${configPath} must \`export default defineConfig(...)\`.`)
   }
 
-  const configEnv: ConfigEnv = { env, mode: opts.mode ?? 'development' }
+  const configEnv: ConfigEnv = { env, mode: opts.mode ?? DEFAULT_MODE }
   const raw = isConfigFn(exported) ? exported(configEnv) : (exported as FakewareUserConfig)
 
   const { plugins: rawPlugins, ...rest } = raw

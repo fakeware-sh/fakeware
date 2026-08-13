@@ -1,7 +1,12 @@
 import type { ApiClientError, ApiError } from '@shopware/api-client'
 import type { SinkRecord } from '../domain'
 import { createShopwareClient, REQUEST_TIMEOUT_MS } from './client'
-import { type ParsedApiError, ShopwareApiError, ShopwareConnectionError } from './errors'
+import {
+  apiError,
+  type ParsedApiError,
+  type ShopwareApiError,
+  ShopwareConnectionError,
+} from './errors'
 import type { ShopwareConnection } from './types'
 
 function safeJsonParse<T>(input: string): T | null {
@@ -94,13 +99,7 @@ export function toApiError(
   error: unknown,
 ): ShopwareApiError {
   if (isTimeoutError(error)) {
-    return new ShopwareApiError(`Writing ${entity} timed out.`, {
-      status: null,
-      entity,
-      errors: [],
-      retryable: true,
-      cause: error,
-    })
+    return apiError(`Writing ${entity} timed out.`, { entity, retryable: true, cause: error })
   }
   if (isApiClientError(error)) {
     const parsed = parseErrors(error, records)
@@ -108,7 +107,7 @@ export function toApiError(
       parsed.length === 1
         ? (parsed[0]?.detail ?? `Shopware rejected ${entity}.`)
         : `Shopware rejected ${parsed.length} ${entity} record${parsed.length === 1 ? '' : 's'}.`
-    return new ShopwareApiError(summary, {
+    return apiError(summary, {
       status: error.status,
       entity,
       errors: parsed,
@@ -117,13 +116,7 @@ export function toApiError(
       cause: error,
     })
   }
-  return new ShopwareApiError(`Could not write ${entity}.`, {
-    status: null,
-    entity,
-    errors: [],
-    retryable: false,
-    cause: error,
-  })
+  return apiError(`Could not write ${entity}.`, { entity, cause: error })
 }
 
 export function toConnectionError(

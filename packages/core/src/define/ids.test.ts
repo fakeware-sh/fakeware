@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { deterministicId, recordHash } from './ids'
+import { deterministicId, hashOf } from './ids'
 
 describe('deterministicId', () => {
   test('is stable for the same entity and key', () => {
@@ -22,12 +22,12 @@ describe('deterministicId', () => {
   })
 })
 
-describe('recordHash', () => {
+describe('hashOf', () => {
   test('is independent of key ordering', () => {
-    expect(recordHash({ a: 1, b: 2 })).toBe(recordHash({ b: 2, a: 1 }))
+    expect(hashOf({ a: 1, b: 2 })).toBe(hashOf({ b: 2, a: 1 }))
   })
 
   test('changes when the payload changes', () => {
-    expect(recordHash({ a: 1 })).not.toBe(recordHash({ a: 2 }))
+    expect(hashOf({ a: 1 })).not.toBe(hashOf({ a: 2 }))
   })
 })

@@ -5,6 +5,8 @@ import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 
 export const MEDIA_ENTITY = 'media'
 
+const PRODUCT_MEDIA_ENTITY = 'product_media'
+
 interface ProductMediaAssoc {
   id: string
   mediaId: string
@@ -103,7 +105,7 @@ export function hoistMedia(entity: string, ownerKey: string, resolved: Resolved)
       } else {
         return
       }
-      const assocId = deterministicId('product_media', `${entity}:${ownerKey}:${slot}`)
+      const assocId = deterministicId(PRODUCT_MEDIA_ENTITY, `${entity}:${ownerKey}:${slot}`)
       assoc.push({ id: assocId, mediaId, position: position++ })
     })
   }

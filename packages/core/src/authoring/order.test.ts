@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { ShopContextError, setActiveShopContext } from '../shopware/shop-context'
+import { fakeShopContext } from '../shopware/shop-context.fixture'
 import { assocIds } from './local-ids'
 import { builders } from './order'
 
@@ -29,16 +31,57 @@ describe('builders — shared counter', () => {
   test('address and lineItem paths never collide within one record', () => {
     const b = builders({ seed: 99 })
     const addr = b.address({ firstName: 'A' })
-    const items = b.lineItems.products([
-      { product: 'p1', label: 'One', unitPrice: 10 },
-      { product: 'p2', label: 'Two', unitPrice: 20 },
-    ])
+    const items = b.lineItems.products(
+      [
+        { product: 'p1', label: 'One', unitPrice: 10 },
+        { product: 'p2', label: 'Two', unitPrice: 20 },
+      ],
+      19,
+    )
     const ids = [addr.id, ...items.map((i) => i.id)]
     expect(new Set(ids).size).toBe(ids.length)
   })
 })
 
 describe('order builder', () => {
+  beforeEach(() => {
+    setActiveShopContext(
+      fakeShopContext({
+        taxes: [
+          { id: 'tax-reduced', name: 'Reduced', taxRate: 7 },
+          { id: 'tax-standard', name: 'Standard', taxRate: 19 },
+        ],
+      }),
+    )
+  })
+  afterEach(() => {
+    setActiveShopContext(undefined)
+  })
+
+  test('resolves the default tax rate from the shop context', () => {
+    setActiveShopContext(
+      fakeShopContext({ taxes: [{ id: 'tax-standard', name: 'Standard', taxRate: 20 }] }),
+    )
+    const b = builders({ seed: 5 })
+    const [item] = b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 120 }])
+    expect(item?.price.calculatedTaxes[0]?.taxRate).toBe(20)
+  })
+
+  test('throws when the shop has no taxes and no explicit rate is given', () => {
+    setActiveShopContext(fakeShopContext({ taxes: [] }))
+    const b = builders({ seed: 5 })
+    expect(() => b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 10 }])).toThrow(
+      ShopContextError,
+    )
+  })
+
+  test('an explicit tax rate needs no shop context', () => {
+    setActiveShopContext(undefined)
+    const b = builders({ seed: 5 })
+    const [item] = b.lineItems.products([{ product: 'p1', label: 'X', unitPrice: 10 }], 7)
+    expect(item?.price.calculatedTaxes[0]?.taxRate).toBe(7)
+  })
+
   test('billing expands into billingAddressId and addresses[]', () => {
     const b = builders({ seed: 5 })
     const addr = b.address({ firstName: 'Jane', countryId: 'de' })

@@ -22,33 +22,39 @@ export interface WritePlan {
   records: Map<string, PlanRecord[]>
 }
 
-function topoSort(entities: string[], edges: Map<string, Set<string>>): string[] {
-  const indegree = new Map<string, number>(entities.map((e) => [e, 0]))
-  const dependents = new Map<string, string[]>(entities.map((e) => [e, []]))
-  for (const [entity, deps] of edges) {
+function kahnSort<T>(nodes: T[], edges: Map<T, Set<T>>, onCycle: (cyclic: T[]) => never): T[] {
+  const indegree = new Map<T, number>(nodes.map((n) => [n, 0]))
+  const dependents = new Map<T, T[]>(nodes.map((n) => [n, []]))
+  for (const [node, deps] of edges) {
     for (const dep of deps) {
-      indegree.set(entity, (indegree.get(entity) ?? 0) + 1)
-      dependents.get(dep)?.push(entity)
+      indegree.set(node, (indegree.get(node) ?? 0) + 1)
+      dependents.get(dep)?.push(node)
     }
   }
 
-  const queue = entities.filter((e) => (indegree.get(e) ?? 0) === 0)
-  const ordered: string[] = []
+  const queue = nodes.filter((n) => (indegree.get(n) ?? 0) === 0)
+  const ordered: T[] = []
   while (queue.length > 0) {
-    const entity = queue.shift() as string
-    ordered.push(entity)
-    for (const dependent of dependents.get(entity) ?? []) {
+    const node = queue.shift() as T
+    ordered.push(node)
+    for (const dependent of dependents.get(node) ?? []) {
       const next = (indegree.get(dependent) ?? 0) - 1
       indegree.set(dependent, next)
       if (next === 0) queue.push(dependent)
     }
   }
 
-  if (ordered.length !== entities.length) {
-    const cyclic = entities.filter((e) => !ordered.includes(e))
-    throw new GraphError(`Reference cycle between entities: ${cyclic.join(', ')}.`)
+  if (ordered.length !== nodes.length) {
+    const sorted = new Set(ordered)
+    onCycle(nodes.filter((n) => !sorted.has(n)))
   }
   return ordered
+}
+
+function topoSort(entities: string[], edges: Map<string, Set<string>>): string[] {
+  return kahnSort(entities, edges, (cyclic) => {
+    throw new GraphError(`Reference cycle between entities: ${cyclic.join(', ')}.`)
+  })
 }
 
 function sortIntraEntity(
@@ -57,33 +63,13 @@ function sortIntraEntity(
   intraEdges: Map<number, Set<number>>,
 ): PlanRecord[] {
   if (intraEdges.size === 0) return out
-
-  const n = out.length
-  const indegree = new Array(n).fill(0)
-  const dependents: number[][] = Array.from({ length: n }, () => [])
-  for (const [to, deps] of intraEdges) {
-    for (const from of deps) {
-      indegree[to]++
-      dependents[from]?.push(to)
-    }
-  }
-
-  const queue: number[] = []
-  for (let i = 0; i < n; i++) {
-    if (indegree[i] === 0) queue.push(i)
-  }
-  const ordered: number[] = []
-  while (queue.length > 0) {
-    const i = queue.shift() as number
-    ordered.push(i)
-    for (const dependent of dependents[i] ?? []) {
-      if (--indegree[dependent] === 0) queue.push(dependent)
-    }
-  }
-
-  if (ordered.length !== n) {
-    throw new GraphError(`Reference cycle within '${entity}' records.`)
-  }
+  const ordered = kahnSort(
+    out.map((_, i) => i),
+    intraEdges,
+    () => {
+      throw new GraphError(`Reference cycle within '${entity}' records.`)
+    },
+  )
   return ordered.map((i) => out[i] as PlanRecord)
 }
 

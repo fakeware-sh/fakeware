@@ -111,37 +111,9 @@ function requireDefault<T>(value: T | null, kind: string): T {
   return value
 }
 
-function lookupId(shop: ShopContext, resolve: (shop: ShopContext) => ShopContextRecord): string {
-  return resolve(shop).id
-}
-
-function findCurrency(shop: ShopContext, isoCode: string): ShopContextCurrency {
-  const found = shop.index.currencyByIso.get(isoCode.toUpperCase())
-  if (!found) throw missing('currency', isoCode, [...shop.index.currencyByIso.keys()])
-  return found
-}
-
-function findLanguage(shop: ShopContext, locale: string): ShopContextLanguage {
-  const found = shop.index.languageByLocale.get(locale)
-  if (!found) throw missing('language', locale, [...shop.index.languageByLocale.keys()])
-  return found
-}
-
-function findSalesChannel(shop: ShopContext, name: string): ShopContextSalesChannel {
-  const found = shop.index.salesChannelByName.get(name)
-  if (!found) throw missing('salesChannel', name, [...shop.index.salesChannelByName.keys()])
-  return found
-}
-
-function findCountry(shop: ShopContext, iso: string): ShopContextCountry {
-  const found = shop.index.countryByIso.get(iso.toUpperCase())
-  if (!found) throw missing('country', iso, [...shop.index.countryByIso.keys()])
-  return found
-}
-
-function findSalutation(shop: ShopContext, key: string): ShopContextSalutation {
-  const found = shop.index.salutationByKey.get(key)
-  if (!found) throw missing('salutation', key, [...shop.index.salutationByKey.keys()])
+function findInIndex<K, T>(index: Map<K, T>, kind: string, key: K): T {
+  const found = index.get(key)
+  if (!found) throw missing(kind, String(key), [...index.keys()].map(String))
   return found
 }
 
@@ -160,38 +132,6 @@ function findState(
       `stateMachineState('${machine}', '${technicalName}') not found. States for '${machine}': ${hint}.`,
     )
   }
-  return found
-}
-
-function findTax(shop: ShopContext, rate: number): ShopContextTax {
-  const found = shop.index.taxByRate.get(rate)
-  if (!found) throw missing('tax', String(rate), [...shop.index.taxByRate.keys()].map(String))
-  return found
-}
-
-function findPaymentMethod(shop: ShopContext, technicalName: string): ShopContextPaymentMethod {
-  const found = shop.index.paymentMethodByTechnicalName.get(technicalName)
-  if (!found) {
-    throw missing('paymentMethod', technicalName, [
-      ...shop.index.paymentMethodByTechnicalName.keys(),
-    ])
-  }
-  return found
-}
-
-function findShippingMethod(shop: ShopContext, technicalName: string): ShopContextShippingMethod {
-  const found = shop.index.shippingMethodByTechnicalName.get(technicalName)
-  if (!found) {
-    throw missing('shippingMethod', technicalName, [
-      ...shop.index.shippingMethodByTechnicalName.keys(),
-    ])
-  }
-  return found
-}
-
-function findMediaFolder(shop: ShopContext, entity: string): ShopContextMediaFolder {
-  const found = shop.index.mediaFolderByEntity.get(entity)
-  if (!found) throw missing('mediaFolder', entity, [...shop.index.mediaFolderByEntity.keys()])
   return found
 }
 
@@ -282,35 +222,60 @@ export const shop: Shop = {
     (s) => requireDefault(s.index.taxDefault, 'taxes').taxRate,
   ),
   currency: (iso) =>
-    shopToken(`currency:${iso.toUpperCase()}`, (s) => lookupId(s, (x) => findCurrency(x, iso))),
-  language: (locale) =>
-    shopToken(`language:${locale}`, (s) => lookupId(s, (x) => findLanguage(x, locale))),
-  salesChannel: (name) =>
-    shopToken(`salesChannel:${name}`, (s) => lookupId(s, (x) => findSalesChannel(x, name))),
-  country: (iso) =>
-    shopToken(`country:${iso.toUpperCase()}`, (s) => lookupId(s, (x) => findCountry(x, iso))),
-  salutation: (key) =>
-    shopToken(`salutation:${key}`, (s) => lookupId(s, (x) => findSalutation(x, key))),
-  tax: (rate) => shopToken(`tax:${rate}`, (s) => lookupId(s, (x) => findTax(x, rate))),
-  taxRate: (rate) => shopValueToken(`taxRate:${rate}`, (s) => findTax(s, rate).taxRate),
-  paymentMethod: (tn) =>
-    shopToken(`paymentMethod:${tn}`, (s) => lookupId(s, (x) => findPaymentMethod(x, tn))),
-  shippingMethod: (tn) =>
-    shopToken(`shippingMethod:${tn}`, (s) => lookupId(s, (x) => findShippingMethod(x, tn))),
-  stateMachineState: (machine, tn) =>
-    shopToken(`state:${machine}:${tn}`, (s) => lookupId(s, (x) => findState(x, machine, tn))),
-  orderState: (tn) =>
-    shopToken(`state:order.state:${tn}`, (s) =>
-      lookupId(s, (x) => findState(x, 'order.state', tn)),
+    shopToken(
+      `currency:${iso.toUpperCase()}`,
+      (s) => findInIndex(s.index.currencyByIso, 'currency', iso.toUpperCase()).id,
     ),
+  language: (locale) =>
+    shopToken(
+      `language:${locale}`,
+      (s) => findInIndex(s.index.languageByLocale, 'language', locale).id,
+    ),
+  salesChannel: (name) =>
+    shopToken(
+      `salesChannel:${name}`,
+      (s) => findInIndex(s.index.salesChannelByName, 'salesChannel', name).id,
+    ),
+  country: (iso) =>
+    shopToken(
+      `country:${iso.toUpperCase()}`,
+      (s) => findInIndex(s.index.countryByIso, 'country', iso.toUpperCase()).id,
+    ),
+  salutation: (key) =>
+    shopToken(
+      `salutation:${key}`,
+      (s) => findInIndex(s.index.salutationByKey, 'salutation', key).id,
+    ),
+  tax: (rate) => shopToken(`tax:${rate}`, (s) => findInIndex(s.index.taxByRate, 'tax', rate).id),
+  taxRate: (rate) =>
+    shopValueToken(`taxRate:${rate}`, (s) => findInIndex(s.index.taxByRate, 'tax', rate).taxRate),
+  paymentMethod: (tn) =>
+    shopToken(
+      `paymentMethod:${tn}`,
+      (s) => findInIndex(s.index.paymentMethodByTechnicalName, 'paymentMethod', tn).id,
+    ),
+  shippingMethod: (tn) =>
+    shopToken(
+      `shippingMethod:${tn}`,
+      (s) => findInIndex(s.index.shippingMethodByTechnicalName, 'shippingMethod', tn).id,
+    ),
+  stateMachineState: (machine, tn) =>
+    shopToken(`state:${machine}:${tn}`, (s) => findState(s, machine, tn).id),
+  orderState: (tn) =>
+    shopToken(`state:order.state:${tn}`, (s) => findState(s, 'order.state', tn).id),
   orderDeliveryState: (tn) =>
-    shopToken(`state:order_delivery.state:${tn}`, (s) =>
-      lookupId(s, (x) => findState(x, 'order_delivery.state', tn)),
+    shopToken(
+      `state:order_delivery.state:${tn}`,
+      (s) => findState(s, 'order_delivery.state', tn).id,
     ),
   orderTransactionState: (tn) =>
-    shopToken(`state:order_transaction.state:${tn}`, (s) =>
-      lookupId(s, (x) => findState(x, 'order_transaction.state', tn)),
+    shopToken(
+      `state:order_transaction.state:${tn}`,
+      (s) => findState(s, 'order_transaction.state', tn).id,
     ),
   mediaFolder: (entity = 'product') =>
-    shopToken(`mediaFolder:${entity}`, (s) => lookupId(s, (x) => findMediaFolder(x, entity))),
+    shopToken(
+      `mediaFolder:${entity}`,
+      (s) => findInIndex(s.index.mediaFolderByEntity, 'mediaFolder', entity).id,
+    ),
 }

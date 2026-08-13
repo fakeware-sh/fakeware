@@ -43,12 +43,6 @@ function canonicalize(value: unknown): unknown {
   return value
 }
 
-export function recordHash(payload: unknown): string {
-  return createHash('sha256')
-    .update(JSON.stringify(canonicalize(payload)))
-    .digest('hex')
-}
-
 export function hashOf(canonical: unknown): string {
   return createHash('sha256')
     .update(JSON.stringify(canonicalize(canonical)))

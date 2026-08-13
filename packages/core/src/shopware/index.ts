@@ -1,5 +1,6 @@
 export { adminBaseUrl, createShopwareClient, type ShopwareClient } from './client'
 export {
+  apiError,
   type ParsedApiError,
   ShopwareApiError,
   ShopwareConnectionError,
@@ -52,4 +53,4 @@ export {
   shop,
 } from './shop-context'
 export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
-export type { ShopwareConnection } from './types'
+export { LIVE_VERSION_ID, type ShopwareConnection } from './types'

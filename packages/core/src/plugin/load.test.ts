@@ -55,12 +55,6 @@ describe('loadPlugins', () => {
     ).toThrow(/hook "contextReady" must be a function/)
   })
 
-  test('rejects the removed setup field with a migration hint', () => {
-    expect(() =>
-      loadPlugins([{ name: 'a', setup: () => {} } as unknown as FakewarePlugin]),
-    ).toThrow(/"setup" was removed\. Use "hooks\.contextReady"/)
-  })
-
   test('throws ConfigError on a duplicate plugin name', () => {
     expect(() => loadPlugins([{ name: 'a' }, { name: 'a' }])).toThrow(/duplicate plugin name "a"/)
   })

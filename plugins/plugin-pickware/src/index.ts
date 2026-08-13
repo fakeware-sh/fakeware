@@ -1,16 +1,16 @@
 import './entities'
 
-export {
-  type Id,
-  PICKWARE_LIVE_VERSION,
-  type PickwareBinLocationRecord,
-  type PickwarePrice,
-  type PickwareProductSupplierConfigurationInline,
-  type PickwareProductSupplierConfigurationRecord,
-  type PickwareReturnOrderLineItemRecord,
-  type PickwareReturnOrderRecord,
-  type PickwareReturnReason,
-  type PickwareSupplierRecord,
+export { LIVE_VERSION_ID } from '@fakeware/core/shopware'
+export type {
+  Id,
+  PickwareBinLocationRecord,
+  PickwarePrice,
+  PickwareProductSupplierConfigurationInline,
+  PickwareProductSupplierConfigurationRecord,
+  PickwareReturnOrderLineItemRecord,
+  PickwareReturnOrderRecord,
+  PickwareReturnReason,
+  PickwareSupplierRecord,
 } from './entities'
 export {
   PICKWARE_WAREHOUSES_KEY,

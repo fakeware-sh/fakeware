@@ -19,40 +19,21 @@ export class PluginError extends Error {
   }
 }
 
-type SimpleHook = 'configResolved' | 'contextReady' | 'beforeApply' | 'beforeRevert'
+type LifecycleHook = Exclude<keyof PluginHooks, 'onError'>
 
 export async function runPluginHook<C extends ConfigContext>(
   plugins: FakewarePlugin[],
-  hook: SimpleHook,
+  hook: LifecycleHook,
   phase: PluginPhase,
   contextFor: (plugin: FakewarePlugin) => C,
+  result?: unknown,
 ): Promise<void> {
   for (const plugin of plugins) {
     const fn = plugin.hooks?.[hook]
     if (!fn) continue
-    const ctx = contextFor(plugin)
+    const ctx = result === undefined ? contextFor(plugin) : { ...contextFor(plugin), result }
     try {
-      await (fn as (c: C) => unknown)(ctx)
-    } catch (error) {
-      await dispatchOnError(plugins, phase, error, contextFor)
-      throw new PluginError(plugin.name, phase, { cause: error })
-    }
-  }
-}
-
-export async function runPluginResultHook<C extends ConfigContext, R>(
-  plugins: FakewarePlugin[],
-  hook: 'afterApply' | 'afterRevert',
-  phase: PluginPhase,
-  contextFor: (plugin: FakewarePlugin) => C,
-  result: R,
-): Promise<void> {
-  for (const plugin of plugins) {
-    const fn = plugin.hooks?.[hook] as ((c: C & { result: R }) => unknown) | undefined
-    if (!fn) continue
-    const ctx = { ...contextFor(plugin), result }
-    try {
-      await fn(ctx)
+      await (fn as (c: unknown) => unknown)(ctx)
     } catch (error) {
       await dispatchOnError(plugins, phase, error, contextFor)
       throw new PluginError(plugin.name, phase, { cause: error })

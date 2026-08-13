@@ -1,4 +1,4 @@
-import { ShopwareApiError } from '../shopware/errors'
+import { apiError, type ShopwareApiError } from '../shopware/errors'
 import { MEDIA_UPLOAD_KEY } from '../shopware/media'
 import type { ShopwareSink, SinkRecord } from './sink'
 
@@ -34,7 +34,7 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
   }
 
   function deleteConflict(entity: string): ShopwareApiError {
-    return new ShopwareApiError(`Cannot delete ${entity}; still in use.`, {
+    return apiError(`Cannot delete ${entity}; still in use.`, {
       status: 409,
       entity,
       errors: [
@@ -46,8 +46,6 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
           recordId: null,
         },
       ],
-      retryable: false,
-      cause: null,
     })
   }
 
@@ -74,13 +72,7 @@ export function createInMemorySink(options: InMemorySinkOptions = {}): InMemoryS
       const uploadable = records.filter((r) => MEDIA_UPLOAD_KEY in r)
       if (uploadable.length === 0) return
       if (options.failUploadOn === 'media') {
-        throw new ShopwareApiError('Simulated upload failure for media', {
-          status: 400,
-          entity: 'media',
-          errors: [],
-          retryable: false,
-          cause: null,
-        })
+        throw apiError('Simulated upload failure for media', { status: 400, entity: 'media' })
       }
       calls.push({ op: 'upload', entity: 'media', ids: uploadable.map((r) => r.id) })
     },
