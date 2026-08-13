@@ -13,6 +13,7 @@ export interface ShopwareApiErrorOptions {
   entity: string | null
   errors: ParsedApiError[]
   retryable: boolean
+  retryAfterMs?: number | null
   cause: unknown
 }
 
@@ -21,6 +22,7 @@ export class ShopwareApiError extends Error {
   readonly entity: string | null
   readonly errors: ParsedApiError[]
   readonly retryable: boolean
+  readonly retryAfterMs: number | null
 
   constructor(message: string, options: ShopwareApiErrorOptions) {
     super(message, { cause: options.cause })
@@ -29,5 +31,6 @@ export class ShopwareApiError extends Error {
     this.entity = options.entity
     this.errors = options.errors
     this.retryable = options.retryable
+    this.retryAfterMs = options.retryAfterMs ?? null
   }
 }

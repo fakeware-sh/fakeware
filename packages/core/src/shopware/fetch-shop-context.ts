@@ -3,10 +3,12 @@ import type { OwnedFetcher } from '../plugin'
 import { createShopwareClient, type ShopwareClient } from './client'
 import { ShopwareConnectionError } from './errors'
 import { toConnectionError } from './operations'
+import { withRetry } from './retry'
 import type { ShopContext, ShopContextData, ShopContextIndex } from './shop-context'
 import type { ShopwareConnection } from './types'
 
 const SEARCH_LIMIT = 500
+const FETCH_CONCURRENCY = 4
 
 export interface ShopContextFetcher {
   readonly entity: string
@@ -130,8 +132,7 @@ const mediaFolderRow = z.object({
 const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   {
     entity: 'currencies',
-    fetch: (c) =>
-      c.invoke('searchCurrency post /search/currency', { body: { limit: SEARCH_LIMIT } }),
+    fetch: (c) => fetchAllPages(c, 'searchCurrency post /search/currency', {}),
     merge: (data, raw) => {
       data.currencies = parseRows('currencies', currencyRow, rowsOf(raw)).map((r) => ({
         id: r.id,
@@ -144,8 +145,8 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   {
     entity: 'languages',
     fetch: (c) =>
-      c.invoke('searchLanguage post /search/language', {
-        body: { associations: { locale: {} }, limit: SEARCH_LIMIT },
+      fetchAllPages(c, 'searchLanguage post /search/language', {
+        associations: { locale: {} },
       }),
     merge: (data, raw) => {
       data.languages = parseRows('languages', languageRow, rowsOf(raw))
@@ -160,8 +161,7 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   },
   {
     entity: 'sales channels',
-    fetch: (c) =>
-      c.invoke('searchSalesChannel post /search/sales-channel', { body: { limit: SEARCH_LIMIT } }),
+    fetch: (c) => fetchAllPages(c, 'searchSalesChannel post /search/sales-channel', {}),
     merge: (data, raw) => {
       data.salesChannels = parseRows('sales channels', salesChannelRow, rowsOf(raw)).map((r) => ({
         id: r.id,
@@ -176,7 +176,7 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   },
   {
     entity: 'countries',
-    fetch: (c) => c.invoke('searchCountry post /search/country', { body: { limit: SEARCH_LIMIT } }),
+    fetch: (c) => fetchAllPages(c, 'searchCountry post /search/country', {}),
     merge: (data, raw) => {
       data.countries = parseRows('countries', countryRow, rowsOf(raw))
         .filter((r) => r.iso)
@@ -185,8 +185,7 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   },
   {
     entity: 'salutations',
-    fetch: (c) =>
-      c.invoke('searchSalutation post /search/salutation', { body: { limit: SEARCH_LIMIT } }),
+    fetch: (c) => fetchAllPages(c, 'searchSalutation post /search/salutation', {}),
     merge: (data, raw) => {
       data.salutations = parseRows('salutations', salutationRow, rowsOf(raw)).map((r) => ({
         id: r.id,
@@ -215,17 +214,14 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   },
   {
     entity: 'taxes',
-    fetch: (c) => c.invoke('searchTax post /search/tax', { body: { limit: SEARCH_LIMIT } }),
+    fetch: (c) => fetchAllPages(c, 'searchTax post /search/tax', {}),
     merge: (data, raw) => {
       data.taxes = parseRows('taxes', taxRow, rowsOf(raw))
     },
   },
   {
     entity: 'payment methods',
-    fetch: (c) =>
-      c.invoke('searchPaymentMethod post /search/payment-method', {
-        body: { limit: SEARCH_LIMIT },
-      }),
+    fetch: (c) => fetchAllPages(c, 'searchPaymentMethod post /search/payment-method', {}),
     merge: (data, raw) => {
       data.paymentMethods = parseRows('payment methods', paymentMethodRow, rowsOf(raw))
         .filter((r) => r.technicalName)
@@ -234,10 +230,7 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   },
   {
     entity: 'shipping methods',
-    fetch: (c) =>
-      c.invoke('searchShippingMethod post /search/shipping-method', {
-        body: { limit: SEARCH_LIMIT },
-      }),
+    fetch: (c) => fetchAllPages(c, 'searchShippingMethod post /search/shipping-method', {}),
     merge: (data, raw) => {
       data.shippingMethods = parseRows('shipping methods', shippingMethodRow, rowsOf(raw))
         .filter((r) => r.technicalName)
@@ -247,8 +240,8 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
   {
     entity: 'media folders',
     fetch: (c) =>
-      c.invoke('searchMediaFolder post /search/media-folder', {
-        body: { limit: SEARCH_LIMIT, associations: { defaultFolder: {} } },
+      fetchAllPages(c, 'searchMediaFolder post /search/media-folder', {
+        associations: { defaultFolder: {} },
       }),
     merge: (data, raw) => {
       data.mediaFolders = parseRows('media folders', mediaFolderRow, rowsOf(raw))
@@ -261,6 +254,25 @@ const BUILT_IN_FETCHERS: ShopContextFetcher[] = [
     },
   },
 ]
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const index = next
+      next += 1
+      if (index >= items.length) return
+      results[index] = await task(items[index] as T)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
 
 function emptyData(): ShopContextData {
   return {
@@ -366,10 +378,12 @@ export async function fetchShopContext(
   } catch (error) {
     throw toConnectionError(connection, error)
   }
-  const results = await Promise.all(
-    fetchers.map(async ({ plugin, fetcher }) => {
+  const results = await mapWithConcurrency(
+    fetchers,
+    FETCH_CONCURRENCY,
+    async ({ plugin, fetcher }) => {
       try {
-        return await fetcher.fetch(client)
+        return await withRetry(() => fetcher.fetch(client))
       } catch (error) {
         if (!plugin) throw toConnectionError(connection, error)
         throw new ShopwareConnectionError(
@@ -377,7 +391,7 @@ export async function fetchShopContext(
           { cause: error },
         )
       }
-    }),
+    },
   )
   for (const [i, { fetcher }] of fetchers.entries()) {
     fetcher.merge(data, results[i])

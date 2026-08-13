@@ -1,8 +1,9 @@
-import { isApiClientError, isRetryableStatus, isTimeoutError } from './operations'
+import { isApiClientError, isRetryableStatus, isTimeoutError, retryAfterMsFrom } from './operations'
 
 export const MAX_ATTEMPTS = 3
 const BASE_DELAY_MS = 500
 const MAX_DELAY_MS = 8_000
+const MAX_RETRY_AFTER_MS = 30_000
 
 function isRetryable(error: unknown): boolean {
   if (isTimeoutError(error)) return true
@@ -14,6 +15,12 @@ function backoff(attempt: number): number {
   const delay = BASE_DELAY_MS * 2 ** (attempt - 1)
   const jitter = delay * 0.25 * Math.random()
   return Math.min(delay + jitter, MAX_DELAY_MS)
+}
+
+function retryDelay(error: unknown, attempt: number): number {
+  const retryAfter = retryAfterMsFrom(error)
+  if (retryAfter !== null) return Math.min(retryAfter, MAX_RETRY_AFTER_MS)
+  return backoff(attempt)
 }
 
 const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
@@ -33,7 +40,7 @@ export async function withRetry<T>(task: () => Promise<T>, options: RetryOptions
     } catch (error) {
       lastError = error
       if (attempt === attempts || !isRetryable(error)) throw error
-      await sleep(backoff(attempt))
+      await sleep(retryDelay(error, attempt))
     }
   }
   throw lastError

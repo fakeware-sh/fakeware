@@ -75,6 +75,19 @@ export function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500
 }
 
+export function retryAfterMsFrom(error: unknown, now: number = Date.now()): number | null {
+  if (!isApiClientError(error)) return null
+  const headers = (error as { headers?: Headers }).headers
+  if (!headers || typeof headers.get !== 'function') return null
+  const header = headers.get('retry-after')
+  if (!header) return null
+  const seconds = Number(header)
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000)
+  const date = Date.parse(header)
+  if (Number.isNaN(date)) return null
+  return Math.max(0, date - now)
+}
+
 export function toApiError(
   entity: string,
   records: SinkRecord[],
@@ -100,6 +113,7 @@ export function toApiError(
       entity,
       errors: parsed,
       retryable: isRetryableStatus(error.status),
+      retryAfterMs: retryAfterMsFrom(error),
       cause: error,
     })
   }

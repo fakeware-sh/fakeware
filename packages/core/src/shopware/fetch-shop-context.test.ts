@@ -116,6 +116,13 @@ function apiError(status: number, errors: ApiError[] = []): ApiClientError<{ err
   })
 }
 
+function rateLimitedError(): ApiClientError<{ errors: ApiError[] }> {
+  return Object.assign(apiError(429), {
+    message: 'HTTP 429',
+    headers: new Headers({ 'retry-after': '0' }),
+  })
+}
+
 describe('fetchShopContext', () => {
   test('parses every entity and indexes them for lookup', async () => {
     const ctx = await fetchShopContext(connection)
@@ -147,6 +154,51 @@ describe('fetchShopContext', () => {
     const ctx = await fetchShopContext(connection)
     expect(ctx.languages.find((l) => l.id === 'lang-en')?.isSystem).toBe(true)
     expect(ctx.languages.find((l) => l.id === 'lang-de')?.isSystem).toBe(false)
+  })
+
+  test('accumulates currencies across multiple pages', async () => {
+    const pages: Record<number, unknown[]> = {
+      1: [{ id: 'cur-eur', name: 'Euro', isoCode: 'EUR', isSystemDefault: true }],
+      2: [{ id: 'cur-chf', name: 'Franken', isoCode: 'CHF', isSystemDefault: false }],
+    }
+    respondTo = (action, params) => {
+      if (action.includes('/search/currency')) {
+        const page = (params as { body?: { page?: number } } | undefined)?.body?.page ?? 1
+        return Promise.resolve({ data: pages[page] ?? [], total: 2 })
+      }
+      return defaultRespondTo(action)
+    }
+    const ctx = await fetchShopContext(connection)
+    expect(ctx.index.currencyByIso.get('EUR')?.id).toBe('cur-eur')
+    expect(ctx.index.currencyByIso.get('CHF')?.id).toBe('cur-chf')
+  })
+
+  test('runs at most four fetchers concurrently', async () => {
+    let active = 0
+    let maxActive = 0
+    respondTo = async (action, params) => {
+      active++
+      maxActive = Math.max(maxActive, active)
+      await new Promise((r) => setTimeout(r, 1))
+      active--
+      return defaultRespondTo(action, params)
+    }
+    await fetchShopContext(connection)
+    expect(maxActive).toBeLessThanOrEqual(4)
+  })
+
+  test('retries a rate-limited fetcher honoring Retry-After', async () => {
+    let taxCalls = 0
+    respondTo = (action) => {
+      if (action.includes('/search/tax')) {
+        taxCalls++
+        if (taxCalls === 1) throw rateLimitedError()
+      }
+      return defaultRespondTo(action)
+    }
+    const ctx = await fetchShopContext(connection)
+    expect(taxCalls).toBe(2)
+    expect(ctx.index.taxByRate.get(19)?.id).toBe('tax-19')
   })
 
   test('accumulates state machine states across multiple pages', async () => {

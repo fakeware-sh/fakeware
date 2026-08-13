@@ -12,7 +12,9 @@ mock.module('./client', () => ({
     ({ invoke: (action: string, args?: unknown) => nextInvoke(action, args) }) as ShopwareClient,
 }))
 
-const { toConnectionError, validateConnection } = await import('./operations')
+const { retryAfterMsFrom, toApiError, toConnectionError, validateConnection } = await import(
+  './operations'
+)
 
 const connection: ShopwareConnection = {
   url: 'https://shop.test',
@@ -139,5 +141,48 @@ describe('validateConnection', () => {
       throw apiError(401)
     }
     await expect(validateConnection(connection)).rejects.toBeInstanceOf(ShopwareConnectionError)
+  })
+})
+
+function apiErrorWithRetryAfter(status: number, retryAfter: string) {
+  const error = apiError(status)
+  Object.assign(error, { headers: new Headers({ 'retry-after': retryAfter }) })
+  return error
+}
+
+describe('retryAfterMsFrom', () => {
+  test('parses a seconds value into milliseconds', () => {
+    expect(retryAfterMsFrom(apiErrorWithRetryAfter(429, '3'))).toBe(3000)
+  })
+
+  test('parses an HTTP-date value relative to now', () => {
+    const now = Date.parse('2026-01-01T00:00:00Z')
+    const error = apiErrorWithRetryAfter(429, new Date(now + 5000).toUTCString())
+    expect(retryAfterMsFrom(error, now)).toBe(5000)
+  })
+
+  test('clamps a past HTTP-date to zero', () => {
+    const now = Date.parse('2026-01-01T00:00:10Z')
+    const error = apiErrorWithRetryAfter(429, new Date(now - 5000).toUTCString())
+    expect(retryAfterMsFrom(error, now)).toBe(0)
+  })
+
+  test('returns null without a header or on non-api errors', () => {
+    expect(retryAfterMsFrom(apiError(429))).toBeNull()
+    expect(retryAfterMsFrom(apiErrorWithRetryAfter(429, 'soon'))).toBeNull()
+    expect(retryAfterMsFrom(new Error('boom'))).toBeNull()
+  })
+})
+
+describe('toApiError', () => {
+  test('carries the Retry-After delay on rate-limited responses', () => {
+    const error = toApiError('products', [], apiErrorWithRetryAfter(429, '2'))
+    expect(error.status).toBe(429)
+    expect(error.retryable).toBe(true)
+    expect(error.retryAfterMs).toBe(2000)
+  })
+
+  test('leaves retryAfterMs null when the header is absent', () => {
+    expect(toApiError('products', [], apiError(500)).retryAfterMs).toBeNull()
   })
 })

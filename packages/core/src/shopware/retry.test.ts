@@ -13,6 +13,12 @@ function timeoutError(): Error {
   return error
 }
 
+function rateLimitError(retryAfter: string): Error {
+  const error = apiError(429)
+  Object.assign(error, { headers: new Headers({ 'retry-after': retryAfter }) })
+  return error
+}
+
 const noSleep = () => Promise.resolve()
 
 describe('withRetry', () => {
@@ -140,5 +146,42 @@ describe('withRetry', () => {
       expect(delays[i] as number).toBeGreaterThanOrEqual(delays[i - 1] as number)
     }
     expect(Math.max(...delays)).toBeLessThanOrEqual(8000)
+  })
+
+  test('prefers the Retry-After header over exponential backoff', async () => {
+    const delays: number[] = []
+    let calls = 0
+    const result = await withRetry(
+      async () => {
+        calls++
+        if (calls < 2) throw rateLimitError('2')
+        return 'ok'
+      },
+      {
+        sleep: async (ms) => {
+          delays.push(ms)
+        },
+      },
+    )
+    expect(result).toBe('ok')
+    expect(delays).toEqual([2000])
+  })
+
+  test('caps the Retry-After delay at 30 seconds', async () => {
+    const delays: number[] = []
+    let calls = 0
+    await withRetry(
+      async () => {
+        calls++
+        if (calls < 2) throw rateLimitError('120')
+        return 'ok'
+      },
+      {
+        sleep: async (ms) => {
+          delays.push(ms)
+        },
+      },
+    )
+    expect(delays).toEqual([30_000])
   })
 })
