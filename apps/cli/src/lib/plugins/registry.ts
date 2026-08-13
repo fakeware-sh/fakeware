@@ -1,3 +1,5 @@
+import pickwarePkg from '@fakeware/plugin-pickware/package.json' with { type: 'json' }
+
 export interface OfficialPlugin {
   id: string
   packageName: string
@@ -13,7 +15,7 @@ export const OFFICIAL_PLUGINS = [
     id: 'pickware',
     packageName: '@fakeware/plugin-pickware',
     importName: 'pickware',
-    version: '^1.1.0',
+    version: `^${pickwarePkg.version}`,
     label: 'Pickware',
     hint: 'Seed Pickware ERP data: warehouses, suppliers, stock, and return orders',
   },

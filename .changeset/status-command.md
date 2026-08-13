@@ -2,7 +2,7 @@
 "@fakeware/cli": minor
 ---
 
-Add `fakeware status` — an offline view of what fakeware has applied to a shop.
+Add `fakeware status`, an offline view of what fakeware has applied to a shop.
 
 It reads the local manifest without touching the network: shop URL, config path, active plugins, when the data was applied and by which fakeware version, plus a per-entity record-count table. Entities left unconfirmed by an interrupted run are flagged as pending, with a note that the next `fakeware up` re-applies them.
 
