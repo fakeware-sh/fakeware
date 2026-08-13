@@ -30,6 +30,7 @@ export interface RunOptions {
   sink: ShopwareSink
   client?: ShopwareClient
   dryRun?: boolean
+  debug?: boolean
   reporter?: Reporter
   fakewareVersion?: string
   now?: string
@@ -41,6 +42,7 @@ export interface UpResult {
   steps: ReportStep[]
   manifestWritten: boolean
   committed: number
+  dataFiles: number
 }
 
 export interface DownResult {

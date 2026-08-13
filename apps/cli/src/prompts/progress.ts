@@ -53,9 +53,11 @@ export function spinnerReporter(
   }
 
   return {
-    entityStart(entity): void {
+    entityStart(entity, records): void {
       ensure()
-      spinner.message(`${verb.active} ${pc.cyan(entity)}`)
+      const scale =
+        records > 0 ? pc.dim(` (${records} ${records === 1 ? 'record' : 'records'})`) : ''
+      spinner.message(`${verb.active} ${pc.cyan(entity)}${scale}`)
     },
     entityDone(step): void {
       done.push(step)
@@ -83,6 +85,7 @@ export function spinnerReporter(
         const line = `${pc.dim(`[${entry.plugin}]`)} ${entry.message}`
         if (entry.level === 'error') p.log.error(line)
         else if (entry.level === 'warn') p.log.warn(line)
+        else if (entry.level === 'debug') p.log.message(pc.dim(line))
         else p.log.info(line)
       }
       if (summary.length > 0) p.log.message(summary.join('\n'))

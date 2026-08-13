@@ -125,6 +125,35 @@ describe('runUp', () => {
     expect(result.committed).toBe(0)
     expect(sink.calls).toHaveLength(0)
   })
+
+  test('reports the number of data files it discovered', async () => {
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19, 'product.ts': PRODUCTS })
+    const result = await up({ loaded: loadedFor(dir), sink: createInMemorySink(), dryRun: true })
+    expect(result.dataFiles).toBe(2)
+  })
+
+  test('distinguishes a project with no data files from a no-op run', async () => {
+    const empty = await scaffoldProject(root, {})
+    const emptyResult = await up({
+      loaded: loadedFor(empty),
+      sink: createInMemorySink(),
+      now: 'T',
+      fakewareVersion: '1',
+    })
+    expect(emptyResult.dataFiles).toBe(0)
+    expect(emptyResult.committed).toBe(0)
+
+    const dir = await scaffoldProject(root, { 'tax.ts': TAX_19 })
+    await up({ loaded: loadedFor(dir), sink: createInMemorySink(), now: 'T', fakewareVersion: '1' })
+    const noop = await up({
+      loaded: loadedFor(dir),
+      sink: createInMemorySink(),
+      now: 'T',
+      fakewareVersion: '1',
+    })
+    expect(noop.dataFiles).toBe(1)
+    expect(noop.committed).toBe(0)
+  })
 })
 
 describe('runUp — media & covers', () => {

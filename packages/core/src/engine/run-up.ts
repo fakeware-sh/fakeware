@@ -114,7 +114,7 @@ async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<Up
       reporter?.entityStart?.(w.entity, w.toWrite.length)
       reporter?.entityDone?.(w.step)
     }
-    return { steps, manifestWritten: false, committed: 0 }
+    return { steps, manifestWritten: false, committed: 0, dataFiles: files.length }
   }
 
   const persist = (entities: ManifestEntity[]): Promise<void> =>
@@ -165,5 +165,5 @@ async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<Up
     reporter?.entityDone?.(w.step)
   }
 
-  return { steps, manifestWritten: ledger.length > 0, committed }
+  return { steps, manifestWritten: ledger.length > 0, committed, dataFiles: files.length }
 }

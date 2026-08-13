@@ -10,6 +10,7 @@ import { counts, reportError, spinnerReporter } from '../prompts'
 interface UpFlags {
   config?: string
   dryRun?: boolean
+  verbose?: boolean
 }
 
 function detail(step: ReportStep): string {
@@ -21,6 +22,7 @@ export function upCommand(): Command {
     .description('Apply your data definitions to the shop')
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--dry-run', 'Show what would change without writing', false)
+    .option('--verbose', 'Show debug logs and full stack traces', false)
     .action(async (opts: UpFlags) => {
       p.intro(pc.bgCyan(pc.black(' fakeware up ')))
       try {
@@ -34,6 +36,7 @@ export function upCommand(): Command {
             client,
             sink: createSyncSink(loaded.connection, { client }),
             dryRun: opts.dryRun,
+            debug: opts.verbose,
             fakewareVersion: pkg.version,
             reporter,
           })
@@ -41,6 +44,12 @@ export function upCommand(): Command {
           reporter.finish()
         }
 
+        if (result.dataFiles === 0) {
+          p.outro(
+            `No data files found in ${pc.cyan('./data')} — add one to describe what to create.`,
+          )
+          return
+        }
         if (opts.dryRun) {
           p.outro('Dry run complete — nothing was written.')
           return

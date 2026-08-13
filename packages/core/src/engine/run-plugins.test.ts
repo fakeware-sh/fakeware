@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LoadedConfig } from '../config'
-import type { FakewarePlugin } from '../plugin'
+import type { FakewarePlugin, LogEntry } from '../plugin'
 import { PluginError } from '../plugin'
 import type { ShopwareClient } from '../shopware'
 import { ShopwareApiError, ShopwareConnectionError } from '../shopware'
@@ -159,6 +159,37 @@ describe('runUp with plugins', () => {
       shopContext: fakeShopContext(),
     })
     expect(ran).toBe(true)
+  })
+
+  test('plugin debug logs reach the reporter only when debug is enabled', async () => {
+    const plugin = (): FakewarePlugin => ({
+      name: 'chatty',
+      hooks: {
+        contextReady: ({ logger }) => {
+          logger.debug('noisy')
+          logger.info('loud')
+        },
+      },
+    })
+
+    const quiet: LogEntry[] = []
+    await runUp({
+      loaded: loadedFor(dir, [plugin()]),
+      sink: createInMemorySink(),
+      shopContext: fakeShopContext(),
+      reporter: { log: (entry) => quiet.push(entry) },
+    })
+    expect(quiet.map((e) => e.message)).toEqual(['loud'])
+
+    const verbose: LogEntry[] = []
+    await runUp({
+      loaded: loadedFor(dir, [plugin()]),
+      sink: createInMemorySink(),
+      shopContext: fakeShopContext(),
+      debug: true,
+      reporter: { log: (entry) => verbose.push(entry) },
+    })
+    expect(verbose.map((e) => e.message)).toEqual(['noisy', 'loud'])
   })
 
   test('a throwing hook aborts runUp with a PluginError naming the phase', async () => {

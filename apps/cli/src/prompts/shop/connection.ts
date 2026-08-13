@@ -1,5 +1,6 @@
 import * as p from '@clack/prompts'
 import type { ShopwareConnection } from '@fakeware/core/shopware'
+import { EXIT_CANCELLED, exit } from '../../lib/exit-codes'
 import { getProtocol, normalizeShopUrl, type UrlProtocol } from '../../lib/utils'
 
 function required(value: string | undefined): string | undefined {
@@ -58,7 +59,7 @@ export async function promptShopConnection(
     {
       onCancel: () => {
         p.cancel('Cancelled.')
-        process.exit(1)
+        exit(EXIT_CANCELLED)
       },
     },
   )

@@ -9,9 +9,9 @@ import {
 import type { ShopContext } from '../shopware'
 import type { Reporter, RunOptions } from './types'
 
-export function reporterLogSink(reporter?: Reporter) {
+export function reporterLogSink(reporter?: Reporter, debug = false) {
   return {
-    debug: false,
+    debug,
     write(entry: LogEntry): void {
       reporter?.log?.(entry)
     },
@@ -24,7 +24,7 @@ export function configContextFor(opts: RunOptions, plugin: FakewarePlugin): Conf
     connection: opts.loaded.connection,
     projectRoot: opts.loaded.projectRoot,
     mode: opts.mode ?? DEFAULT_MODE,
-    logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter)),
+    logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter, opts.debug)),
   }
 }
 

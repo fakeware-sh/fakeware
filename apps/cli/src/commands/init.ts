@@ -70,8 +70,10 @@ export function initCommand(): Command {
     .option('--client-id <id>', 'OAuth2 client ID')
     .option('--client-secret <secret>', 'OAuth2 client secret')
     .option('--output <path>', 'Directory to scaffold into (default: cwd)')
-    .option('--secrets <dest>', 'env | inline', 'env')
-    .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)')
+    .option('--secrets <dest>', 'env | inline', (v) => assertOneOf(v, SECRETS), 'env')
+    .option('--package-manager <pm>', 'bun | npm | pnpm | yarn (default: auto-detect)', (v) =>
+      assertOneOf(v, PACKAGE_MANAGERS),
+    )
     .option('--plugins <list>', 'Official plugin ids to add (comma-separated), or "all" | "none"')
     .option('--no-plugins', 'Do not add any official plugins')
     .option('--no-install', 'Write files but skip dependency install')
@@ -84,10 +86,8 @@ export function initCommand(): Command {
         clientId: opts.clientId,
         clientSecret: opts.clientSecret,
         output: opts.output,
-        secrets: assertOneOf(opts.secrets, SECRETS, '--secrets'),
-        packageManager: opts.packageManager
-          ? assertOneOf(opts.packageManager, PACKAGE_MANAGERS, '--package-manager')
-          : undefined,
+        secrets: opts.secrets,
+        packageManager: opts.packageManager,
         plugins: opts.plugins,
         install: opts.install,
         force: opts.force,

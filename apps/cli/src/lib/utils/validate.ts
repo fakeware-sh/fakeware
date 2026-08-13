@@ -1,10 +1,8 @@
-export function assertOneOf<T extends string>(
-  value: string,
-  allowed: readonly T[],
-  flag: string,
-): T {
+import { InvalidArgumentError } from 'commander'
+
+export function assertOneOf<T extends string>(value: string, allowed: readonly T[]): T {
   if (!allowed.includes(value as T)) {
-    throw new Error(`Invalid value for ${flag}: "${value}". Expected one of: ${allowed.join(', ')}`)
+    throw new InvalidArgumentError(`Expected one of: ${allowed.join(', ')}`)
   }
   return value as T
 }
