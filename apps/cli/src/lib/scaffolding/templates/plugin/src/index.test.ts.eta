@@ -1,0 +1,36 @@
+import { describe, expect, test } from 'bun:test'
+import type { ShopContextData } from '@fakeware/core'
+import {
+  createCollectingLogSink,
+  createTestClient,
+  createTestPluginContext,
+  runPluginHookOnce,
+} from '@fakeware/core/testing'
+import plugin, { WAREHOUSES_KEY, warehouses, warehousesFetcher } from './index'
+
+describe('<%= it.name %>', () => {
+  test('the fetcher collects rows into the shop context extensions', async () => {
+    const { client, calls } = createTestClient({
+      '/search/warehouse': { data: [{ id: 'wh-1', name: 'Main' }], total: 1 },
+    })
+
+    const raw = await warehousesFetcher.fetch(client)
+    const data = { extensions: {} } as ShopContextData
+    warehousesFetcher.merge(data, raw)
+
+    expect(warehouses(data.extensions)).toEqual([{ id: 'wh-1', name: 'Main' }])
+    expect(calls.some((call) => call.operation.includes('/search/warehouse'))).toBe(true)
+  })
+
+  test('contextReady logs how many warehouses were loaded', async () => {
+    const sink = createCollectingLogSink()
+    const ctx = createTestPluginContext({
+      sink,
+      shopData: { extensions: { [WAREHOUSES_KEY]: [{ id: 'wh-1' }] } },
+    })
+
+    await runPluginHookOnce(plugin, 'contextReady', ctx)
+
+    expect(sink.entries.some((entry) => entry.message.includes('1 warehouses'))).toBe(true)
+  })
+})

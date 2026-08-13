@@ -1,6 +1,10 @@
 [install]
 linker = "hoisted"
 
+[loader]
+".eta" = "text"
+".md" = "text"
+
 [test]
 root = "."
 coverageSkipTestFiles = true
