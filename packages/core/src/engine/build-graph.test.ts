@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { type ShopContext, ShopContextError, shop } from '../contract/shop-context'
 import { createRegistry, define, deterministicId, drain, ref, runWithRegistry } from '../define'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import { buildWritePlan, type WritePlan } from './build-graph'
 import { GraphError } from './errors'
 

@@ -1,26 +1,8 @@
 import { createJiti } from 'jiti'
-import * as authoring from '../authoring'
-import * as shopLookups from '../contract/shop-context'
-import * as define from '../define'
-import { definePlugin } from '../plugin'
+import * as core from '../index'
 import * as shopware from '../shopware'
 
 export class LoadModuleError extends Error {}
-
-const { media, MEDIA_UPLOAD_KEY, ShopContextError, ShopwareApiError, ShopwareConnectionError } =
-  shopware
-
-const core = {
-  ...define,
-  ...shopLookups,
-  ...authoring,
-  definePlugin,
-  media,
-  MEDIA_UPLOAD_KEY,
-  ShopContextError,
-  ShopwareApiError,
-  ShopwareConnectionError,
-}
 
 export interface ModuleLoader {
   import<T = unknown>(absPath: string): Promise<T>

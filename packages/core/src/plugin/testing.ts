@@ -1,6 +1,6 @@
 import type { FakewareConfig } from '../config'
 import type { ShopContext, ShopContextData, ShopwareConnection } from '../shopware'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import type {
   ApplyContext,
   ConfigContext,

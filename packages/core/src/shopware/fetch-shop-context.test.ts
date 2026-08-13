@@ -100,7 +100,7 @@ mock.module('./client', () => ({
 }))
 
 const { fetchShopContext } = await import('./fetch-shop-context')
-const { fakeShopContext } = await import('./shop-context.fixture')
+const { fakeShopContext } = await import('../testing/fake-shop-context')
 
 afterEach(() => {
   respondTo = defaultRespondTo

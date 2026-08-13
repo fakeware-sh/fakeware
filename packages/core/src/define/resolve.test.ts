@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { shop } from '../contract/shop-context'
 import { pickToken, refIndexToken, refsToken, refToken } from '../contract/tokens'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import type { Ctx } from './ctx'
 import { define } from './define'
 import { RefError } from './errors'

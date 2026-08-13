@@ -1,6 +1,6 @@
 import { MEDIA_UPLOAD_KEY } from '../contract/media'
+import type { ShopwareSink, SinkRecord } from '../domain/sink'
 import { apiError, type ShopwareApiError } from '../shopware/errors'
-import type { ShopwareSink, SinkRecord } from './sink'
 
 export type SinkCall =
   | { op: 'write'; entity: string; ids: string[] }

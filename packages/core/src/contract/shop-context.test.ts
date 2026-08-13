@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import { type ShopContext, ShopContextError, shop, withActiveShopContext } from './shop-context'
 
 const ctx = fakeShopContext({

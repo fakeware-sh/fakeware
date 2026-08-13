@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { ShopContextError, withActiveShopContext } from '../contract/shop-context'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import { assocIds } from './local-ids'
 import { builders } from './order'
 

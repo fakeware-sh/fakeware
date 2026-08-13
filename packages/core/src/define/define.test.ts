@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { deterministicId } from '../contract/ids'
 import { shop } from '../contract/shop-context'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
 import type { Ctx } from './ctx'
 import { define, keyed, many, ref } from './define'
 import { RefError } from './errors'

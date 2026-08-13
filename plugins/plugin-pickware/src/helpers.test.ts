@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { ShopContext, ShopContextData, ShopToken } from '@fakeware/core'
-import { shop } from '@fakeware/core'
+import { isShopToken, type ShopContext, type ShopContextData, shop } from '@fakeware/core'
 import { LIVE_VERSION_ID, toShopContext } from '@fakeware/core/shopware'
 import { binLocation, productSupplierConfig, returnOrder, supplier } from './helpers'
 
@@ -35,12 +34,8 @@ function context(overrides: Partial<ShopContextData>): ShopContext {
   return toShopContext({ ...BASE, ...overrides })
 }
 
-function isToken(value: unknown): value is ShopToken {
-  return typeof value === 'object' && value !== null && 'resolve' in value
-}
-
 function id(value: unknown, ctx: ShopContext): unknown {
-  return isToken(value) ? value.resolve(ctx) : value
+  return isShopToken(value) ? value.resolve(ctx) : value
 }
 
 describe('supplier()', () => {

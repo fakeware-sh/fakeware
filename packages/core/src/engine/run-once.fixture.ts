@@ -1,5 +1,5 @@
-import { createInMemorySink } from '../domain'
-import { fakeShopContext } from '../shopware/shop-context.fixture'
+import { fakeShopContext } from '../testing/fake-shop-context'
+import { createInMemorySink } from '../testing/in-memory-sink'
 import { runUp } from './run-up'
 
 const projectRoot = process.argv[2]

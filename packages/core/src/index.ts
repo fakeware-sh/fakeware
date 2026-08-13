@@ -20,21 +20,24 @@ export type {
   EntityName,
   EntityRegistry,
   KeyMap,
-  PickToken,
   RecordExtensions,
   RecordFor,
   RefBuilder,
-  ReferenceToken,
-  RefIndexToken,
-  RefPath,
-  RefsToken,
-  RefToken,
   RegistryEntityName,
   ShopToken,
   ShopValueToken,
 } from './define'
-export { define, deterministicId, keyed, many, RefError, ref, shopToken } from './define'
-export type { MediaUploadRecord, ShopwareSink, SinkRecord } from './domain'
+export {
+  define,
+  deterministicId,
+  isShopToken,
+  isShopValueToken,
+  keyed,
+  many,
+  RefError,
+  ref,
+  shopToken,
+} from './define'
 export type {
   ApplyFailure,
   DownResult,
@@ -65,6 +68,11 @@ export type {
 export { consoleLogSink, definePlugin, PluginError, silentLogSink } from './plugin'
 export { LoadModuleError } from './runtime'
 export type {
+  CalculatedPrice,
+  CalculatedPriceOptions,
+  CartPrice,
+  GrossPrice,
+  GrossPriceOptions,
   MediaFileSource,
   MediaInput,
   MediaRecord,
@@ -78,6 +86,7 @@ export type {
   ShopContextCurrency,
   ShopContextData,
   ShopContextExtensions,
+  ShopContextFetcher,
   ShopContextLanguage,
   ShopContextMediaFolder,
   ShopContextPaymentMethod,
@@ -90,8 +99,8 @@ export type {
 export {
   MEDIA_UPLOAD_KEY,
   media,
+  price,
   ShopContextError,
   ShopwareApiError,
   ShopwareConnectionError,
 } from './shopware'
-export type { ShopContextFetcher } from './shopware/built-in-fetchers'
