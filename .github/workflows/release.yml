@@ -11,26 +11,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  select:
+  select-mode:
     runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
     permissions:
       contents: read
-    outputs:
-      mode: ${{ steps.select.outputs.mode }}
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      - id: select
+      - id: select-mode
         uses: changesets/action/select-mode@v2
 
   version:
-    needs: select
-    if: needs.select.outputs.mode == 'version'
+    if: needs.select-mode.outputs.mode == 'version'
+    needs: select-mode
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
@@ -47,9 +48,30 @@ jobs:
         with:
           script: bun run ci:version
 
+  pack:
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - id: pack
+        uses: changesets/action/pack@v2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
   publish:
-    needs: select
-    if: needs.select.outputs.mode == 'publish'
+    needs: pack
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -57,25 +79,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
       - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: npm install -g npm@latest
-      - run: bun run scripts/publish.ts
-      - name: Tag releases
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          bunx changeset git-tag
-          git push origin --tags
-      - name: Create GitHub releases
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bun run scripts/github-releases.ts
+      - uses: changesets/action/publish@v2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
