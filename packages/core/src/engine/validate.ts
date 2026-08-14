@@ -1,13 +1,22 @@
-import type { LoadedConfig } from '../config'
+import { DEFAULT_MODE, type LoadedConfig } from '../config'
 import type { ShopContext, ShopContextIndex } from '../contract'
 import { createRegistry, RefError } from '../define'
+import {
+  type CheckReport,
+  countShopChecks,
+  createPluginLogger,
+  offlineClient,
+  runPluginChecks,
+  silentLogSink,
+} from '../plugin'
 import { createModuleLoader, LoadModuleError } from '../runtime'
+import { createShopwareClient, isConnectionConfigured, type ShopwareClient } from '../shopware'
 import { buildWritePlan } from './build-graph'
 import { discoverDataFiles } from './discover'
 import { GraphError } from './errors'
 import { evaluateDataFiles } from './evaluate'
 
-export type ValidateCheck = 'dataFiles' | 'definitions' | 'references' | 'graph'
+export type ValidateCheck = 'plugins' | 'dataFiles' | 'definitions' | 'references' | 'graph'
 
 export interface ValidateIssue {
   check: ValidateCheck
@@ -21,6 +30,16 @@ export interface ValidateResult {
   records: number
   issues: ValidateIssue[]
   shopDependent: string | null
+  checks: CheckReport[]
+  checksSkipped: number
+  skipReason: SkipReason
+}
+
+export type SkipReason = 'offline' | 'noConnection' | null
+
+export interface ValidateOptions {
+  offline?: boolean
+  client?: ShopwareClient
 }
 
 const PLACEHOLDER = '00000000000000000000000000000000'
@@ -65,18 +84,60 @@ function issueFrom(error: unknown, fallback: ValidateCheck): ValidateIssue {
   return { check: classify(error) ?? fallback, message: messageOf(error) }
 }
 
-export async function validateProject(loaded: LoadedConfig): Promise<ValidateResult> {
+function checkIssues(reports: CheckReport[]): ValidateIssue[] {
+  return reports
+    .filter((report) => report.level === 'error')
+    .map((report) => ({
+      check: 'plugins' as const,
+      message: `${report.plugin}: ${report.message}${report.hint ? ` ${report.hint}` : ''}`,
+    }))
+}
+
+export async function validateProject(
+  loaded: LoadedConfig,
+  options: ValidateOptions = {},
+): Promise<ValidateResult> {
+  const connected = isConnectionConfigured(loaded.connection)
+  const shop = options.offline !== true && connected
+  const skipReason: SkipReason =
+    options.offline === true ? 'offline' : connected ? null : 'noConnection'
+  const client =
+    shop && countShopChecks(loaded.plugins) > 0
+      ? (options.client ?? createShopwareClient(loaded.connection))
+      : offlineClient()
+  const checks = await runPluginChecks(
+    loaded.plugins,
+    (plugin) => ({
+      config: loaded.config,
+      connection: loaded.connection,
+      projectRoot: loaded.projectRoot,
+      mode: DEFAULT_MODE,
+      logger: createPluginLogger(plugin.name, silentLogSink),
+      client,
+    }),
+    { shop },
+  )
+  const pluginIssues = checkIssues(checks)
+  const checksSkipped = shop ? 0 : countShopChecks(loaded.plugins)
+  const tail = { checks, checksSkipped, skipReason: checksSkipped > 0 ? skipReason : null }
+
   const empty = { entities: [] as string[], records: 0, shopDependent: null }
   const dataFiles = await discoverDataFiles(loaded.projectRoot)
   if (dataFiles.length === 0) {
-    return { ok: true, dataFiles, ...empty, issues: [] }
+    return { ok: pluginIssues.length === 0, dataFiles, ...empty, issues: pluginIssues, ...tail }
   }
 
   let drained: Awaited<ReturnType<typeof evaluateDataFiles>>
   try {
     drained = await evaluateDataFiles(dataFiles, createRegistry(), createModuleLoader())
   } catch (error) {
-    return { ok: false, dataFiles, ...empty, issues: [issueFrom(error, 'dataFiles')] }
+    return {
+      ok: false,
+      dataFiles,
+      ...empty,
+      issues: [...pluginIssues, issueFrom(error, 'dataFiles')],
+      ...tail,
+    }
   }
 
   const entities = drained.map((d) => d.entity)
@@ -88,15 +149,28 @@ export async function validateProject(loaded: LoadedConfig): Promise<ValidateRes
   } catch (error) {
     const check = classify(error)
     if (check === null) {
-      return { ok: true, ...base, issues: [], shopDependent: messageOf(error) }
+      return {
+        ok: pluginIssues.length === 0,
+        ...base,
+        issues: pluginIssues,
+        shopDependent: messageOf(error),
+        ...tail,
+      }
     }
     return {
       ok: false,
       ...base,
-      issues: [{ check, message: messageOf(error) }],
+      issues: [...pluginIssues, { check, message: messageOf(error) }],
       shopDependent: null,
+      ...tail,
     }
   }
 
-  return { ok: true, ...base, issues: [], shopDependent: null }
+  return {
+    ok: pluginIssues.length === 0,
+    ...base,
+    issues: pluginIssues,
+    shopDependent: null,
+    ...tail,
+  }
 }

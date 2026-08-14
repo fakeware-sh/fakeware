@@ -1,4 +1,10 @@
-import { collectFetchers, dispatchOnError, PluginError, runPluginHook } from '../plugin'
+import {
+  collectFetchers,
+  dispatchOnError,
+  PluginCheckError,
+  PluginError,
+  runPluginHook,
+} from '../plugin'
 import { apiError, fetchShopContext, ShopwareApiError } from '../shopware'
 import {
   buildManifest,
@@ -8,7 +14,7 @@ import {
   removeManifest,
   writeManifest,
 } from './manifest'
-import { configContextFor, pluginContextFor } from './plugin-dispatch'
+import { configContextFor, gateOnChecks, pluginContextFor } from './plugin-dispatch'
 import type { ApplyFailure, DownResult, ReportStep, RunOptions } from './types'
 
 export async function runDown(opts: RunOptions): Promise<DownResult> {
@@ -28,9 +34,10 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
       (plugin) =>
         plugin.hooks?.contextReady || plugin.hooks?.beforeRevert || plugin.hooks?.afterRevert,
     )
+    const client = opts.shopContext ? opts.client : await gateOnChecks(opts)
     const shopContext = needsContext
       ? (opts.shopContext ??
-        (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client)))
+        (await fetchShopContext(loaded.connection, collectFetchers(plugins), client)))
       : opts.shopContext
 
     if (shopContext) {
@@ -57,7 +64,7 @@ export async function runDown(opts: RunOptions): Promise<DownResult> {
 
     return result
   } catch (error) {
-    if (!(error instanceof PluginError)) {
+    if (!(error instanceof PluginError) && !(error instanceof PluginCheckError)) {
       await dispatchOnError(plugins, 'revert', error, (plugin) => configContextFor(opts, plugin))
     }
     throw error

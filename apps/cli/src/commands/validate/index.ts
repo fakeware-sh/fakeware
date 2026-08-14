@@ -5,23 +5,28 @@ import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
 import { reportError } from '../../prompts'
-import { renderChecklist, renderIssues } from './render'
+import { renderChecklist, renderCheckWarnings, renderIssues } from './render'
 
 interface ValidateFlags {
   config?: string
+  shopChecks?: boolean
 }
 
 export function validateCommand(): Command {
   return new Command('validate')
-    .description('Check your config and data files for errors, without contacting the shop')
+    .description('Check your config and data files for errors')
     .option('--config <path>', 'Path to fakeware.config.ts')
+    .option('--no-shop-checks', 'Skip the plugin checks that contact the shop')
     .action(async (opts: ValidateFlags) => {
       p.intro(pc.bgCyan(pc.black(' fakeware validate ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })
-        const result = await validateProject(loaded)
+        const result = await validateProject(loaded, { offline: opts.shopChecks === false })
 
         p.log.message(renderChecklist(result))
+
+        const warnings = renderCheckWarnings(result)
+        if (warnings !== '') p.log.warn(warnings)
 
         if (!result.ok) {
           p.log.message(renderIssues(result))
@@ -43,8 +48,12 @@ export function validateCommand(): Command {
           )
         }
 
+        const next =
+          result.skipReason === 'noConnection'
+            ? `Configure your shop credentials to also check plugin requirements.`
+            : `Shop values are checked on ${pc.cyan('fakeware up')}.`
         p.outro(
-          `Looks good: ${pc.green(String(result.records))} records across ${pc.green(String(result.entities.length))} entities. Shop values are checked on ${pc.cyan('fakeware up')}.`,
+          `Looks good: ${pc.green(String(result.records))} records across ${pc.green(String(result.entities.length))} entities. ${next}`,
         )
       } catch (error) {
         reportError(error)

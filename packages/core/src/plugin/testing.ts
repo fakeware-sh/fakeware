@@ -1,6 +1,7 @@
 import type { FakewareConfig } from '../config'
-import type { ShopContext, ShopContextData, ShopwareConnection } from '../shopware'
+import type { ShopContext, ShopContextData, ShopwareClient, ShopwareConnection } from '../shopware'
 import { fakeShopContext } from '../testing/fake-shop-context'
+import { type CheckContext, type CheckResult, offlineClient } from './check'
 import type {
   ApplyContext,
   ConfigContext,
@@ -54,6 +55,32 @@ export function createTestPluginContext(opts: TestContextOptions = {}): PluginCo
     logger: createPluginLogger(opts.name ?? 'test-plugin', sink),
     shopContext: opts.shopContext ?? fakeShopContext(opts.shopData),
   }
+}
+
+export interface TestCheckContextOptions extends TestContextOptions {
+  client?: ShopwareClient
+}
+
+export function createTestCheckContext(opts: TestCheckContextOptions = {}): CheckContext {
+  const sink = opts.sink ?? createCollectingLogSink()
+  return {
+    config: opts.config ?? DEFAULT_CONFIG,
+    connection: opts.connection ?? DEFAULT_CONNECTION,
+    projectRoot: opts.projectRoot ?? '/tmp/fakeware-test',
+    mode: opts.mode ?? 'test',
+    logger: createPluginLogger(opts.name ?? 'test-plugin', sink),
+    client: opts.client ?? offlineClient(),
+  }
+}
+
+export async function runPluginCheckOnce(
+  plugin: FakewarePlugin,
+  check: string,
+  ctx: CheckContext,
+): Promise<Awaited<CheckResult>> {
+  const found = plugin.checks?.find((candidate) => candidate.name === check)
+  if (!found) return
+  return await found.run(ctx)
 }
 
 type HookArgs = {

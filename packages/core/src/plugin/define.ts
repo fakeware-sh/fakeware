@@ -1,12 +1,14 @@
 import type { FakewareConfig } from '../config'
 import type { DownResult, UpResult } from '../engine'
 import type { ShopContext, ShopContextFetcher, ShopwareConnection } from '../shopware'
+import type { PluginCheck } from './check'
 import type { PluginLogger } from './logger'
 
 export type MaybePromise<T> = T | Promise<T>
 
 export type PluginPhase =
   | 'configResolved'
+  | 'checks'
   | 'contextReady'
   | 'beforeApply'
   | 'apply'
@@ -54,6 +56,7 @@ export interface PluginHooks {
 export interface FakewarePlugin {
   name: string
   fetchers?: ShopContextFetcher[]
+  checks?: PluginCheck[]
   hooks?: PluginHooks
 }
 

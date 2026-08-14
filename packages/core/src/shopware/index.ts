@@ -35,6 +35,11 @@ export {
   ShopwareApiError,
   ShopwareConnectionError,
 } from './errors'
+export {
+  fetchInstalledExtension,
+  type InstalledExtension,
+  satisfiesMinVersion,
+} from './extensions'
 export { fetchShopContext } from './fetch-shop-context'
 export { toApiError, toConnectionError, validateConnection } from './operations'
 export {
@@ -55,4 +60,4 @@ export {
   unwrapTotal,
 } from './search'
 export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
-export { LIVE_VERSION_ID, type ShopwareConnection } from './types'
+export { isConnectionConfigured, LIVE_VERSION_ID, type ShopwareConnection } from './types'

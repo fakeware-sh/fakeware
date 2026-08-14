@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { ValidateResult } from '@fakeware/core'
-import { renderChecklist, renderIssues } from './render'
+import { renderChecklist, renderCheckWarnings, renderIssues } from './render'
 
 function result(overrides: Partial<ValidateResult> = {}): ValidateResult {
   return {
@@ -10,6 +10,9 @@ function result(overrides: Partial<ValidateResult> = {}): ValidateResult {
     records: 4,
     issues: [],
     shopDependent: null,
+    checks: [],
+    checksSkipped: 0,
+    skipReason: null,
     ...overrides,
   }
 }
@@ -73,6 +76,80 @@ describe('renderChecklist', () => {
     expect(checklist).toContain('1 record')
     expect(checklist).not.toContain('1 files')
     expect(checklist).not.toContain('1 records')
+  })
+
+  test('omits the plugin row when no plugin declares a check', () => {
+    expect(renderChecklist(result())).not.toContain('Plugin checks')
+  })
+
+  test('shows passing plugin checks above the core rows', () => {
+    const lines = renderChecklist(
+      result({
+        checks: [{ plugin: 'pickware', check: 'erp installed', level: 'ok', message: 'passed' }],
+      }),
+    ).split('\n')
+
+    expect(lines).toHaveLength(5)
+    expect(lines[0]).toContain('Plugin checks')
+    expect(lines[0]).toContain('1 check passed')
+  })
+
+  test('names the missing connection when checks were skipped for it', () => {
+    const checklist = renderChecklist(result({ checksSkipped: 2, skipReason: 'noConnection' }))
+    expect(checklist.split('\n')[0]).toContain('no shop configured')
+    expect(checklist).not.toContain('✖')
+  })
+
+  test('names the flag when checks were skipped by request', () => {
+    const checklist = renderChecklist(result({ checksSkipped: 2, skipReason: 'offline' }))
+    expect(checklist.split('\n')[0]).toContain('skipped with --no-shop-checks')
+  })
+
+  test('marks the plugin row as failed without blocking the core checks', () => {
+    const lines = renderChecklist(
+      result({
+        ok: false,
+        issues: [{ check: 'plugins', message: 'pickware: not installed' }],
+        checks: [
+          { plugin: 'pickware', check: 'erp installed', level: 'error', message: 'not installed' },
+        ],
+      }),
+    ).split('\n')
+
+    expect(lines[0]).toContain('✖')
+    expect(lines[0]).toContain('Plugin checks')
+    expect(lines[1]).toContain('✔')
+  })
+})
+
+describe('renderCheckWarnings', () => {
+  test('shows the plugin, the message and the hint', () => {
+    const rendered = renderCheckWarnings(
+      result({
+        checks: [
+          {
+            plugin: 'pickware',
+            check: 'erp installed',
+            level: 'warn',
+            message: 'Pickware ERP 2.4.0 is older than the supported 3.0.0.',
+            hint: 'Update Pickware ERP.',
+          },
+        ],
+      }),
+    )
+    expect(rendered).toContain('pickware')
+    expect(rendered).toContain('older than the supported 3.0.0')
+    expect(rendered).toContain('Update Pickware ERP.')
+  })
+
+  test('returns nothing when no check warned', () => {
+    expect(
+      renderCheckWarnings(
+        result({
+          checks: [{ plugin: 'pickware', check: 'erp installed', level: 'ok', message: 'passed' }],
+        }),
+      ),
+    ).toBe('')
   })
 })
 

@@ -1,6 +1,12 @@
 import { createRegistry } from '../define'
 import type { SinkRecord } from '../domain'
-import { collectFetchers, dispatchOnError, PluginError, runPluginHook } from '../plugin'
+import {
+  collectFetchers,
+  dispatchOnError,
+  PluginCheckError,
+  PluginError,
+  runPluginHook,
+} from '../plugin'
 import { createModuleLoader } from '../runtime'
 import { fetchShopContext, type ShopContext, ShopwareApiError, toApiError } from '../shopware'
 import { buildWritePlan, type PlanRecord } from './build-graph'
@@ -15,7 +21,7 @@ import {
   readManifest,
   writeManifest,
 } from './manifest'
-import { configContextFor, pluginContextFor } from './plugin-dispatch'
+import { configContextFor, gateOnChecks, pluginContextFor } from './plugin-dispatch'
 import type { EntityWrite, RunOptions, UpResult } from './types'
 
 function priorHashes(manifest: Manifest | null): Map<string, Map<string, string>> {
@@ -62,9 +68,11 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
   )
 
   try {
-    const shopContext =
-      opts.shopContext ??
-      (await fetchShopContext(loaded.connection, collectFetchers(plugins), opts.client))
+    let shopContext = opts.shopContext
+    if (!shopContext) {
+      const client = await gateOnChecks(opts)
+      shopContext = await fetchShopContext(loaded.connection, collectFetchers(plugins), client)
+    }
 
     await runPluginHook(plugins, 'contextReady', 'contextReady', (plugin) =>
       pluginContextFor(opts, plugin, shopContext),
@@ -86,7 +94,11 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
 
     return result
   } catch (error) {
-    if (!(error instanceof PluginError) && !(error instanceof ApplyStopped)) {
+    if (
+      !(error instanceof PluginError) &&
+      !(error instanceof ApplyStopped) &&
+      !(error instanceof PluginCheckError)
+    ) {
       await dispatchOnError(plugins, 'apply', error, (plugin) => configContextFor(opts, plugin))
     }
     throw error

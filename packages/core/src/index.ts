@@ -47,9 +47,11 @@ export type {
   Reporter,
   ReportStep,
   RunOptions,
+  SkipReason,
   UpResult,
   ValidateCheck,
   ValidateIssue,
+  ValidateOptions,
   ValidateResult,
 } from './engine'
 export {
@@ -62,6 +64,11 @@ export {
 } from './engine'
 export type {
   ApplyContext,
+  CheckContext,
+  CheckLevel,
+  CheckOutcome,
+  CheckReport,
+  CheckResult,
   ConfigContext,
   ErrorContext,
   FakewarePlugin,
@@ -69,13 +76,20 @@ export type {
   LogLevel,
   LogSink,
   MaybePromise,
+  PluginCheck,
   PluginContext,
   PluginHooks,
   PluginLogger,
   PluginPhase,
   RevertContext,
 } from './plugin'
-export { consoleLogSink, definePlugin, PluginError, silentLogSink } from './plugin'
+export {
+  consoleLogSink,
+  definePlugin,
+  PluginCheckError,
+  PluginError,
+  silentLogSink,
+} from './plugin'
 export { LoadModuleError } from './runtime'
 export type {
   CalculatedPrice,
@@ -83,6 +97,7 @@ export type {
   CartPrice,
   GrossPrice,
   GrossPriceOptions,
+  InstalledExtension,
   MediaFileSource,
   MediaInput,
   MediaRecord,
@@ -107,10 +122,12 @@ export type {
   ShopContextTax,
 } from './shopware'
 export {
+  fetchInstalledExtension,
   MEDIA_UPLOAD_KEY,
   media,
   price,
   ShopContextError,
   ShopwareApiError,
   ShopwareConnectionError,
+  satisfiesMinVersion,
 } from './shopware'

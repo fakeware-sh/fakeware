@@ -13,6 +13,18 @@ const pluginShapeSchema = z.object({
     .string('is not a valid plugin (missing "name")')
     .min(1, 'is not a valid plugin (missing "name")'),
   fetchers: z.array(z.unknown(), '"fetchers" must be an array').optional(),
+  checks: z
+    .array(
+      z.object({
+        name: z
+          .string('is not a valid check (missing "name")')
+          .min(1, 'is not a valid check (missing "name")'),
+        needsShop: z.boolean('"needsShop" must be a boolean').optional(),
+        run: fnSchema,
+      }),
+      '"checks" must be an array',
+    )
+    .optional(),
   hooks: z
     .object(
       {
@@ -32,6 +44,9 @@ const pluginShapeSchema = z.object({
 function issueMessage(issue: z.core.$ZodIssue): string {
   if (issue.path[0] === 'hooks' && issue.path.length > 1) {
     return `hook "${String(issue.path[1])}" must be a function`
+  }
+  if (issue.path[0] === 'checks' && issue.path[2] === 'run') {
+    return `checks[${String(issue.path[1])}] "run" must be a function`
   }
   return issue.message
 }

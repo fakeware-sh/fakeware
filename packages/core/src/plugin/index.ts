@@ -1,4 +1,13 @@
 export type {
+  CheckContext,
+  CheckLevel,
+  CheckOutcome,
+  CheckReport,
+  CheckResult,
+  PluginCheck,
+} from './check'
+export { offlineClient } from './check'
+export type {
   ApplyContext,
   ConfigContext,
   ErrorContext,
@@ -20,4 +29,10 @@ export {
   type PluginLogger,
   silentLogSink,
 } from './logger'
+export {
+  countShopChecks,
+  PluginCheckError,
+  reportFailures,
+  runPluginChecks,
+} from './run-checks'
 export { dispatchOnError, PluginError, runPluginHook } from './run-hooks'

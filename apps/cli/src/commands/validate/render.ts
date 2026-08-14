@@ -2,6 +2,7 @@ import type { ValidateCheck, ValidateResult } from '@fakeware/core'
 import pc from 'picocolors'
 
 const LABELS: Record<ValidateCheck, string> = {
+  plugins: 'Plugin checks',
   dataFiles: 'Data files',
   definitions: 'Definitions',
   references: 'References',
@@ -22,10 +23,28 @@ function summarise(result: ValidateResult, check: ValidateCheck): string {
   return 'resolved'
 }
 
+function pluginRow(result: ValidateResult): string | null {
+  const label = LABELS.plugins
+  if (result.issues.some((issue) => issue.check === 'plugins')) {
+    return `${pc.red('✖')} ${label}`
+  }
+  if (result.checksSkipped > 0) {
+    const reason =
+      result.skipReason === 'noConnection' ? 'no shop configured' : 'skipped with --no-shop-checks'
+    return `${pc.yellow('~')} ${label} ${pc.dim(reason)}`
+  }
+  const n = result.checks.length
+  if (n === 0) return null
+  return `${pc.green('✔')} ${label} ${pc.dim(`${n} ${n === 1 ? 'check' : 'checks'} passed`)}`
+}
+
 export function renderChecklist(result: ValidateResult): string {
   const failed = new Set(result.issues.map((issue) => issue.check))
   const lines: string[] = []
   let blocked = false
+
+  const plugins = pluginRow(result)
+  if (plugins !== null) lines.push(plugins)
 
   for (const check of ORDER) {
     const label = LABELS[check]
@@ -55,5 +74,15 @@ export function renderChecklist(result: ValidateResult): string {
 export function renderIssues(result: ValidateResult): string {
   return result.issues
     .map((issue) => `${pc.cyan(LABELS[issue.check])}\n${pc.red('-')} ${issue.message.trim()}`)
+    .join('\n\n')
+}
+
+export function renderCheckWarnings(result: ValidateResult): string {
+  return result.checks
+    .filter((report) => report.level === 'warn')
+    .map((report) => {
+      const hint = report.hint ? `\n${pc.dim(report.hint)}` : ''
+      return `${pc.cyan(report.plugin)}\n${pc.yellow('-')} ${report.message.trim()}${hint}`
+    })
     .join('\n\n')
 }

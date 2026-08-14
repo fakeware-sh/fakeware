@@ -1,6 +1,11 @@
 import './entities'
 
 export { LIVE_VERSION_ID } from '@fakeware/core/shopware'
+export {
+  PICKWARE_EXTENSIONS,
+  PICKWARE_MINIMUM_VERSION,
+  pickwareInstalledCheck,
+} from './checks'
 export type {
   Id,
   PickwareBinLocationRecord,

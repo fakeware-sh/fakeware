@@ -1,8 +1,11 @@
 export {
   type CollectingLogSink,
   createCollectingLogSink,
+  createTestCheckContext,
   createTestPluginContext,
+  runPluginCheckOnce,
   runPluginHookOnce,
+  type TestCheckContextOptions,
   type TestContextOptions,
 } from '../plugin/testing'
 export { fakeShopContext } from './fake-shop-context'

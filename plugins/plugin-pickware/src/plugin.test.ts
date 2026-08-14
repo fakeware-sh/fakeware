@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { pickware, pickwareWarehouses, warehouseIdByCode, warehousesFetcher } from './index'
+import {
+  pickware,
+  pickwareInstalledCheck,
+  pickwareWarehouses,
+  warehouseIdByCode,
+  warehousesFetcher,
+} from './index'
 
 describe('pickware()', () => {
   test('returns a valid fakeware plugin with the warehouses fetcher', () => {
@@ -7,6 +13,10 @@ describe('pickware()', () => {
     expect(plugin.name).toBe('pickware')
     expect(plugin.fetchers).toEqual([warehousesFetcher])
     expect(plugin.hooks).toBeUndefined()
+  })
+
+  test('declares the pickware erp compatibility check', () => {
+    expect(pickware().checks).toEqual([pickwareInstalledCheck])
   })
 })
 

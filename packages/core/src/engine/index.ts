@@ -21,5 +21,11 @@ export type {
   RunOptions,
   UpResult,
 } from './types'
-export type { ValidateCheck, ValidateIssue, ValidateResult } from './validate'
+export type {
+  SkipReason,
+  ValidateCheck,
+  ValidateIssue,
+  ValidateOptions,
+  ValidateResult,
+} from './validate'
 export { validateProject } from './validate'

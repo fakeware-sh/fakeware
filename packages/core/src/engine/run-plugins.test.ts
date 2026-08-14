@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { LoadedConfig } from '../config'
-import type { FakewarePlugin, LogEntry } from '../plugin'
-import { PluginError } from '../plugin'
+import type { CheckOutcome, FakewarePlugin, LogEntry } from '../plugin'
+import { PluginCheckError, PluginError } from '../plugin'
 import type { ShopwareClient } from '../shopware'
 import { ShopwareApiError, ShopwareConnectionError } from '../shopware'
 import { createInMemorySink, fakeShopContext } from '../testing'
@@ -285,6 +285,142 @@ describe('runUp with plugins', () => {
     const run = runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
     await expect(run).rejects.toBeInstanceOf(ShopwareConnectionError)
     expect(seenPhase).toBe('apply')
+  })
+})
+
+function checkPlugin(outcome: CheckOutcome | undefined, fetched?: () => void): FakewarePlugin {
+  return {
+    name: 'gated',
+    checks: [{ name: 'compatible', needsShop: true, run: () => outcome }],
+    fetchers: [
+      {
+        entity: 'gated rows',
+        fetch: async () => {
+          fetched?.()
+          return { data: [] }
+        },
+        merge: () => {},
+      },
+    ],
+  }
+}
+
+describe('plugin checks gate the run', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'fakeware-checks-'))
+    await mkdir(join(dir, 'data'), { recursive: true })
+  })
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  test('a failing check aborts up before any fetcher runs', async () => {
+    let fetched = false
+    const plugin = checkPlugin({ level: 'error', message: 'not installed' }, () => {
+      fetched = true
+    })
+    const run = runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
+    await expect(run).rejects.toBeInstanceOf(PluginCheckError)
+    expect(fetched).toBe(false)
+  })
+
+  test('a failing check does not reach onError, since nothing was applied', async () => {
+    let seen: string | null = null
+    const plugin: FakewarePlugin = {
+      ...checkPlugin({ level: 'error', message: 'not installed' }),
+      hooks: {
+        onError: ({ phase }) => {
+          seen = phase
+        },
+      },
+    }
+    const run = runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
+    await expect(run).rejects.toBeInstanceOf(PluginCheckError)
+    expect(seen).toBeNull()
+  })
+
+  test('a warning is logged and the run continues', async () => {
+    const entries: LogEntry[] = []
+    let fetched = false
+    const plugin = checkPlugin({ level: 'warn', message: 'old version', hint: 'update it' }, () => {
+      fetched = true
+    })
+    await runUp({
+      loaded: loadedFor(dir, [plugin]),
+      sink: createInMemorySink(),
+      reporter: { log: (entry) => entries.push(entry) },
+    })
+    expect(fetched).toBe(true)
+    expect(entries).toEqual([{ plugin: 'gated', level: 'warn', message: 'old version update it' }])
+  })
+
+  test('a passing check lets the run proceed', async () => {
+    let fetched = false
+    const plugin = checkPlugin(undefined, () => {
+      fetched = true
+    })
+    await runUp({ loaded: loadedFor(dir, [plugin]), sink: createInMemorySink() })
+    expect(fetched).toBe(true)
+  })
+
+  test('checks are skipped when a shop context is supplied', async () => {
+    let ran = false
+    const plugin: FakewarePlugin = {
+      name: 'gated',
+      checks: [
+        {
+          name: 'compatible',
+          needsShop: true,
+          run: () => {
+            ran = true
+            return { level: 'error' as const, message: 'must not run' }
+          },
+        },
+      ],
+    }
+    await runUp({
+      loaded: loadedFor(dir, [plugin]),
+      sink: createInMemorySink(),
+      shopContext: fakeShopContext(),
+    })
+    expect(ran).toBe(false)
+  })
+
+  test('a failing check aborts down once a manifest exists', async () => {
+    const sink = createInMemorySink()
+    const passing = checkPlugin(undefined)
+    const loaded = loadedFor(dir, [passing])
+    const TAX = `import { define } from '${join(import.meta.dir, '..', 'index.ts')}'\ndefine('tax', [{ $key: 'standard', taxRate: 19 }])\n`
+    await Bun.write(join(dir, 'data', 'tax.ts'), TAX)
+    await runUp({ loaded, sink })
+
+    const failing = checkPlugin({ level: 'error', message: 'not installed' })
+    const run = runDown({ loaded: loadedFor(dir, [failing]), sink })
+    await expect(run).rejects.toBeInstanceOf(PluginCheckError)
+  })
+
+  test('down without a manifest never runs checks', async () => {
+    let ran = false
+    const plugin: FakewarePlugin = {
+      name: 'gated',
+      checks: [
+        {
+          name: 'compatible',
+          needsShop: true,
+          run: () => {
+            ran = true
+          },
+        },
+      ],
+    }
+    const result = await runDown({
+      loaded: loadedFor(dir, [plugin]),
+      sink: createInMemorySink(),
+    })
+    expect(result.reverted).toBe(false)
+    expect(ran).toBe(false)
   })
 })
 

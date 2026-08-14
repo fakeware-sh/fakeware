@@ -1,5 +1,11 @@
 import * as p from '@clack/prompts'
-import { ApplyStopped, GraphError, LoadModuleError, RefError } from '@fakeware/core'
+import {
+  ApplyStopped,
+  GraphError,
+  LoadModuleError,
+  PluginCheckError,
+  RefError,
+} from '@fakeware/core'
 import { ConfigError } from '@fakeware/core/config'
 import {
   ShopContextError,
@@ -13,6 +19,7 @@ const KNOWN_ERRORS = [
   ConfigError,
   GraphError,
   LoadModuleError,
+  PluginCheckError,
   RefError,
   ShopContextError,
   ShopwareConnectionError,

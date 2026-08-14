@@ -55,6 +55,30 @@ describe('loadPlugins', () => {
     ).toThrow(/hook "contextReady" must be a function/)
   })
 
+  test('throws ConfigError when checks is not an array', () => {
+    expect(() => loadPlugins([{ name: 'a', checks: {} } as unknown as FakewarePlugin])).toThrow(
+      /"checks" must be an array/,
+    )
+  })
+
+  test('throws ConfigError when a check has no name', () => {
+    expect(() =>
+      loadPlugins([{ name: 'a', checks: [{ run: () => {} }] } as unknown as FakewarePlugin]),
+    ).toThrow(/missing "name"/)
+  })
+
+  test('throws ConfigError when a check run is not a function', () => {
+    expect(() =>
+      loadPlugins([{ name: 'a', checks: [{ name: 'c', run: 'go' }] } as unknown as FakewarePlugin]),
+    ).toThrow(/checks\[0\] "run" must be a function/)
+  })
+
+  test('keeps check identity through loading', () => {
+    const check = { name: 'c', needsShop: true, run: () => undefined }
+    const [plugin] = loadPlugins([{ name: 'a', checks: [check] }])
+    expect(plugin?.checks?.[0]).toBe(check)
+  })
+
   test('throws ConfigError on a duplicate plugin name', () => {
     expect(() => loadPlugins([{ name: 'a' }, { name: 'a' }])).toThrow(/duplicate plugin name "a"/)
   })

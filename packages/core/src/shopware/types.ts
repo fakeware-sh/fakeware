@@ -5,3 +5,13 @@ export interface ShopwareConnection {
   clientId: string
   clientSecret: string
 }
+
+function usable(value: string | undefined): boolean {
+  const trimmed = value?.trim() ?? ''
+  return trimmed.length > 0 && !trimmed.includes('${')
+}
+
+export function isConnectionConfigured(connection: ShopwareConnection | undefined): boolean {
+  if (!connection) return false
+  return usable(connection.url) && usable(connection.clientId) && usable(connection.clientSecret)
+}
