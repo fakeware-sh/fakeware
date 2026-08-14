@@ -94,6 +94,21 @@ describe('scaffoldProject', () => {
     expect((cfg.shopware as Record<string, unknown>).url).toBe('https://my-shop.test')
   })
 
+  test('inline secrets put the config file in .gitignore', async () => {
+    const dir = tmp()
+    await scaffoldProject({ dir, force: false, values: { ...values, secrets: 'inline' } })
+    const ignored = readFileSync(join(dir, '.gitignore'), 'utf8').split('\n')
+    expect(ignored).toContain('fakeware.config.ts')
+  })
+
+  test('env secrets leave the config file tracked', async () => {
+    const dir = tmp()
+    await scaffoldProject({ dir, force: false, values })
+    const ignored = readFileSync(join(dir, '.gitignore'), 'utf8').split('\n')
+    expect(ignored).toContain('.env')
+    expect(ignored).not.toContain('fakeware.config.ts')
+  })
+
   test('omits the shopware block and .env (but still ignores .fakeware) with no connection', async () => {
     const dir = tmp()
     const created = await scaffoldProject({

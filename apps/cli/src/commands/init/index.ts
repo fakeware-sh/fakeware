@@ -4,10 +4,16 @@ import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
 import { PACKAGE_MANAGERS } from '../../lib/package-manager'
-import { SCAFFOLD_TEMPLATES, ScaffoldError, type SecretsDest } from '../../lib/scaffolding'
+import {
+  DEFAULT_CONFIG_FILENAME,
+  hasInlineSecrets,
+  SCAFFOLD_TEMPLATES,
+  ScaffoldError,
+  type SecretsDest,
+} from '../../lib/scaffolding'
 import { assertOneOf, resolveTargetDir, toValidPackageName } from '../../lib/utils'
 import { promptConfirmSummary, type SummaryRow } from '../../prompts'
-import { cleanupPartial, executeScaffold } from './execute'
+import { cleanupPartial, executeScaffold, scaffoldValuesFor } from './execute'
 import type { InitFlags } from './flags'
 import { abortUnconfirmed, gatherInputs, type InitInputs, isNonInteractive } from './gather'
 import { outroFor } from './outro'
@@ -95,6 +101,12 @@ async function runInit(flags: InitFlags): Promise<void> {
       p.log.info(`Skipped install. Run ${pc.cyan(`${inputs.packageManager} install`)} when ready.`)
     }
     if (installNote) p.log.warn(installNote)
+    if (hasInlineSecrets(scaffoldValuesFor(run))) {
+      p.log.warn(
+        `Your credentials are written directly into ${pc.cyan(DEFAULT_CONFIG_FILENAME)}.\n` +
+          `It is listed in ${pc.cyan('.gitignore')}, so keep it that way, or re-run with ${pc.cyan('--secrets env')} to move them into a ${pc.cyan('.env')} file.`,
+      )
+    }
 
     p.outro(outroFor(flags, dir, created, inputs.exampleData))
   } catch (error) {

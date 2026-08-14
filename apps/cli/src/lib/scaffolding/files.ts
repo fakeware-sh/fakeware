@@ -35,6 +35,9 @@ export interface FileSpec {
 const needsEnv = (values: ScaffoldValues): boolean =>
   values.secrets === 'env' && hasShopConnection(values)
 
+export const hasInlineSecrets = (values: ScaffoldValues): boolean =>
+  values.secrets === 'inline' && isProjectTemplate(values) && hasShopConnection(values)
+
 function packageJsonTemplate(values: ScaffoldValues): string {
   const pkg = {
     name: values.projectName,
@@ -114,6 +117,7 @@ function envTemplate(values: ScaffoldValues): string {
 function mergeGitignore(existing: string | undefined, values: ScaffoldValues): MergeResult | null {
   const wanted = ['node_modules/', '.fakeware/']
   if (needsEnv(values)) wanted.unshift('.env')
+  if (hasInlineSecrets(values)) wanted.unshift(DEFAULT_CONFIG_FILENAME)
 
   if (existing === undefined) {
     return { contents: `${wanted.join('\n')}\n`, note: `created (${wanted.join(', ')} ignored)` }

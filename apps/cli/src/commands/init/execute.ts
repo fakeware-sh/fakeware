@@ -3,7 +3,7 @@ import { basename } from 'node:path'
 import * as p from '@clack/prompts'
 import pc from 'picocolors'
 import { type InstallResult, type PackageManager, runInstall } from '../../lib/package-manager'
-import { scaffoldProject, type WrittenFile } from '../../lib/scaffolding'
+import { type ScaffoldValues, scaffoldProject, type WrittenFile } from '../../lib/scaffolding'
 import { emptyDir } from '../../lib/utils'
 import type { InitFlags } from './flags'
 import type { InitInputs } from './gather'
@@ -15,8 +15,22 @@ export interface ScaffoldRun {
   inputs: InitInputs
 }
 
+export function scaffoldValuesFor(run: ScaffoldRun): ScaffoldValues {
+  const { projectName, flags, inputs } = run
+  return {
+    projectName,
+    url: inputs.url,
+    clientId: inputs.clientId,
+    clientSecret: inputs.clientSecret,
+    secrets: flags.secrets,
+    plugins: inputs.plugins,
+    template: flags.template,
+    exampleData: inputs.exampleData,
+  }
+}
+
 async function writeFiles(run: ScaffoldRun): Promise<WrittenFile[]> {
-  const { dir, projectName, flags, inputs } = run
+  const { dir, flags, inputs } = run
   if (!flags.dryRun) {
     await mkdir(dir, { recursive: true })
     if (inputs.dirStrategy === 'remove') await emptyDir(dir)
@@ -25,16 +39,7 @@ async function writeFiles(run: ScaffoldRun): Promise<WrittenFile[]> {
     dir,
     force: flags.force || inputs.dirStrategy !== 'fresh',
     dryRun: flags.dryRun,
-    values: {
-      projectName,
-      url: inputs.url,
-      clientId: inputs.clientId,
-      clientSecret: inputs.clientSecret,
-      secrets: flags.secrets,
-      plugins: inputs.plugins,
-      template: flags.template,
-      exampleData: inputs.exampleData,
-    },
+    values: scaffoldValuesFor(run),
   })
 }
 
