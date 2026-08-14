@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- [`0cd0657`](https://github.com/fakeware-sh/fakeware/commit/0cd065785c31fdfe15292dc374abfeee4382de1c) Thanks [@aiomayo](https://github.com/aiomayo)! - Require Node.js 22.12 or newer
+  
+  The CLI now depends on Commander 15, which is ESM only and needs Node 22.12. The declared engine range moves from 22.6 to 22.12 across every published package so the requirement is visible at install time instead of surfacing as a runtime failure. Bun users are unaffected.
+
+- [`3c80f29`](https://github.com/fakeware-sh/fakeware/commit/3c80f2935652e8d2ea37d1b715afb60f064a8c54) Thanks [@aiomayo](https://github.com/aiomayo)! - Plugins can declare compatibility checks
+  
+  A plugin can now ship a `checks` array next to its `fetchers`. Each check answers one question about the target shop and returns a `CheckOutcome` with a level of `error` (aborts the run) or `warn` (prints and continues). `up` and `down` run every check before they fetch the shop context, so a shop that is not set up for a plugin fails with that plugin's own message instead of an opaque fetcher error later on.
+  
+  Core ships `fetchInstalledExtension` and `satisfiesMinVersion` so a check can look up an installed Shopware plugin or app by technical name without hand-rolling the search. Checks that read the shop mark themselves with `needsShop`; reading the client without it throws.
+  
+  `fakeware validate` runs plugin checks too and renders them as a `Plugin checks` row. Checks that need the shop run by default, and are skipped either with `--no-shop-checks` or automatically when the config has no usable shop credentials.
+  
+  The pickware plugin uses this to verify Pickware ERP is installed and activated, warning instead of failing when the API credentials lack the `plugin:read` privilege.
+
+### Patch Changes
+
+- Updated dependencies [[`0cd0657`](https://github.com/fakeware-sh/fakeware/commit/0cd065785c31fdfe15292dc374abfeee4382de1c), [`3c80f29`](https://github.com/fakeware-sh/fakeware/commit/3c80f2935652e8d2ea37d1b715afb60f064a8c54)]:
+  - @fakeware/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

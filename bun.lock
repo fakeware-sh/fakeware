@@ -17,7 +17,7 @@
     },
     "apps/cli": {
       "name": "@fakeware/cli",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "fakeware": "./dist/index.mjs",
       },
@@ -39,7 +39,7 @@
     },
     "apps/create-fakeware": {
       "name": "create-fakeware",
-      "version": "1.0.7",
+      "version": "1.1.0",
       "bin": {
         "create-fakeware": "./dist/index.mjs",
       },
@@ -53,7 +53,7 @@
     },
     "packages/core": {
       "name": "@fakeware/core",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@shopware/api-client": "1.5.1",
         "jiti": "2.7.0",
@@ -67,14 +67,14 @@
     },
     "plugins/plugin-pickware": {
       "name": "@fakeware/plugin-pickware",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "devDependencies": {
         "@fakeware/core": "workspace:*",
         "@types/bun": "1.3.14",
         "@types/node": "22.20.1",
       },
       "peerDependencies": {
-        "@fakeware/core": ">=0.1.0",
+        "@fakeware/core": ">=0.2.0",
       },
     },
   },
