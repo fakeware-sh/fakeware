@@ -4,7 +4,7 @@
 
 **A [fakeware](https://fakeware.sh) plugin.**
 
-[Docs](https://fakeware.sh) · [Plugin authoring](https://fakeware.sh/docs/usage/plugins) · [GitHub](https://github.com/fakeware-sh/fakeware)
+[Docs](https://fakeware.sh) · [Plugin authoring](https://fakeware.sh/docs/development/plugins/overview) · [GitHub](https://github.com/fakeware-sh/fakeware)
 
 </div>
 

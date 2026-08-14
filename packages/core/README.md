@@ -43,7 +43,7 @@ define(
 
 | Import                    | Contents                                                            |
 |---------------------------|---------------------------------------------------------------------|
-| `@fakeware/core`          | `define`, `many`, `ref`, `refs`, `shop`, the engine and plugin APIs |
+| `@fakeware/core`          | `define`, `many`, `keyed`, `ref`, `shop`, the engine and plugin APIs |
 | `@fakeware/core/config`   | `defineConfig` for `fakeware.config.ts`                             |
 | `@fakeware/core/shopware` | Admin API client, `ShopwareApiError`, shop context helpers          |
 | `@fakeware/core/testing`  | Test doubles for plugin authors                                     |
