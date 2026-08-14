@@ -76,6 +76,22 @@ describe('loadConfig', () => {
     expect(loaded.connection.clientId).toBe('id')
   })
 
+  test('prefers process.env over .env', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `export default defineConfig({ shopware: { url: '$SHOPWARE_URL', clientId: '$SW_ID', clientSecret: 's' } })\n`,
+      'SHOPWARE_URL=https://dotenv.test\nSW_ID=dotenv-id\n',
+    )
+    process.env.SHOPWARE_URL = 'https://ci.test'
+    try {
+      const loaded = await loadConfig({ cwd: dir })
+      expect(loaded.connection.url).toBe('https://ci.test')
+      expect(loaded.connection.clientId).toBe('dotenv-id')
+    } finally {
+      delete process.env.SHOPWARE_URL
+    }
+  })
+
   test('accepts export-prefixed lines in .env', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +

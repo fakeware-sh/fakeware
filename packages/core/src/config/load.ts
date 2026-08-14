@@ -90,8 +90,8 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
   const projectRoot = dirname(configPath)
 
   const env: Record<string, string | undefined> = {
-    ...process.env,
     ...(await readEnvFile(projectRoot)),
+    ...process.env,
   }
 
   const loader = opts.loader ?? createModuleLoader()
