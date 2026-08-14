@@ -1,7 +1,7 @@
 import { buildConfigFile } from './config-file'
 import { pluginReadme, pluginSource, pluginTest, projectData } from './render'
 import {
-  CONFIG_FILE_NAME,
+  DEFAULT_CONFIG_FILENAME,
   hasShopConnection,
   isPluginTemplate,
   isProjectTemplate,
@@ -158,7 +158,7 @@ export const FILE_SPECS: FileSpec[] = [
     note: () => 'strict type checking with bun types',
   },
   {
-    name: CONFIG_FILE_NAME,
+    name: DEFAULT_CONFIG_FILENAME,
     include: isProjectTemplate,
     strategy: 'fresh',
     build: buildConfigFile,

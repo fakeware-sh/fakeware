@@ -30,7 +30,7 @@ export interface RunOptions {
   sink: ShopwareSink
   client?: ShopwareClient
   dryRun?: boolean
-  debug?: boolean
+  verbose?: boolean
   reporter?: Reporter
   fakewareVersion?: string
   now?: string

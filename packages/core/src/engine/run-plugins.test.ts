@@ -185,7 +185,7 @@ describe('runUp with plugins', () => {
       loaded: loadedFor(dir, [plugin()]),
       sink: createInMemorySink(),
       shopContext: fakeShopContext(),
-      debug: true,
+      verbose: true,
       reporter: { log: (entry) => verbose.push(entry) },
     })
     expect(verbose.map((e) => e.message)).toEqual(['noisy', 'loud'])

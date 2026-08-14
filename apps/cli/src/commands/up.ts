@@ -36,7 +36,7 @@ export function upCommand(): Command {
             client,
             sink: createSyncSink(loaded.connection, { client }),
             dryRun: opts.dryRun,
-            debug: opts.verbose,
+            verbose: opts.verbose,
             fakewareVersion: pkg.version,
             reporter,
           })

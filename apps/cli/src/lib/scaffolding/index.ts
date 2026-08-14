@@ -1,7 +1,7 @@
 export { addToConfigFile } from './config-file'
 export { ScaffoldError, scaffoldProject, type WrittenFile } from './scaffold'
 export {
-  CONFIG_FILE_NAME,
+  DEFAULT_CONFIG_FILENAME,
   SCAFFOLD_TEMPLATES,
   type ScaffoldTemplate,
   type SecretsDest,

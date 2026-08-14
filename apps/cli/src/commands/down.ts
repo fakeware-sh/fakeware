@@ -52,7 +52,7 @@ export function downCommand(): Command {
             client,
             sink: createSyncSink(loaded.connection, { client }),
             dryRun: opts.dryRun,
-            debug: opts.verbose,
+            verbose: opts.verbose,
             reporter,
           })
         } finally {

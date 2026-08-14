@@ -28,7 +28,7 @@ export function configContextFor(opts: RunOptions, plugin: FakewarePlugin): Conf
     connection: opts.loaded.connection,
     projectRoot: opts.loaded.projectRoot,
     mode: opts.mode ?? DEFAULT_MODE,
-    logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter, opts.debug)),
+    logger: createPluginLogger(plugin.name, reporterLogSink(opts.reporter, opts.verbose)),
   }
 }
 
@@ -67,7 +67,7 @@ function warnFrom(opts: RunOptions, reports: CheckReport[]): void {
   for (const report of reports) {
     if (report.level !== 'warn') continue
     const hint = report.hint ? ` ${report.hint}` : ''
-    createPluginLogger(report.plugin, reporterLogSink(opts.reporter, opts.debug)).warn(
+    createPluginLogger(report.plugin, reporterLogSink(opts.reporter, opts.verbose)).warn(
       `${report.message}${hint}`,
     )
   }

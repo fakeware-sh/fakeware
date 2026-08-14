@@ -1,6 +1,7 @@
+import { DEFAULT_CONFIG_FILENAME } from '@fakeware/core/config'
 import type { OfficialPlugin } from '../plugins'
 
-export const CONFIG_FILE_NAME = 'fakeware.config.ts'
+export { DEFAULT_CONFIG_FILENAME }
 
 export type SecretsDest = 'env' | 'inline'
 
