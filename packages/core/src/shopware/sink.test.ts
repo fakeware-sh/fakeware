@@ -171,12 +171,54 @@ describe('createSyncSink', () => {
     expect(attempts).toBe(1)
   })
 
-  test('rejects an entity over the request size limit before sending', async () => {
+  test('splits a payload over the request size limit into ordered batches', async () => {
+    const { client, calls } = recordingClient()
+    const sink = createSyncSink(connection, { client })
+    const blob = 'x'.repeat(ENTITY_REQUEST_BYTE_LIMIT / 4)
+    const records = Array.from({ length: 6 }, (_, i) => ({ id: `p${i}`, blob }))
+
+    await sink.write('product', records)
+
+    expect(calls.length).toBeGreaterThan(1)
+    const sent = calls.flatMap(
+      (call) => argsOf(call as Invocation).body[0]?.payload as Record<string, unknown>[],
+    )
+    expect(sent.map((r) => r.id)).toEqual(['p0', 'p1', 'p2', 'p3', 'p4', 'p5'])
+    for (const call of calls) {
+      const body = argsOf(call as Invocation).body
+      expect(Buffer.byteLength(JSON.stringify(body), 'utf8')).toBeLessThanOrEqual(
+        ENTITY_REQUEST_BYTE_LIMIT,
+      )
+    }
+  })
+
+  test('sends a payload under the limit as a single request', async () => {
+    const { client, calls } = recordingClient()
+    const sink = createSyncSink(connection, { client })
+    await sink.write('product', [{ id: 'a' }, { id: 'b' }])
+    expect(calls).toHaveLength(1)
+  })
+
+  test('rejects a single record that cannot fit in any request', async () => {
     const { client, calls } = recordingClient()
     const sink = createSyncSink(connection, { client })
     const big = [{ id: 'a', blob: 'x'.repeat(ENTITY_REQUEST_BYTE_LIMIT + 1) }]
     await expect(sink.write('product', big)).rejects.toBeInstanceOf(ShopwareApiError)
     expect(calls).toHaveLength(0)
+  })
+
+  test('chunks deletes as well as writes', async () => {
+    const { client, calls } = recordingClient()
+    const sink = createSyncSink(connection, { client })
+    const ids = Array.from({ length: 400_000 }, (_, i) => `id-${i}`)
+    await sink.delete('product', ids)
+    expect(calls.length).toBeGreaterThan(1)
+    const sent = calls.flatMap(
+      (call) => argsOf(call as Invocation).body[0]?.payload as Record<string, unknown>[],
+    )
+    expect(sent).toHaveLength(ids.length)
+    expect(sent[0]?.id).toBe('id-0')
+    expect(sent.at(-1)?.id).toBe('id-399999')
   })
 
   test('strips the media upload key from the sync body', async () => {

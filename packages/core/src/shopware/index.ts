@@ -59,5 +59,5 @@ export {
   unwrapRows,
   unwrapTotal,
 } from './search'
-export { createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
+export { chunkPayload, createSyncSink, ENTITY_REQUEST_BYTE_LIMIT } from './sink'
 export { isConnectionConfigured, LIVE_VERSION_ID, type ShopwareConnection } from './types'

@@ -38,16 +38,45 @@ function uploadSpecOf(record: MediaUploadRecord): MediaUploadSpec | undefined {
   return spec ? (spec as MediaUploadSpec) : undefined
 }
 
-function guardSize(entity: string, payload: Record<string, unknown>[]): void {
-  const bytes = Buffer.byteLength(JSON.stringify(syncBody(entity, 'upsert', payload)), 'utf8')
-  if (bytes > ENTITY_REQUEST_BYTE_LIMIT) {
-    const mb = (bytes / (1024 * 1024)).toFixed(1)
-    const limit = (ENTITY_REQUEST_BYTE_LIMIT / (1024 * 1024)).toFixed(0)
-    throw apiError(
-      `${entity} is ${mb} MB, over the ${limit} MB single-request limit. Reduce the number of ${entity} records.`,
-      { entity },
-    )
+const ENVELOPE_BYTES = 128
+
+function megabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1)
+}
+
+function recordBytes(record: Record<string, unknown>): number {
+  return Buffer.byteLength(JSON.stringify(record), 'utf8') + 1
+}
+
+export function chunkPayload(
+  entity: string,
+  action: 'upsert' | 'delete',
+  payload: Record<string, unknown>[],
+): Record<string, unknown>[][] {
+  const budget = ENTITY_REQUEST_BYTE_LIMIT - ENVELOPE_BYTES - entity.length - action.length
+
+  const batches: Record<string, unknown>[][] = []
+  let batch: Record<string, unknown>[] = []
+  let bytes = 0
+
+  for (const record of payload) {
+    const size = recordBytes(record)
+    if (size > budget) {
+      throw apiError(
+        `A single ${entity} record is ${megabytes(size)} MB, over the ${megabytes(ENTITY_REQUEST_BYTE_LIMIT)} MB request limit. Shrink that record, for example by uploading large content as media instead of inlining it.`,
+        { entity },
+      )
+    }
+    if (batch.length > 0 && bytes + size > budget) {
+      batches.push(batch)
+      batch = []
+      bytes = 0
+    }
+    batch.push(record)
+    bytes += size
   }
+  if (batch.length > 0) batches.push(batch)
+  return batches
 }
 
 export function createSyncSink(
@@ -62,18 +91,20 @@ export function createSyncSink(
     payload: Record<string, unknown>[],
     records: SinkRecord[],
   ): Promise<void> {
-    try {
-      await withRetry(
-        () =>
-          client.invoke('sync post /_action/sync', {
-            headers: { 'indexing-behavior': 'use-queue-indexing' },
-            body: syncBody(entity, action, payload) as never,
-          }),
-        options.retry,
-      )
-    } catch (error) {
-      if (error instanceof ShopwareApiError) throw error
-      throw toApiError(entity, records, error)
+    for (const batch of chunkPayload(entity, action, payload)) {
+      try {
+        await withRetry(
+          () =>
+            client.invoke('sync post /_action/sync', {
+              headers: { 'indexing-behavior': 'use-queue-indexing' },
+              body: syncBody(entity, action, batch) as never,
+            }),
+          options.retry,
+        )
+      } catch (error) {
+        if (error instanceof ShopwareApiError) throw error
+        throw toApiError(entity, records, error)
+      }
     }
   }
 
@@ -144,7 +175,6 @@ export function createSyncSink(
     async write(entity, records): Promise<void> {
       if (records.length === 0) return
       const payload = stripUploadKey(records)
-      guardSize(entity, payload)
       await sync(entity, 'upsert', payload, payload)
     },
     async delete(entity, ids): Promise<void> {
