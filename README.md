@@ -62,7 +62,7 @@ Then follow the [guide](https://fakeware.sh/docs/usage/guide/introduction) to po
 
 Fakeware talks to the **Shopware 6 Admin API** through [`@shopware/api-client`](https://www.npmjs.com/package/@shopware/api-client), using an integration's client ID and secret. It uses standard sync and search endpoints rather than version-specific ones, so it works against current Shopware 6 releases.
 
-Requires **Node.js 22.6 or newer** (or Bun).
+Requires **Node.js 22.12 or newer** (or Bun).
 
 ## Plugins
 
