@@ -1,3 +1,4 @@
+import { DEFAULT_INCLUDE } from '@fakeware/core/config'
 import {
   builders,
   generateCode,
@@ -34,6 +35,7 @@ function applyPlugins(mod: ProxifiedModule, cfg: ConfigObject, values: ScaffoldV
 }
 
 export function applyConfig(mod: ProxifiedModule, cfg: ConfigObject, values: ScaffoldValues): void {
+  cfg.include = [DEFAULT_INCLUDE]
   if (hasShopConnection(values)) {
     const c = credentialValues(values)
     cfg.shopware = { url: c.url, clientId: c.clientId, clientSecret: c.clientSecret }

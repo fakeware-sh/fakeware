@@ -16,6 +16,9 @@ const pluginSchema = z.custom<FakewarePlugin>(
 )
 
 export const fakewareConfigSchema = z.object({
+  include: z
+    .array(z.string().min(1, 'include patterns cannot be empty'))
+    .nonempty('include must list at least one glob, for example ["./data/**/*.ts"]'),
   shopware: shopwareSchema.optional(),
   plugins: z.array(pluginSchema).optional(),
 })

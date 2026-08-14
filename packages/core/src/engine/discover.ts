@@ -1,23 +1,21 @@
-import { readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { relative } from 'node:path'
+import { glob } from 'tinyglobby'
+import type { LoadedConfig } from '../config'
 
-const DATA_DIR = 'data'
+const DEFAULT_IGNORE = ['**/node_modules/**', '**/*.test.ts', '**/*.d.ts']
 
-function isDataFile(name: string): boolean {
-  return name.endsWith('.ts') && !name.endsWith('.test.ts') && !name.endsWith('.d.ts')
+function isInside(root: string, file: string): boolean {
+  const rel = relative(root, file)
+  return rel !== '' && !rel.startsWith('..')
 }
 
-export async function discoverDataFiles(projectRoot: string): Promise<string[]> {
-  const root = join(projectRoot, DATA_DIR)
-  let names: string[]
-  try {
-    names = await readdir(root, { recursive: true })
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
-    throw error
-  }
-  return names
-    .filter(isDataFile)
-    .sort()
-    .map((name) => join(root, name))
+export async function discoverDataFiles(loaded: LoadedConfig): Promise<string[]> {
+  const files = await glob(loaded.config.include, {
+    cwd: loaded.projectRoot,
+    ignore: DEFAULT_IGNORE,
+    absolute: true,
+    onlyFiles: true,
+    dot: false,
+  })
+  return files.filter((file) => isInside(loaded.projectRoot, file)).sort()
 }

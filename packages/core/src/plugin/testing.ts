@@ -1,4 +1,4 @@
-import type { FakewareConfig } from '../config'
+import { DEFAULT_INCLUDE, type FakewareConfig } from '../config'
 import type { ShopContext, ShopContextData, ShopwareClient, ShopwareConnection } from '../shopware'
 import { fakeShopContext } from '../testing/fake-shop-context'
 import { type CheckContext, type CheckResult, offlineClient } from './check'
@@ -26,7 +26,7 @@ export function createCollectingLogSink(debug = false): CollectingLogSink {
   }
 }
 
-const DEFAULT_CONFIG: FakewareConfig = {}
+const DEFAULT_CONFIG: FakewareConfig = { include: [DEFAULT_INCLUDE] }
 
 const DEFAULT_CONNECTION: ShopwareConnection = {
   url: 'https://shop.test',

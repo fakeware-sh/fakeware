@@ -5,6 +5,7 @@ const projectRoot = process.argv[2]
 if (!projectRoot) throw new Error('run-once.fixture: missing projectRoot argv')
 const loaded = {
   config: {
+    include: ['./data/**/*.ts'],
     shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
   },
   connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },

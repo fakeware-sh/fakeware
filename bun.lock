@@ -58,6 +58,7 @@
         "@shopware/api-client": "1.5.1",
         "jiti": "2.7.0",
         "slugify": "^1.6.9",
+        "tinyglobby": "^0.2.17",
         "zod": "4.4.3",
       },
       "devDependencies": {

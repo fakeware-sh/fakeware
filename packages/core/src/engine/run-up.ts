@@ -107,7 +107,7 @@ export async function runUp(opts: RunOptions): Promise<UpResult> {
 
 async function applyPlan(opts: RunOptions, shopContext: ShopContext): Promise<UpResult> {
   const { loaded, sink, dryRun, reporter } = opts
-  const files = await discoverDataFiles(loaded.projectRoot)
+  const files = await discoverDataFiles(loaded)
   const drained = await evaluateDataFiles(files, createRegistry(), createModuleLoader())
   const plan = buildWritePlan(drained, shopContext)
 

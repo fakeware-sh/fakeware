@@ -122,7 +122,7 @@ export async function validateProject(
   const tail = { checks, checksSkipped, skipReason: checksSkipped > 0 ? skipReason : null }
 
   const empty = { entities: [] as string[], records: 0, shopDependent: null }
-  const dataFiles = await discoverDataFiles(loaded.projectRoot)
+  const dataFiles = await discoverDataFiles(loaded)
   if (dataFiles.length === 0) {
     return { ok: pluginIssues.length === 0, dataFiles, ...empty, issues: pluginIssues, ...tail }
   }

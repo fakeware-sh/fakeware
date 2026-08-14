@@ -23,7 +23,7 @@ function up(opts: Omit<RunOptions, 'shopContext'>): ReturnType<typeof runUp> {
 }
 
 async function planFor(dir: string): Promise<WritePlan> {
-  const files = await discoverDataFiles(dir)
+  const files = await discoverDataFiles(loadedFor(dir))
   const drained = await evaluateDataFiles(files, createRegistry(), createModuleLoader())
   return buildWritePlan(drained, shopContext)
 }
@@ -32,7 +32,10 @@ let counter = 0
 
 function loadedFor(dir: string): LoadedConfig {
   return {
-    config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
+    config: {
+      include: ['./data/**/*.ts'],
+      shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
+    },
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     configPath: join(dir, 'fakeware.config.ts'),
     projectRoot: dir,

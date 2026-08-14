@@ -40,7 +40,10 @@ const data: ShopContextData = {
 }
 
 const loaded = {
-  config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
+  config: {
+    include: ['./data/**/*.ts'],
+    shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
+  },
   connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
   configPath: `${projectRoot}/fakeware.config.ts`,
   projectRoot,

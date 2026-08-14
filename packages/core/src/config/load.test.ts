@@ -58,7 +58,7 @@ describe('loadConfig', () => {
   test('loads an object config and resolves the connection', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
     )
     const loaded = await loadConfig({ cwd: dir })
     expect(loaded.connection.url).toBe('https://a.test')
@@ -68,7 +68,7 @@ describe('loadConfig', () => {
   test('interpolates $ENV vars from .env', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: '$SHOPWARE_URL', clientId: '$SW_ID', clientSecret: '$SW_SECRET' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: '$SHOPWARE_URL', clientId: '$SW_ID', clientSecret: '$SW_SECRET' } })\n`,
       'SHOPWARE_URL=https://env.test\nSW_ID=id\nSW_SECRET=secret\n',
     )
     const loaded = await loadConfig({ cwd: dir })
@@ -79,7 +79,7 @@ describe('loadConfig', () => {
   test('prefers process.env over .env', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: '$SHOPWARE_URL', clientId: '$SW_ID', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: '$SHOPWARE_URL', clientId: '$SW_ID', clientSecret: 's' } })\n`,
       'SHOPWARE_URL=https://dotenv.test\nSW_ID=dotenv-id\n',
     )
     process.env.SHOPWARE_URL = 'https://ci.test'
@@ -95,7 +95,7 @@ describe('loadConfig', () => {
   test('accepts export-prefixed lines in .env', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: '$SHOPWARE_URL', clientId: 'i', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: '$SHOPWARE_URL', clientId: 'i', clientSecret: 's' } })\n`,
       'export SHOPWARE_URL=https://exported.test\n',
     )
     const loaded = await loadConfig({ cwd: dir })
@@ -105,7 +105,7 @@ describe('loadConfig', () => {
   test('throws ConfigError with the line number on a malformed .env line', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
       '# comment\nTHIS IS NOT AN ASSIGNMENT\n',
     )
     await expect(loadConfig({ cwd: dir })).rejects.toThrow('Malformed line 2')
@@ -114,7 +114,7 @@ describe('loadConfig', () => {
   test('supports the function form with env + mode', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig(({ env, mode }) => ({ shopware: { url: env.U ?? mode, clientId: 'i', clientSecret: 's' } }))\n`,
+        `export default defineConfig(({ env, mode }) => ({ include: ['./data/**/*.ts'], shopware: { url: env.U ?? mode, clientId: 'i', clientSecret: 's' } }))\n`,
       'U=https://fn.test\n',
     )
     const loaded = await loadConfig({ cwd: dir })
@@ -124,7 +124,7 @@ describe('loadConfig', () => {
   test('throws ConfigError when a referenced env var is missing', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: '$NOPE', clientId: 'i', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: '$NOPE', clientId: 'i', clientSecret: 's' } })\n`,
     )
     await expect(loadConfig({ cwd: dir })).rejects.toBeInstanceOf(ConfigError)
   })
@@ -132,9 +132,20 @@ describe('loadConfig', () => {
   test('throws ConfigError when shopware is absent', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({})\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'] })\n`,
     )
-    await expect(loadConfig({ cwd: dir })).rejects.toBeInstanceOf(ConfigError)
+    await expect(loadConfig({ cwd: dir })).rejects.toThrow(/No `shopware` connection/)
+  })
+
+  test('throws an actionable ConfigError when include is absent', async () => {
+    await writeConfig(
+      `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
+        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+    )
+    const error = await loadConfig({ cwd: dir }).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ConfigError)
+    expect((error as Error).message).toContain('No `include` patterns configured')
+    expect((error as Error).message).toContain("include: ['./data/**/*.ts']")
   })
 
   test('throws ConfigError when no config file is found', async () => {
@@ -149,7 +160,7 @@ describe('loadConfig', () => {
         `  fetchers: [{ entity: 'warehouses', fetch: async () => ({ data: [{ id: 'wh-1' }] }), merge: () => {} }],\n` +
         `  hooks: { contextReady: async () => {} },\n` +
         `}\n` +
-        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' }, plugins: [plugin] })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' }, plugins: [plugin] })\n`,
     )
     const loaded = await loadConfig({ cwd: dir })
     expect(loaded.plugins).toHaveLength(1)
@@ -163,7 +174,7 @@ describe('loadConfig', () => {
   test('defaults plugins to an empty array when none are configured', async () => {
     await writeConfig(
       `import { defineConfig } from '${join(import.meta.dir, 'index.ts')}'\n` +
-        `export default defineConfig({ shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
+        `export default defineConfig({ include: ['./data/**/*.ts'], shopware: { url: 'https://a.test', clientId: 'i', clientSecret: 's' } })\n`,
     )
     const loaded = await loadConfig({ cwd: dir })
     expect(loaded.plugins).toEqual([])

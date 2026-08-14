@@ -55,7 +55,7 @@ export function validateCommand(): Command {
 
         if (result.dataFiles.length === 0) {
           p.outro(
-            `No data files found in ${pc.cyan('./data')}. Add one to describe what to create.`,
+            `No data files matched ${pc.cyan(loaded.config.include.join(', '))}. Add one to describe what to create.`,
           )
           return
         }

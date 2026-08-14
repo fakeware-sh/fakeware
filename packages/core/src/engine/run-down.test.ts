@@ -21,7 +21,10 @@ let counter = 0
 
 function loadedFor(dir: string): LoadedConfig {
   return {
-    config: { shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' } },
+    config: {
+      include: ['./data/**/*.ts'],
+      shopware: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
+    },
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     configPath: join(dir, 'fakeware.config.ts'),
     projectRoot: dir,

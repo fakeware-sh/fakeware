@@ -69,7 +69,7 @@ describe('buildConfigFile', () => {
   test('omits shopware when no connection is provided', () => {
     const cfg = configObject(buildConfigFile({ ...base }))
     expect(cfg.shopware).toBeUndefined()
-    expect(Object.keys(cfg)).toEqual([])
+    expect(Object.keys(cfg)).toEqual(['include'])
   })
 
   test('emits exactly this text (magicast formatting drift guard)', () => {
@@ -87,6 +87,7 @@ describe('buildConfigFile', () => {
 import { pickware } from '@fakeware/plugin-pickware'
 
 export default defineConfig({
+  include: ['./data/**/*.ts'],
   shopware: {
     url: '$SHOPWARE_URL',
     clientId: '$SHOPWARE_CLIENT_ID',
@@ -102,7 +103,7 @@ export default defineConfig({
     const cfg = configObject(
       buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z' }),
     )
-    expect(Object.keys(cfg)).toEqual(['shopware'])
+    expect(Object.keys(cfg)).toEqual(['include', 'shopware'])
   })
 
   test('injects a plugin factory call and named import (no connection)', () => {
@@ -110,7 +111,7 @@ export default defineConfig({
     const mod = parseModule(code)
     expect(mod.imports.pickware?.from).toBe('@fakeware/plugin-pickware')
     const cfg = configObject(code)
-    expect(Object.keys(cfg)).toEqual(['plugins'])
+    expect(Object.keys(cfg)).toEqual(['include', 'plugins'])
     const plugins = cfg.plugins as Array<Record<string, unknown>>
     expect(plugins).toHaveLength(1)
     expect(plugins[0]?.$type).toBe('function-call')
@@ -121,7 +122,7 @@ export default defineConfig({
     const cfg = configObject(
       buildConfigFile({ ...base, url: 'x', clientId: 'y', clientSecret: 'z', plugins: [pickware] }),
     )
-    expect(Object.keys(cfg)).toEqual(['shopware', 'plugins'])
+    expect(Object.keys(cfg)).toEqual(['include', 'shopware', 'plugins'])
   })
 
   test('injects multiple plugins with one import each', () => {

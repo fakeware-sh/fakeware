@@ -5,7 +5,7 @@ import { dispatchOnError, PluginError, runPluginHook } from './run-hooks'
 
 function ctxFor(plugin: FakewarePlugin): ConfigContext {
   return {
-    config: {},
+    config: { include: ['./data/**/*.ts'] },
     connection: { url: 'https://shop.test', clientId: 'i', clientSecret: 's' },
     projectRoot: '/tmp/p',
     mode: 'test',

@@ -10,6 +10,8 @@ import { type FakewareConfig, type FakewareUserConfig, fakewareConfigSchema } fr
 
 export const DEFAULT_CONFIG_FILENAME = 'fakeware.config.ts'
 
+export const DEFAULT_INCLUDE = './data/**/*.ts'
+
 export const DEFAULT_MODE = 'development'
 
 export interface LoadConfigOptions {
@@ -49,6 +51,14 @@ async function findConfig(cwd: string): Promise<string> {
   throw new ConfigError(
     `No ${DEFAULT_CONFIG_FILENAME} found in ${cwd} or any parent directory. Run \`fakeware init\` first.`,
   )
+}
+
+function missingIncludeMessage(configPath: string): string {
+  return `No \`include\` patterns configured in ${configPath}. Tell fakeware which files describe your data:
+
+  export default defineConfig({
+    include: ['${DEFAULT_INCLUDE}'],
+  })`
 }
 
 async function readEnvFile(projectRoot: string): Promise<Record<string, string>> {
@@ -109,6 +119,9 @@ export async function loadConfig(opts: LoadConfigOptions = {}): Promise<LoadedCo
 
   const parsed = fakewareConfigSchema.safeParse(interpolated)
   if (!parsed.success) {
+    if (parsed.error.issues.some((issue) => issue.path[0] === 'include')) {
+      throw new ConfigError(missingIncludeMessage(configPath))
+    }
     throw new ConfigError(`Invalid config in ${configPath}: ${parsed.error.message}`)
   }
 

@@ -3,6 +3,7 @@ import { defineConfig } from './define'
 import { type FakewareUserConfig, fakewareConfigSchema } from './schema'
 
 const validConfig: FakewareUserConfig = {
+  include: ['./data/**/*.ts'],
   shopware: {
     url: 'https://my-shop.test',
     clientId: 'id',
@@ -18,14 +19,27 @@ describe('fakewareConfigSchema', () => {
 
   test('rejects a config missing shopware credentials', () => {
     const result = fakewareConfigSchema.safeParse({
+      include: ['./data/**/*.ts'],
       shopware: { url: '', clientId: '', clientSecret: '' },
     })
     expect(result.success).toBe(false)
   })
 
   test('accepts a config without shopware', () => {
-    const result = fakewareConfigSchema.safeParse({})
+    const result = fakewareConfigSchema.safeParse({ include: ['./data/**/*.ts'] })
     expect(result.success).toBe(true)
+  })
+
+  test('rejects a config without include', () => {
+    const result = fakewareConfigSchema.safeParse({
+      shopware: { url: 'https://my-shop.test', clientId: 'id', clientSecret: 'secret' },
+    })
+    expect(result.success).toBe(false)
+  })
+
+  test('rejects an empty include list', () => {
+    const result = fakewareConfigSchema.safeParse({ include: [] })
+    expect(result.success).toBe(false)
   })
 })
 
@@ -36,6 +50,7 @@ describe('defineConfig', () => {
 
   test('returns a factory config unchanged and the factory is callable', () => {
     const factory = defineConfig(({ env }) => ({
+      include: ['./data/**/*.ts'],
       shopware: {
         url: env.SHOPWARE_URL ?? 'https://fallback.test',
         clientId: 'id',
