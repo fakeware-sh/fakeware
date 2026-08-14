@@ -25,15 +25,11 @@ const KNOWN_ERRORS = [
   ShopwareConnectionError,
 ] as const
 
-function isVerbose(argv: string[] = process.argv): boolean {
-  return argv.includes('--verbose')
-}
-
 function stackOf(error: unknown): string | undefined {
   return error instanceof Error && error.stack ? error.stack : undefined
 }
 
-export function reportError(error: unknown, verbose: boolean = isVerbose()): never {
+export function reportError(error: unknown, verbose = false): never {
   if (error instanceof ApplyStopped) {
     p.cancel('Stopped. The shop rejected a write, so nothing further was applied.')
     exit(EXIT_FAILURE)

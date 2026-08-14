@@ -5,6 +5,7 @@ import { createShopwareClient, createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import pkg from '../../package.json' with { type: 'json' }
+import { isVerbose } from '../lib/verbose'
 import { counts, reportError, spinnerReporter } from '../prompts'
 
 interface UpFlags {
@@ -23,7 +24,7 @@ export function upCommand(): Command {
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--dry-run', 'Show what would change without writing', false)
     .option('--verbose', 'Show debug logs and full stack traces', false)
-    .action(async (opts: UpFlags) => {
+    .action(async (opts: UpFlags, command: Command) => {
       p.intro(pc.bgCyan(pc.black(' fakeware up ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })
@@ -36,7 +37,7 @@ export function upCommand(): Command {
             client,
             sink: createSyncSink(loaded.connection, { client }),
             dryRun: opts.dryRun,
-            verbose: opts.verbose,
+            verbose: isVerbose(command),
             fakewareVersion: pkg.version,
             reporter,
           })
@@ -62,7 +63,7 @@ export function upCommand(): Command {
         const where = pc.cyan(loaded.connection.url)
         p.outro(`Committed ${pc.green(String(result.committed))} ${label} to ${where}`)
       } catch (error) {
-        reportError(error)
+        reportError(error, isVerbose(command))
       }
     })
 }

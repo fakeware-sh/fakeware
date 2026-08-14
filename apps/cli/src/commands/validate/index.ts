@@ -4,6 +4,7 @@ import { loadConfig } from '@fakeware/core/config'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
+import { isVerbose } from '../../lib/verbose'
 import { reportError } from '../../prompts'
 import { renderChecklist, renderCheckWarnings, renderIssues } from './render'
 
@@ -17,7 +18,7 @@ export function validateCommand(): Command {
     .description('Check your config and data files for errors')
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--no-shop-checks', 'Skip the plugin checks that contact the shop')
-    .action(async (opts: ValidateFlags) => {
+    .action(async (opts: ValidateFlags, command: Command) => {
       p.intro(pc.bgCyan(pc.black(' fakeware validate ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })
@@ -56,7 +57,7 @@ export function validateCommand(): Command {
           `Looks good: ${pc.green(String(result.records))} records across ${pc.green(String(result.entities.length))} entities. ${next}`,
         )
       } catch (error) {
-        reportError(error)
+        reportError(error, isVerbose(command))
       }
     })
 }

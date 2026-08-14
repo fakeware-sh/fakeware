@@ -5,6 +5,7 @@ import { createShopwareClient, createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_CANCELLED, EXIT_FAILURE, exit } from '../lib/exit-codes'
+import { isVerbose } from '../lib/verbose'
 import { counts, promptConfirmDestroy, reportError, spinnerReporter } from '../prompts'
 
 interface DownFlags {
@@ -21,7 +22,7 @@ export function downCommand(): Command {
     .option('--yes', 'Skip the confirmation prompt')
     .option('--dry-run', 'Show what would be deleted without deleting', false)
     .option('--verbose', 'Show debug logs and full stack traces', false)
-    .action(async (opts: DownFlags) => {
+    .action(async (opts: DownFlags, command: Command) => {
       p.intro(pc.bgYellow(pc.black(' fakeware down ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })
@@ -52,7 +53,7 @@ export function downCommand(): Command {
             client,
             sink: createSyncSink(loaded.connection, { client }),
             dryRun: opts.dryRun,
-            verbose: opts.verbose,
+            verbose: isVerbose(command),
             reporter,
           })
         } finally {
@@ -78,7 +79,7 @@ export function downCommand(): Command {
         }
         p.outro(`Removed ${pc.green(String(deleted))} ${label} from ${where}`)
       } catch (error) {
-        reportError(error)
+        reportError(error, isVerbose(command))
       }
     })
 }

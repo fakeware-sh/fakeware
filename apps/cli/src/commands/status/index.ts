@@ -3,6 +3,7 @@ import { readManifest } from '@fakeware/core'
 import { loadConfig } from '@fakeware/core/config'
 import { Command } from 'commander'
 import pc from 'picocolors'
+import { isVerbose } from '../../lib/verbose'
 import { reportError } from '../../prompts'
 import { renderEntities, renderSummary } from './render'
 import { buildReport, pendingEntities, type StatusReport } from './report'
@@ -56,12 +57,12 @@ export function statusCommand(): Command {
     .description('Show what fakeware has applied to the shop, from the local manifest')
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--json', 'Print the status as JSON', false)
-    .action(async (opts: StatusFlags) => {
+    .action(async (opts: StatusFlags, command: Command) => {
       if (opts.json) {
         try {
           process.stdout.write(`${JSON.stringify(await collect(opts), null, 2)}\n`)
         } catch (error) {
-          reportError(error)
+          reportError(error, isVerbose(command))
         }
         return
       }
@@ -70,7 +71,7 @@ export function statusCommand(): Command {
       try {
         print(await collect(opts))
       } catch (error) {
-        reportError(error)
+        reportError(error, isVerbose(command))
       }
     })
 }
