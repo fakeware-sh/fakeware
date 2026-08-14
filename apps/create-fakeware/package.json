@@ -1,6 +1,6 @@
 {
   "name": "create-fakeware",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Scaffold a Fakeware project to seed Shopware 6 demo data. Creates a typed config, an .env for your credentials, and connects to your shop.",
   "type": "module",
   "license": "MIT",
@@ -44,7 +44,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@fakeware/cli": "^0.2.0"
+    "@fakeware/cli": "^0.2.1"
   },
   "devDependencies": {
     "@types/bun": "1.3.14",

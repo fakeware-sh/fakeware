@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/plugin-pickware",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Pickware ERP plugin for fakeware. Seed bin locations, suppliers, product-supplier configurations and return orders into a Shopware 6 shop running Pickware",
   "type": "module",
   "license": "MIT",
@@ -50,7 +50,7 @@
     "test": "bun test"
   },
   "peerDependencies": {
-    "@fakeware/core": ">=0.2.0"
+    "@fakeware/core": ">=0.2.1"
   },
   "devDependencies": {
     "@fakeware/core": "workspace:*",

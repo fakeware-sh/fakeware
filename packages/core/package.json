@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Define Shopware 6 demo data in typed TypeScript and sync it idempotently. The engine behind the Fakeware CLI.",
   "type": "module",
   "license": "MIT",

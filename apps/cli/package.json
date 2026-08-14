@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fill your Shopware 6 shop with demo data defined in typed TypeScript. Apply it with fakeware up, remove it with fakeware down.",
   "type": "module",
   "license": "MIT",
@@ -53,7 +53,7 @@
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
-    "@fakeware/core": "^0.2.0",
+    "@fakeware/core": "^0.2.1",
     "commander": "15.0.0",
     "eta": "^4.6.0",
     "magicast": "0.5.4",
