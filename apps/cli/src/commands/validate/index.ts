@@ -4,6 +4,7 @@ import { loadConfig } from '@fakeware/core/config'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
+import { toJsonError, writeJson } from '../../lib/json-output'
 import { isVerbose } from '../../lib/verbose'
 import { reportError } from '../../prompts'
 import { renderChecklist, renderCheckWarnings, renderIssues } from './render'
@@ -11,6 +12,19 @@ import { renderChecklist, renderCheckWarnings, renderIssues } from './render'
 interface ValidateFlags {
   config?: string
   shopChecks?: boolean
+  json?: boolean
+}
+
+async function runJson(opts: ValidateFlags, verbose: boolean): Promise<void> {
+  try {
+    const loaded = await loadConfig({ configFile: opts.config })
+    const result = await validateProject(loaded, { offline: opts.shopChecks === false })
+    writeJson(result)
+    if (!result.ok) exit(EXIT_FAILURE)
+  } catch (error) {
+    writeJson(toJsonError(error, verbose))
+    exit(EXIT_FAILURE)
+  }
 }
 
 export function validateCommand(): Command {
@@ -18,7 +32,10 @@ export function validateCommand(): Command {
     .description('Check your config and data files for errors')
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--no-shop-checks', 'Skip the plugin checks that contact the shop')
+    .option('--json', 'Print the result as JSON', false)
     .action(async (opts: ValidateFlags, command: Command) => {
+      if (opts.json) return runJson(opts, isVerbose(command))
+
       p.intro(pc.bgCyan(pc.black(' fakeware validate ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })

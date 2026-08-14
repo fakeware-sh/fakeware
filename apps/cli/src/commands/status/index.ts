@@ -3,6 +3,8 @@ import { readManifest } from '@fakeware/core'
 import { loadConfig } from '@fakeware/core/config'
 import { Command } from 'commander'
 import pc from 'picocolors'
+import { EXIT_FAILURE, exit } from '../../lib/exit-codes'
+import { toJsonError, writeJson } from '../../lib/json-output'
 import { isVerbose } from '../../lib/verbose'
 import { reportError } from '../../prompts'
 import { renderEntities, renderSummary } from './render'
@@ -60,9 +62,10 @@ export function statusCommand(): Command {
     .action(async (opts: StatusFlags, command: Command) => {
       if (opts.json) {
         try {
-          process.stdout.write(`${JSON.stringify(await collect(opts), null, 2)}\n`)
+          writeJson(await collect(opts))
         } catch (error) {
-          reportError(error, isVerbose(command))
+          writeJson(toJsonError(error, isVerbose(command)))
+          exit(EXIT_FAILURE)
         }
         return
       }

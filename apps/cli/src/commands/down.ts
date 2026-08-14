@@ -1,10 +1,11 @@
 import * as p from '@clack/prompts'
-import { readManifest, runDown } from '@fakeware/core'
-import { loadConfig } from '@fakeware/core/config'
+import { type DownResult, type Reporter, readManifest, runDown } from '@fakeware/core'
+import { type LoadedConfig, loadConfig } from '@fakeware/core/config'
 import { createShopwareClient, createSyncSink } from '@fakeware/core/shopware'
 import { Command } from 'commander'
 import pc from 'picocolors'
 import { EXIT_CANCELLED, EXIT_FAILURE, exit } from '../lib/exit-codes'
+import { jsonUsageError, toJsonError, writeJson } from '../lib/json-output'
 import { isVerbose } from '../lib/verbose'
 import { counts, promptConfirmDestroy, reportError, spinnerReporter } from '../prompts'
 
@@ -12,7 +13,60 @@ interface DownFlags {
   config?: string
   yes?: boolean
   dryRun?: boolean
+  json?: boolean
   verbose?: boolean
+}
+
+async function revert(
+  loaded: LoadedConfig,
+  opts: DownFlags,
+  verbose: boolean,
+  reporter?: Reporter,
+): Promise<DownResult> {
+  const client = createShopwareClient(loaded.connection)
+  return runDown({
+    loaded,
+    client,
+    sink: createSyncSink(loaded.connection, { client }),
+    dryRun: opts.dryRun,
+    verbose,
+    reporter,
+  })
+}
+
+function jsonPayload(result: DownResult): Record<string, unknown> {
+  return {
+    steps: result.steps,
+    reverted: result.reverted,
+    failures: result.failures.map((failure) => ({
+      entity: failure.entity,
+      committed: failure.committed,
+      error: toJsonError(failure.error).error,
+    })),
+  }
+}
+
+async function runJson(opts: DownFlags, verbose: boolean): Promise<void> {
+  if (!opts.yes && !opts.dryRun) {
+    writeJson(
+      jsonUsageError('Refusing to delete without confirmation. Re-run with --yes or --dry-run.'),
+    )
+    return exit(EXIT_FAILURE)
+  }
+  try {
+    const loaded = await loadConfig({ configFile: opts.config })
+    const manifest = await readManifest(loaded.projectRoot, loaded.connection.url)
+    if (!manifest) {
+      writeJson({ steps: [], reverted: false, failures: [] })
+      return
+    }
+    const result = await revert(loaded, opts, verbose)
+    writeJson(jsonPayload(result))
+    if (result.failures.length > 0) exit(EXIT_FAILURE)
+  } catch (error) {
+    writeJson(toJsonError(error, verbose))
+    exit(EXIT_FAILURE)
+  }
 }
 
 export function downCommand(): Command {
@@ -21,8 +75,11 @@ export function downCommand(): Command {
     .option('--config <path>', 'Path to fakeware.config.ts')
     .option('--yes', 'Skip the confirmation prompt')
     .option('--dry-run', 'Show what would be deleted without deleting', false)
+    .option('--json', 'Print the result as JSON', false)
     .option('--verbose', 'Show debug logs and full stack traces', false)
     .action(async (opts: DownFlags, command: Command) => {
+      if (opts.json) return runJson(opts, isVerbose(command))
+
       p.intro(pc.bgYellow(pc.black(' fakeware down ')))
       try {
         const loaded = await loadConfig({ configFile: opts.config })
@@ -42,20 +99,12 @@ export function downCommand(): Command {
           }
         }
 
-        const client = createShopwareClient(loaded.connection)
         const reporter = spinnerReporter({ active: 'Removing', done: 'Removed' }, (step) =>
           counts(['-', step.deleted]),
         )
-        let result: Awaited<ReturnType<typeof runDown>>
+        let result: DownResult
         try {
-          result = await runDown({
-            loaded,
-            client,
-            sink: createSyncSink(loaded.connection, { client }),
-            dryRun: opts.dryRun,
-            verbose: isVerbose(command),
-            reporter,
-          })
+          result = await revert(loaded, opts, isVerbose(command), reporter)
         } finally {
           reporter.finish()
         }
