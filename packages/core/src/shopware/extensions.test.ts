@@ -85,8 +85,10 @@ describe('fetchInstalledExtension', () => {
   test('filters server side on every candidate name', async () => {
     const { client, calls } = createTestClient({ '/search/plugin': { data: [INSTALLED] } })
     await fetchInstalledExtension(client, ['PickwareErpStarter', 'PickwareErp'])
-    expect(calls[0]?.operation).toContain('/search/plugin')
-    expect((calls[0]?.options as { body: unknown }).body).toEqual({
+    const call = calls[0]
+    if (!call) throw new Error('expected a search call')
+    expect(call.operation).toContain('/search/plugin')
+    expect((call.options as { body: unknown }).body).toEqual({
       filter: [
         {
           type: 'equalsAny',
