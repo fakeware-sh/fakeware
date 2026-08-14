@@ -1,6 +1,6 @@
 {
   "name": "@fakeware/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The Fakeware cli",
   "type": "module",
   "license": "MIT",
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
-    "@fakeware/core": "^0.1.0",
+    "@fakeware/core": "^0.2.0",
     "commander": "15.0.0",
     "eta": "^4.6.0",
     "magicast": "0.5.4",
