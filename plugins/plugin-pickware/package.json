@@ -4,18 +4,27 @@
   "description": "Pickware ERP plugin for fakeware. Seed bin locations, suppliers, product-supplier configurations and return orders into a Shopware 6 shop running Pickware",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://fakeware.sh",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fakeware-sh/fakeware.git",
     "directory": "plugins/plugin-pickware"
   },
+  "bugs": {
+    "url": "https://github.com/fakeware-sh/fakeware/issues"
+  },
   "keywords": [
     "fakeware",
     "fakeware-plugin",
     "shopware",
+    "shopware6",
     "pickware",
+    "pickware-erp",
+    "erp",
+    "warehouse",
     "seed",
-    "fixtures"
+    "fixtures",
+    "demo-data"
   ],
   "engines": {
     "node": ">=22.12",

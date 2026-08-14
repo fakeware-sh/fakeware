@@ -1,14 +1,30 @@
 {
   "name": "@fakeware/cli",
   "version": "0.2.0",
-  "description": "The Fakeware cli",
+  "description": "Fill your Shopware 6 shop with demo data defined in typed TypeScript. Apply it with fakeware up, remove it with fakeware down.",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://fakeware.sh",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/fakeware-sh/fakeware.git",
     "directory": "apps/cli"
   },
+  "bugs": {
+    "url": "https://github.com/fakeware-sh/fakeware/issues"
+  },
+  "keywords": [
+    "fakeware",
+    "shopware",
+    "shopware6",
+    "cli",
+    "demo-data",
+    "seed",
+    "seeding",
+    "fixtures",
+    "test-data",
+    "admin-api"
+  ],
   "engines": {
     "node": ">=22.12",
     "bun": ">=1.3.14"
