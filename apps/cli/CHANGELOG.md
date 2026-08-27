@@ -1,5 +1,69 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- [`295eeca`](https://github.com/fakeware-sh/fakeware/commit/295eecaeaad6be2b576cc61f60c1e48b8377ffb2) Thanks [@aiomayo](https://github.com/aiomayo)! - **Breaking:** data files are now declared with a required `include` glob list
+  
+  Fakeware used to walk a hardcoded `data/` directory. The directory name was invisible in your config, could not be renamed, and could not be split. It is now an explicit list of globs:
+  
+  ```ts
+  export default defineConfig({
+    include: ['./data/**/*.ts'],
+    shopware: { /* … */ },
+  })
+  ```
+  
+  **To migrate,** add that one line to your `fakeware.config.ts`. It reproduces the previous behavior exactly. Projects scaffolded by `fakeware init` already include it.
+  
+  `include` is required and must list at least one pattern. Leaving it out fails with a message naming your config file and the snippet to add, rather than silently applying nothing. Patterns resolve relative to the project root, may negate (`'!./data/drafts/**'`), and are confined to the project root. `node_modules`, `*.test.ts` and `*.d.ts` stay ignored, and matched files are deduplicated and sorted so evaluation order is stable.
+  
+  `up` and `validate` now name your own patterns when nothing matches, instead of reporting a `./data` directory you may not have.
+
+- [`c97c0e9`](https://github.com/fakeware-sh/fakeware/commit/c97c0e92c48a320bbdd75e57b90cde3dd74d6067) Thanks [@aiomayo](https://github.com/aiomayo)! - Add `--json` to `up`, `down` and `validate`, with one shared error shape
+  
+  `status` was the only command that could be scripted. Now all four print a single JSON document to stdout under `--json`, with no spinner, colors or prompts. Success payloads are the command result itself, unwrapped, so the existing `status --json` shape is unchanged.
+  
+  Failures now emit the same envelope everywhere, `{ "ok": false, "error": { "kind", "message" } }`, where `kind` is a stable tag such as `config`, `pluginCheck` or `shopwareApi`. Shop API errors also carry `entity`, `status` and per-record `details`, and `--verbose` adds a `stack`. This also fixes `status --json`, which previously printed human-readable prose on error and broke any script parsing its output.
+  
+  Since `down` cannot ask for confirmation in this mode, `--json` requires `--yes` or `--dry-run` and otherwise refuses to delete anything.
+
+### Patch Changes
+
+- [`9bbe10e`](https://github.com/fakeware-sh/fakeware/commit/9bbe10e50858b00dead8a76814867e58d09909a2) Thanks [@aiomayo](https://github.com/aiomayo)! - Honor the root `--verbose` flag in every command
+  
+  `fakeware --verbose up` set the root option, but `up` and `down` read only their own `--verbose`, which defaulted to `false`, so plugin debug logs were silently dropped when the flag came before the subcommand. Error reporting had the opposite problem: it scanned `process.argv` directly instead of reading the parsed value.
+  
+  Both now resolve the flag through Commander, so `--verbose` behaves the same before or after the subcommand, and works on `status` and `validate` too.
+
+- [`d25cd9b`](https://github.com/fakeware-sh/fakeware/commit/d25cd9bb34faa0943abcebac053f3963e47baf97) Thanks [@aiomayo](https://github.com/aiomayo)! - Rename `RunOptions.debug` to `RunOptions.verbose`
+  
+  The option that `runUp` and `runDown` accept is the same concept as the `--verbose` flag, so it now carries the same name. If you call `runUp` or `runDown` programmatically, rename the property:
+  
+  ```diff
+   await runUp({
+     loaded,
+     sink,
+  -  debug: true,
+  +  verbose: true,
+   })
+  ```
+  
+  The CLI is unaffected: `fakeware up --verbose` and `fakeware down --verbose` behave exactly as before. Plugin log levels are unchanged, `PluginLogger.debug()` and `LogSink.debug` still mean "debug level" and keep their names.
+
+- [`2b10592`](https://github.com/fakeware-sh/fakeware/commit/2b10592020b1b08261fda6547600cb45ec872342) Thanks [@aiomayo](https://github.com/aiomayo)! - Improve the npm package pages
+  
+  Every published package now ships a README, so the npm page shows what the package does instead of rendering empty. Each one also declares the fakeware.sh homepage, an issues URL, and keywords, and the thin descriptions on the core, cli and scaffolder packages are replaced with ones that say what they actually do.
+
+- [`e4344f7`](https://github.com/fakeware-sh/fakeware/commit/e4344f71625cd816bcb9a43f8077c44999fd13fa) Thanks [@aiomayo](https://github.com/aiomayo)! - Git-ignore the config file and warn when `init --secrets inline` writes real credentials
+  
+  `--secrets inline` embeds the client id and secret directly in `fakeware.config.ts`, but the `.gitignore` entry was tied to using `.env`, so nothing ignored the config and nothing warned about it. Scaffolding with `--secrets inline` now adds `fakeware.config.ts` to `.gitignore` and prints a warning pointing at `--secrets env`.
+  
+  The default `--secrets env` path is unchanged: `.env` is ignored and `fakeware.config.ts` stays tracked, since it only holds `$NAME` references.
+- Updated dependencies [[`295eeca`](https://github.com/fakeware-sh/fakeware/commit/295eecaeaad6be2b576cc61f60c1e48b8377ffb2), [`2d69f07`](https://github.com/fakeware-sh/fakeware/commit/2d69f0768b17c6e5d4d70bad753e4b647da032e1), [`d25cd9b`](https://github.com/fakeware-sh/fakeware/commit/d25cd9bb34faa0943abcebac053f3963e47baf97), [`2b10592`](https://github.com/fakeware-sh/fakeware/commit/2b10592020b1b08261fda6547600cb45ec872342), [`790a90d`](https://github.com/fakeware-sh/fakeware/commit/790a90dc90bc3e6ae4e063f6fa5484b85222029a)]:
+  - @fakeware/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

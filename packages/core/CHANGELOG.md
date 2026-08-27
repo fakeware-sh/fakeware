@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- [`295eeca`](https://github.com/fakeware-sh/fakeware/commit/295eecaeaad6be2b576cc61f60c1e48b8377ffb2) Thanks [@aiomayo](https://github.com/aiomayo)! - **Breaking:** data files are now declared with a required `include` glob list
+  
+  Fakeware used to walk a hardcoded `data/` directory. The directory name was invisible in your config, could not be renamed, and could not be split. It is now an explicit list of globs:
+  
+  ```ts
+  export default defineConfig({
+    include: ['./data/**/*.ts'],
+    shopware: { /* … */ },
+  })
+  ```
+  
+  **To migrate,** add that one line to your `fakeware.config.ts`. It reproduces the previous behavior exactly. Projects scaffolded by `fakeware init` already include it.
+  
+  `include` is required and must list at least one pattern. Leaving it out fails with a message naming your config file and the snippet to add, rather than silently applying nothing. Patterns resolve relative to the project root, may negate (`'!./data/drafts/**'`), and are confined to the project root. `node_modules`, `*.test.ts` and `*.d.ts` stay ignored, and matched files are deduplicated and sorted so evaluation order is stable.
+  
+  `up` and `validate` now name your own patterns when nothing matches, instead of reporting a `./data` directory you may not have.
+
+- [`2d69f07`](https://github.com/fakeware-sh/fakeware/commit/2d69f0768b17c6e5d4d70bad753e4b647da032e1) Thanks [@aiomayo](https://github.com/aiomayo)! - Split large entity payloads into batches instead of failing
+  
+  Shopware accepts at most 5 MB per sync request. Fakeware used to check the payload up front and throw a `ShopwareApiError` telling you to reduce the number of records, which is an odd thing to ask of a tool whose job is generating many records: a few thousand products with rich descriptions was enough to hit it, with no recourse other than splitting your data files by hand.
+  
+  An entity over the limit is now split into sequential batches that each fit. Write order is preserved, so intra-entity dependencies still hold, and every batch goes through the existing retry policy on its own. The manifest is unchanged: an entity is confirmed only once all of its batches have landed, so an interrupted run still leaves it `pending` and a repeated `up` converges.
+  
+  Deletes chunk the same way, which lifts the same ceiling from `down` on large manifests.
+  
+  A single record over the limit still fails, since there is nothing to split. That error now names the entity and suggests uploading large content as media rather than inlining it.
+
+- [`d25cd9b`](https://github.com/fakeware-sh/fakeware/commit/d25cd9bb34faa0943abcebac053f3963e47baf97) Thanks [@aiomayo](https://github.com/aiomayo)! - Rename `RunOptions.debug` to `RunOptions.verbose`
+  
+  The option that `runUp` and `runDown` accept is the same concept as the `--verbose` flag, so it now carries the same name. If you call `runUp` or `runDown` programmatically, rename the property:
+  
+  ```diff
+   await runUp({
+     loaded,
+     sink,
+  -  debug: true,
+  +  verbose: true,
+   })
+  ```
+  
+  The CLI is unaffected: `fakeware up --verbose` and `fakeware down --verbose` behave exactly as before. Plugin log levels are unchanged, `PluginLogger.debug()` and `LogSink.debug` still mean "debug level" and keep their names.
+
+### Patch Changes
+
+- [`2b10592`](https://github.com/fakeware-sh/fakeware/commit/2b10592020b1b08261fda6547600cb45ec872342) Thanks [@aiomayo](https://github.com/aiomayo)! - Improve the npm package pages
+  
+  Every published package now ships a README, so the npm page shows what the package does instead of rendering empty. Each one also declares the fakeware.sh homepage, an issues URL, and keywords, and the thin descriptions on the core, cli and scaffolder packages are replaced with ones that say what they actually do.
+
+- [`790a90d`](https://github.com/fakeware-sh/fakeware/commit/790a90dc90bc3e6ae4e063f6fa5484b85222029a) Thanks [@aiomayo](https://github.com/aiomayo)! - Let `process.env` take precedence over `.env`
+  
+  `.env` was merged on top of `process.env`, so a stale local file silently overrode credentials exported in the shell or injected by CI. The precedence is now the other way round, matching dotenv and the rest of the ecosystem: `.env` fills in what the environment does not already provide, and the real environment always wins.
+  
+  If you relied on a local `.env` overriding an exported variable, unset the variable in your shell or change the value in `.env` to match.
+
 ## 0.2.0
 
 ### Minor Changes

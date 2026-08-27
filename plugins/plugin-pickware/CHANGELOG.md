@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1
+
+### Patch Changes
+
+- [`2b10592`](https://github.com/fakeware-sh/fakeware/commit/2b10592020b1b08261fda6547600cb45ec872342) Thanks [@aiomayo](https://github.com/aiomayo)! - Improve the npm package pages
+  
+  Every published package now ships a README, so the npm page shows what the package does instead of rendering empty. Each one also declares the fakeware.sh homepage, an issues URL, and keywords, and the thin descriptions on the core, cli and scaffolder packages are replaced with ones that say what they actually do.
+- Updated dependencies [[`295eeca`](https://github.com/fakeware-sh/fakeware/commit/295eecaeaad6be2b576cc61f60c1e48b8377ffb2), [`2d69f07`](https://github.com/fakeware-sh/fakeware/commit/2d69f0768b17c6e5d4d70bad753e4b647da032e1), [`d25cd9b`](https://github.com/fakeware-sh/fakeware/commit/d25cd9bb34faa0943abcebac053f3963e47baf97), [`2b10592`](https://github.com/fakeware-sh/fakeware/commit/2b10592020b1b08261fda6547600cb45ec872342), [`790a90d`](https://github.com/fakeware-sh/fakeware/commit/790a90dc90bc3e6ae4e063f6fa5484b85222029a)]:
+  - @fakeware/core@0.3.0
+
 ## 2.1.0
 
 ### Minor Changes
