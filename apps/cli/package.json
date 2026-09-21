@@ -52,11 +52,11 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@clack/prompts": "1.7.0",
+    "@clack/prompts": "1.8.1",
     "@fakeware/core": "^0.2.0",
     "commander": "15.0.0",
     "eta": "^4.6.0",
-    "magicast": "0.5.4",
+    "magicast": "0.5.5",
     "picocolors": "1.1.1",
     "terminal-link": "5.0.0"
   },
